@@ -76,6 +76,8 @@ RESEND_API_KEY="re_..."
 
 ## Getting Started
 
+### Local Development
+
 1. Install dependencies:
    ```bash
    npm install
@@ -87,12 +89,68 @@ RESEND_API_KEY="re_..."
    # Edit .env.local with your configuration
    ```
 
-3. Run the development server:
+3. Set up the database:
+   ```bash
+   # Generate Prisma client
+   npm run db:generate
+   
+   # Run migrations (requires PostgreSQL database)
+   npm run db:migrate
+   ```
+
+4. Run the development server:
    ```bash
    npm run dev
    ```
 
-4. Open [http://localhost:3000](http://localhost:3000) in your browser.
+5. Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+### Railway Deployment
+
+This project is configured for easy deployment on Railway with PostgreSQL:
+
+1. **Fork or clone this repository**
+
+2. **Connect to Railway:**
+   - Go to [Railway](https://railway.app)
+   - Create a new project from GitHub repository
+   - Select this repository
+
+3. **Add PostgreSQL database:**
+   - In your Railway project, click "New Service"
+   - Select "Database" → "PostgreSQL"
+   - Railway will automatically provide DATABASE_URL
+
+4. **Configure environment variables:**
+   ```bash
+   # Railway will auto-provide DATABASE_URL
+   HOSTAWAY_API_KEY=your-hostaway-api-key
+   HOSTAWAY_ACCOUNT_ID=your-account-id
+   NUKI_API_KEY=your-nuki-api-key
+   STRIPE_PUBLISHABLE_KEY=pk_test_...
+   STRIPE_SECRET_KEY=sk_test_...
+   NEXTAUTH_SECRET=your-secret-key
+   RESEND_API_KEY=re_...
+   NEXT_PUBLIC_APP_URL=https://your-app.railway.app
+   ```
+
+5. **Deploy:**
+   - Railway will automatically build and deploy
+   - Database migrations run automatically via `postinstall` script
+   - Your app will be available at your Railway URL
+
+### Database Management
+
+```bash
+# Generate Prisma client
+npm run db:generate
+
+# Run database migrations
+npm run db:migrate
+
+# Open Prisma Studio (database GUI)
+npm run db:studio
+```
 
 ## Important Notes
 
