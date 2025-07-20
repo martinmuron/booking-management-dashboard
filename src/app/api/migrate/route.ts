@@ -6,33 +6,30 @@ export async function POST() {
     // Check if we can connect to the database
     await prisma.$connect();
     
-    // Run the migration SQL directly
-    await prisma.$executeRawUnsafe(`
-      -- Create enums if they don't exist
-      DO $$ BEGIN
-        CREATE TYPE "BookingStatus" AS ENUM ('PENDING', 'CHECKED_IN', 'PAYMENT_PENDING', 'PAYMENT_COMPLETED', 'KEYS_DISTRIBUTED', 'COMPLETED');
-      EXCEPTION
-        WHEN duplicate_object THEN null;
-      END $$;
-      
-      DO $$ BEGIN
-        CREATE TYPE "GuestSex" AS ENUM ('MALE', 'FEMALE', 'OTHER');
-      EXCEPTION
-        WHEN duplicate_object THEN null;
-      END $$;
-      
-      DO $$ BEGIN
-        CREATE TYPE "PaymentStatus" AS ENUM ('PENDING', 'PROCESSING', 'SUCCEEDED', 'FAILED', 'CANCELED');
-      EXCEPTION
-        WHEN duplicate_object THEN null;
-      END $$;
-      
-      DO $$ BEGIN
-        CREATE TYPE "VirtualKeyType" AS ENUM ('MAIN_ENTRANCE', 'LUGGAGE_ROOM', 'LAUNDRY_ROOM', 'ROOM');
-      EXCEPTION
-        WHEN duplicate_object THEN null;
-      END $$;
-    `);
+    // Create enums using simple approach
+    try {
+      await prisma.$executeRawUnsafe(`CREATE TYPE "BookingStatus" AS ENUM ('PENDING', 'CHECKED_IN', 'PAYMENT_PENDING', 'PAYMENT_COMPLETED', 'KEYS_DISTRIBUTED', 'COMPLETED')`);
+    } catch (e) {
+      // Type already exists, ignore
+    }
+    
+    try {
+      await prisma.$executeRawUnsafe(`CREATE TYPE "GuestSex" AS ENUM ('MALE', 'FEMALE', 'OTHER')`);
+    } catch (e) {
+      // Type already exists, ignore
+    }
+    
+    try {
+      await prisma.$executeRawUnsafe(`CREATE TYPE "PaymentStatus" AS ENUM ('PENDING', 'PROCESSING', 'SUCCEEDED', 'FAILED', 'CANCELED')`);
+    } catch (e) {
+      // Type already exists, ignore
+    }
+    
+    try {
+      await prisma.$executeRawUnsafe(`CREATE TYPE "VirtualKeyType" AS ENUM ('MAIN_ENTRANCE', 'LUGGAGE_ROOM', 'LAUNDRY_ROOM', 'ROOM')`);
+    } catch (e) {
+      // Type already exists, ignore
+    }
 
     // Create tables if they don't exist
     await prisma.$executeRawUnsafe(`
@@ -52,7 +49,7 @@ export async function POST() {
         "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
         "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
         CONSTRAINT "bookings_pkey" PRIMARY KEY ("id")
-      );
+      )
     `);
 
     await prisma.$executeRawUnsafe(`
@@ -69,7 +66,7 @@ export async function POST() {
         "phone" TEXT,
         "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
         CONSTRAINT "guests_pkey" PRIMARY KEY ("id")
-      );
+      )
     `);
 
     await prisma.$executeRawUnsafe(`
@@ -83,7 +80,7 @@ export async function POST() {
         "paidAt" TIMESTAMP(3),
         "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
         CONSTRAINT "payments_pkey" PRIMARY KEY ("id")
-      );
+      )
     `);
 
     await prisma.$executeRawUnsafe(`
@@ -96,37 +93,52 @@ export async function POST() {
         "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
         "deactivatedAt" TIMESTAMP(3),
         CONSTRAINT "virtual_keys_pkey" PRIMARY KEY ("id")
-      );
+      )
     `);
 
     // Create indexes if they don't exist
-    await prisma.$executeRawUnsafe(`
-      CREATE UNIQUE INDEX IF NOT EXISTS "bookings_hostAwayId_key" ON "bookings"("hostAwayId");
-      CREATE UNIQUE INDEX IF NOT EXISTS "bookings_checkInToken_key" ON "bookings"("checkInToken");
-      CREATE UNIQUE INDEX IF NOT EXISTS "payments_stripePaymentId_key" ON "payments"("stripePaymentId");
-      CREATE UNIQUE INDEX IF NOT EXISTS "virtual_keys_nukiKeyId_key" ON "virtual_keys"("nukiKeyId");
-    `);
+    try {
+      await prisma.$executeRawUnsafe(`CREATE UNIQUE INDEX "bookings_hostAwayId_key" ON "bookings"("hostAwayId")`);
+    } catch (e) {
+      // Index already exists, ignore
+    }
+    
+    try {
+      await prisma.$executeRawUnsafe(`CREATE UNIQUE INDEX "bookings_checkInToken_key" ON "bookings"("checkInToken")`);
+    } catch (e) {
+      // Index already exists, ignore
+    }
+    
+    try {
+      await prisma.$executeRawUnsafe(`CREATE UNIQUE INDEX "payments_stripePaymentId_key" ON "payments"("stripePaymentId")`);
+    } catch (e) {
+      // Index already exists, ignore
+    }
+    
+    try {
+      await prisma.$executeRawUnsafe(`CREATE UNIQUE INDEX "virtual_keys_nukiKeyId_key" ON "virtual_keys"("nukiKeyId")`);
+    } catch (e) {
+      // Index already exists, ignore
+    }
 
     // Add foreign keys if they don't exist
-    await prisma.$executeRawUnsafe(`
-      DO $$ BEGIN
-        ALTER TABLE "guests" ADD CONSTRAINT "guests_bookingId_fkey" FOREIGN KEY ("bookingId") REFERENCES "bookings"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-      EXCEPTION
-        WHEN duplicate_object THEN null;
-      END $$;
-      
-      DO $$ BEGIN
-        ALTER TABLE "payments" ADD CONSTRAINT "payments_bookingId_fkey" FOREIGN KEY ("bookingId") REFERENCES "bookings"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-      EXCEPTION
-        WHEN duplicate_object THEN null;
-      END $$;
-      
-      DO $$ BEGIN
-        ALTER TABLE "virtual_keys" ADD CONSTRAINT "virtual_keys_bookingId_fkey" FOREIGN KEY ("bookingId") REFERENCES "bookings"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-      EXCEPTION
-        WHEN duplicate_object THEN null;
-      END $$;
-    `);
+    try {
+      await prisma.$executeRawUnsafe(`ALTER TABLE "guests" ADD CONSTRAINT "guests_bookingId_fkey" FOREIGN KEY ("bookingId") REFERENCES "bookings"("id") ON DELETE CASCADE ON UPDATE CASCADE`);
+    } catch (e) {
+      // Constraint already exists, ignore
+    }
+    
+    try {
+      await prisma.$executeRawUnsafe(`ALTER TABLE "payments" ADD CONSTRAINT "payments_bookingId_fkey" FOREIGN KEY ("bookingId") REFERENCES "bookings"("id") ON DELETE CASCADE ON UPDATE CASCADE`);
+    } catch (e) {
+      // Constraint already exists, ignore
+    }
+    
+    try {
+      await prisma.$executeRawUnsafe(`ALTER TABLE "virtual_keys" ADD CONSTRAINT "virtual_keys_bookingId_fkey" FOREIGN KEY ("bookingId") REFERENCES "bookings"("id") ON DELETE CASCADE ON UPDATE CASCADE`);
+    } catch (e) {
+      // Constraint already exists, ignore
+    }
 
     return NextResponse.json({
       success: true,
