@@ -68,12 +68,26 @@ class BookingService {
       };
 
       // Fetch bookings from HostAway
+      console.log('🔍 About to call HostAway API with params:', fetchParams);
+      
       const [hostawayReservations, hostawayListings] = await Promise.all([
         hostAwayService.getReservations(fetchParams),
         hostAwayService.getListings()
       ]);
 
-      console.log(`📊 Fetched ${hostawayReservations.length} reservations from HostAway (${isInitialSync ? 'Initial' : 'Incremental'} sync)`);
+      console.log(`📊 HostAway API Results:`);
+      console.log(`  - Reservations: ${hostawayReservations.length}`);
+      console.log(`  - Listings: ${hostawayListings.length}`);
+      console.log(`  - Sync type: ${isInitialSync ? 'Initial' : 'Incremental'}`);
+      
+      if (hostawayReservations.length === 0) {
+        console.log('⚠️  No reservations returned from HostAway API');
+        console.log('🔍 Debug info:', {
+          fetchParams,
+          accountId: process.env.HOSTAWAY_ACCOUNT_ID?.substring(0, 6) + '...',
+          apiKeyLength: process.env.HOSTAWAY_API_KEY?.length
+        });
+      }
 
       let newBookings = 0;
       let updatedBookings = 0;

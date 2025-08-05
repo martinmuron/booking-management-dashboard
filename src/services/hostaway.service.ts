@@ -62,6 +62,13 @@ class HostAwayService {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
 
+      console.log('🔐 Attempting HostAway authentication with:', {
+        accountId: this.accountId?.substring(0, 6) + '...',
+        apiKeyLength: this.apiKey?.length,
+        hasAccountId: !!this.accountId,
+        hasApiKey: !!this.apiKey
+      });
+
       const response = await fetch('https://api.hostaway.com/v1/accessTokens', {
         method: 'POST',
         headers: {
@@ -74,7 +81,15 @@ class HostAwayService {
 
       clearTimeout(timeoutId);
 
+      console.log('🔐 Auth response status:', response.status);
+
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ HostAway auth failed:', {
+          status: response.status,
+          statusText: response.statusText,
+          errorBody: errorText
+        });
         throw new Error(`HostAway auth failed: ${response.status} ${response.statusText}`);
       }
 
