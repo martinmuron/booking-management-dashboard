@@ -1,5 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import Link from "next/link";
 
 export default function Home() {
   return (
@@ -24,9 +25,11 @@ export default function Home() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Button className="w-full">
-                  Access Admin Dashboard
-                </Button>
+                <Link href="/admin">
+                  <Button className="w-full">
+                    Access Admin Dashboard
+                  </Button>
+                </Link>
               </CardContent>
             </Card>
 
