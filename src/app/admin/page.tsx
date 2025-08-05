@@ -72,7 +72,7 @@ export default function AdminDashboard() {
       } else {
         setError(data.error || 'Failed to fetch bookings');
       }
-    } catch (err) {
+    } catch {
       setError('Network error: Unable to fetch bookings');
     } finally {
       setLoading(false);
@@ -95,7 +95,7 @@ export default function AdminDashboard() {
       } else {
         setError(data.error || 'Sync failed');
       }
-    } catch (err) {
+    } catch {
       setError('Network error: Unable to sync bookings');
     } finally {
       setRefreshing(false);

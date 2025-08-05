@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/database';
-import { Guest, GuestSex } from '@/types';
+import { Guest } from '@/types';
 
 export class GuestService {
   // Create multiple guests for a booking
@@ -8,10 +8,8 @@ export class GuestService {
     guestsData: Array<{
       firstName: string;
       lastName: string;
-      birthDate: Date;
+      dateOfBirth: Date;
       nationality: string;
-      sex: GuestSex;
-      residenceCountry: string;
       email: string;
       phone?: string;
     }>
@@ -44,10 +42,8 @@ export class GuestService {
     data: Partial<{
       firstName: string;
       lastName: string;
-      birthDate: Date;
+      dateOfBirth: Date;
       nationality: string;
-      sex: GuestSex;
-      residenceCountry: string;
       email: string;
       phone: string;
     }>
@@ -72,9 +68,10 @@ export class GuestService {
     });
 
     return guests.filter(guest => {
-      const age = new Date().getFullYear() - guest.birthDate.getFullYear();
-      const monthDiff = new Date().getMonth() - guest.birthDate.getMonth();
-      const dayDiff = new Date().getDate() - guest.birthDate.getDate();
+      if (!guest.dateOfBirth) return false;
+      const age = new Date().getFullYear() - guest.dateOfBirth.getFullYear();
+      const monthDiff = new Date().getMonth() - guest.dateOfBirth.getMonth();
+      const dayDiff = new Date().getDate() - guest.dateOfBirth.getDate();
       
       // Adjust age if birthday hasn't occurred this year
       if (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) {

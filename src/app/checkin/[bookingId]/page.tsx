@@ -120,7 +120,7 @@ export default function CheckInPage() {
           
           // Initialize with existing guests or one empty guest
           if (bookingData.guests && bookingData.guests.length > 0) {
-            setGuests(bookingData.guests.map((guest: any) => ({
+            setGuests(bookingData.guests.map((guest: Guest) => ({
               id: guest.id || Date.now().toString(),
               firstName: guest.firstName || '',
               lastName: guest.lastName || '',
@@ -142,7 +142,7 @@ export default function CheckInPage() {
           }
           
           // Check if payment already completed
-          if (bookingData.payments && bookingData.payments.some((p: any) => p.status === 'paid')) {
+          if (bookingData.payments && bookingData.payments.some((p: { status: string }) => p.status === 'paid')) {
             setPaymentCompleted(true);
           }
         } else {

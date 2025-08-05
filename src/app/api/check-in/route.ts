@@ -1,6 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/database';
 
+interface GuestSubmission {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  dateOfBirth: string;
+  nationality: string;
+}
+
 // GET /api/check-in - Get booking details for check-in
 export async function GET(request: NextRequest) {
   try {
@@ -73,7 +82,7 @@ export async function POST(request: NextRequest) {
       where: { bookingId: booking.id }
     });
     
-    const guestData = guests.map((guest: any, index: number) => ({
+    const guestData = guests.map((guest: GuestSubmission, index: number) => ({
       bookingId: booking.id,
       firstName: guest.firstName,
       lastName: guest.lastName,

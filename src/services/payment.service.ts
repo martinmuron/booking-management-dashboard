@@ -1,11 +1,11 @@
 import { prisma } from '@/lib/database';
-import { Payment, PaymentStatus } from '@/types';
+import { Payment } from '@/types';
 
 export class PaymentService {
   // Create a new payment record
   static async createPayment(data: {
     bookingId: string;
-    stripePaymentId: string;
+    stripePaymentIntentId: string;
     amount: number;
     currency?: string;
   }): Promise<Payment> {
@@ -18,9 +18,9 @@ export class PaymentService {
   }
 
   // Get payment by Stripe payment ID
-  static async getPaymentByStripeId(stripePaymentId: string): Promise<Payment | null> {
+  static async getPaymentByStripeId(stripePaymentIntentId: string): Promise<Payment | null> {
     return await prisma.payment.findUnique({
-      where: { stripePaymentId },
+      where: { stripePaymentIntentId },
     });
   }
 
@@ -34,15 +34,15 @@ export class PaymentService {
 
   // Update payment status
   static async updatePaymentStatus(
-    stripePaymentId: string,
-    status: PaymentStatus,
+    stripePaymentIntentId: string,
+    status: string,
     paidAt?: Date
   ): Promise<Payment> {
     return await prisma.payment.update({
-      where: { stripePaymentId },
+      where: { stripePaymentIntentId },
       data: {
         status,
-        paidAt: status === PaymentStatus.SUCCEEDED ? paidAt || new Date() : null,
+        paidAt: status === 'paid' ? paidAt || new Date() : null,
       },
     });
   }
@@ -52,7 +52,7 @@ export class PaymentService {
     const count = await prisma.payment.count({
       where: {
         bookingId,
-        status: PaymentStatus.SUCCEEDED,
+        status: 'paid',
       },
     });
     
@@ -64,7 +64,7 @@ export class PaymentService {
     const result = await prisma.payment.aggregate({
       where: {
         bookingId,
-        status: PaymentStatus.SUCCEEDED,
+        status: 'paid',
       },
       _sum: {
         amount: true,
@@ -79,7 +79,7 @@ export class PaymentService {
     return await prisma.payment.findMany({
       where: {
         status: {
-          in: [PaymentStatus.PENDING, PaymentStatus.PROCESSING],
+          in: ['pending', 'processing'],
         },
       },
       orderBy: { createdAt: 'desc' },
@@ -107,10 +107,10 @@ export class PaymentService {
     const [totalPayments, successfulPayments, totalAmount] = await Promise.all([
       prisma.payment.count({ where }),
       prisma.payment.count({
-        where: { ...where, status: PaymentStatus.SUCCEEDED },
+        where: { ...where, status: 'paid' },
       }),
       prisma.payment.aggregate({
-        where: { ...where, status: PaymentStatus.SUCCEEDED },
+        where: { ...where, status: 'paid' },
         _sum: { amount: true },
       }),
     ]);

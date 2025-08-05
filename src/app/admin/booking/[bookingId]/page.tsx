@@ -10,13 +10,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { 
-  Calendar, 
   Users, 
   MapPin, 
-  Clock,
-  User,
   Mail,
-  Phone,
   CreditCard,
   Key,
   ArrowLeft,
@@ -25,8 +21,7 @@ import {
   X,
   ExternalLink,
   Loader2,
-  AlertCircle,
-  CheckCircle
+  AlertCircle
 } from "lucide-react";
 
 interface Guest {
@@ -123,7 +118,7 @@ export default function BookingAdminPage() {
         } else {
           setError(data.error || 'Failed to fetch booking');
         }
-      } catch (err) {
+      } catch {
         setError('Network error: Unable to fetch booking');
       } finally {
         setLoading(false);
@@ -153,7 +148,7 @@ export default function BookingAdminPage() {
       } else {
         setError(data.error || 'Failed to update status');
       }
-    } catch (err) {
+    } catch {
       setError('Network error: Unable to update status');
     }
   };

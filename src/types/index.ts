@@ -5,8 +5,6 @@ import {
   Payment as PrismaPayment, 
   VirtualKey as PrismaVirtualKey, 
   BookingStatus, 
-  GuestSex, 
-  PaymentStatus, 
   VirtualKeyType 
 } from '@prisma/client';
 
@@ -23,7 +21,7 @@ export type Payment = PrismaPayment;
 export type VirtualKey = PrismaVirtualKey;
 
 // Re-export Prisma enums
-export { BookingStatus, GuestSex, PaymentStatus, VirtualKeyType };
+export { BookingStatus, VirtualKeyType };
 
 // HostAway API types (READ-ONLY)
 export interface HostAwayBooking {
