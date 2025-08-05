@@ -99,37 +99,55 @@ export default function CheckInPage() {
   const [submitting, setSubmitting] = useState(false);
   const [showPaymentForm, setShowPaymentForm] = useState(false);
 
-  // Mock booking data - will be replaced with API call
   useEffect(() => {
     const fetchBooking = async () => {
       try {
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        const response = await fetch(`/api/check-in?token=${bookingId}`);
+        const data = await response.json();
         
-        const mockBooking: BookingData = {
-          id: bookingId,
-          propertyName: "Downtown Loft",
-          checkInDate: "2024-08-10T15:00:00Z",
-          checkOutDate: "2024-08-15T11:00:00Z",
-          numberOfGuests: 3,
-          guestLeaderName: "John Smith",
-          cityTaxAmount: 15.00,
-          cityTaxPerPerson: 5.00
-        };
-
-        setBooking(mockBooking);
-        
-        // Initialize with one guest (the lead guest)
-        setGuests([{
-          id: '1',
-          firstName: 'John',
-          lastName: 'Smith',
-          email: '',
-          phone: '',
-          dateOfBirth: '',
-          nationality: ''
-        }]);
-
+        if (data.success) {
+          const bookingData = data.data.booking;
+          setBooking({
+            id: bookingData.id,
+            propertyName: bookingData.propertyName,
+            checkInDate: bookingData.checkInDate,
+            checkOutDate: bookingData.checkOutDate,
+            numberOfGuests: bookingData.numberOfGuests,
+            guestLeaderName: bookingData.guestLeaderName,
+            cityTaxAmount: 0,
+            cityTaxPerPerson: 50
+          });
+          
+          // Initialize with existing guests or one empty guest
+          if (bookingData.guests && bookingData.guests.length > 0) {
+            setGuests(bookingData.guests.map((guest: any) => ({
+              id: guest.id || Date.now().toString(),
+              firstName: guest.firstName || '',
+              lastName: guest.lastName || '',
+              email: guest.email || '',
+              phone: guest.phone || '',
+              dateOfBirth: guest.dateOfBirth ? guest.dateOfBirth.split('T')[0] : '',
+              nationality: guest.nationality || ''
+            })));
+          } else {
+            setGuests([{
+              id: '1',
+              firstName: bookingData.guestLeaderName.split(' ')[0] || '',
+              lastName: bookingData.guestLeaderName.split(' ').slice(1).join(' ') || '',
+              email: bookingData.guestLeaderEmail || '',
+              phone: '',
+              dateOfBirth: '',
+              nationality: ''
+            }]);
+          }
+          
+          // Check if payment already completed
+          if (bookingData.payments && bookingData.payments.some((p: any) => p.status === 'paid')) {
+            setPaymentCompleted(true);
+          }
+        } else {
+          setError(data.error || 'Failed to load booking information');
+        }
         setLoading(false);
       } catch {
         setError('Failed to load booking information');
@@ -190,9 +208,26 @@ export default function CheckInPage() {
 
     setSubmitting(true);
     try {
-      // Submit guest registration and complete check-in
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      alert('Check-in completed successfully!');
+      const response = await fetch('/api/check-in', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          token: bookingId,
+          guests: guests,
+          paymentIntentId: paymentIntentId
+        }),
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        alert('Check-in completed successfully!');
+        setError(null);
+      } else {
+        setError(data.error || 'Failed to complete check-in');
+      }
     } catch {
       setError('Failed to complete check-in. Please try again.');
     } finally {

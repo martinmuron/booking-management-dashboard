@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/database';
 
 // GET /api/check-in - Get booking details for check-in
 export async function GET(request: NextRequest) {
@@ -13,20 +14,24 @@ export async function GET(request: NextRequest) {
       );
     }
     
-    // TODO: Implement token validation and booking details fetching
+    const booking = await prisma.booking.findUnique({
+      where: { checkInToken: token },
+      include: {
+        guests: true,
+        payments: true
+      }
+    });
+    
+    if (!booking) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid check-in token' },
+        { status: 404 }
+      );
+    }
     
     return NextResponse.json({
       success: true,
-      data: {
-        booking: {
-          id: 'booking_123',
-          propertyName: 'Sample Property',
-          checkInDate: '2024-01-15',
-          checkOutDate: '2024-01-20',
-          numberOfGuests: 2,
-          guestLeaderName: 'John Doe'
-        }
-      },
+      data: { booking },
       message: 'Booking details fetched successfully'
     });
   } catch (error) {
@@ -42,28 +47,74 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { token, guests, signature } = body;
+    const { token, guests, paymentIntentId } = body;
     
-    if (!token || !guests || !signature) {
+    if (!token || !guests) {
       return NextResponse.json(
-        { success: false, error: 'Token, guests, and signature are required' },
+        { success: false, error: 'Token and guests are required' },
         { status: 400 }
       );
     }
     
-    // TODO: Implement complete check-in process:
-    // 1. Validate token
-    // 2. Save guest information
-    // 3. Calculate tourist tax
-    // 4. Process payment
-    // 5. Generate virtual keys
-    // 6. Send confirmation email
+    // Validate token and get booking
+    const booking = await prisma.booking.findUnique({
+      where: { checkInToken: token }
+    });
+    
+    if (!booking) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid check-in token' },
+        { status: 404 }
+      );
+    }
+    
+    // Save guest information
+    await prisma.guest.deleteMany({
+      where: { bookingId: booking.id }
+    });
+    
+    const guestData = guests.map((guest: any, index: number) => ({
+      bookingId: booking.id,
+      firstName: guest.firstName,
+      lastName: guest.lastName,
+      email: guest.email,
+      phone: guest.phone,
+      dateOfBirth: guest.dateOfBirth ? new Date(guest.dateOfBirth) : null,
+      nationality: guest.nationality,
+      isLeadGuest: index === 0
+    }));
+    
+    await prisma.guest.createMany({
+      data: guestData
+    });
+    
+    // Update booking status
+    await prisma.booking.update({
+      where: { id: booking.id },
+      data: {
+        status: 'CHECKED_IN',
+        updatedAt: new Date()
+      }
+    });
+    
+    // Save payment if provided
+    if (paymentIntentId) {
+      await prisma.payment.create({
+        data: {
+          bookingId: booking.id,
+          amount: 0, // Will be updated by Stripe webhook
+          currency: 'eur',
+          status: 'paid',
+          stripePaymentIntentId: paymentIntentId
+        }
+      });
+    }
     
     return NextResponse.json({
       success: true,
       data: {
-        touristTax: 200, // 50 CZK * 2 adults * 2 days
-        paymentRequired: true
+        bookingId: booking.id,
+        status: 'CHECKED_IN'
       },
       message: 'Check-in completed successfully'
     });

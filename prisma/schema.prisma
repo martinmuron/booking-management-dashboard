@@ -30,32 +30,31 @@ model Booking {
 }
 
 model Guest {
-  id               String   @id @default(cuid())
-  bookingId        String
-  firstName        String
-  lastName         String
-  birthDate        DateTime
-  nationality      String
-  sex              GuestSex
-  residenceCountry String
-  email            String
-  phone            String?
-  createdAt        DateTime @default(now())
-  booking          Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  id           String    @id @default(cuid())
+  bookingId    String
+  firstName    String
+  lastName     String
+  dateOfBirth  DateTime?
+  nationality  String?
+  email        String?
+  phone        String?
+  isLeadGuest  Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+  booking      Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
 
   @@map("guests")
 }
 
 model Payment {
-  id              String        @id @default(cuid())
-  bookingId       String
-  stripePaymentId String        @unique
-  amount          Int
-  currency        String        @default("CZK")
-  status          PaymentStatus @default(PENDING)
-  paidAt          DateTime?
-  createdAt       DateTime      @default(now())
-  booking         Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  id                     String        @id @default(cuid())
+  bookingId              String
+  stripePaymentIntentId  String?       @unique
+  amount                 Int
+  currency               String        @default("eur")
+  status                 String        @default("pending")
+  paidAt                 DateTime?
+  createdAt              DateTime      @default(now())
+  booking                Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
 
   @@map("payments")
 }
@@ -75,25 +74,13 @@ model VirtualKey {
 
 enum BookingStatus {
   PENDING
+  CONFIRMED
   CHECKED_IN
   PAYMENT_PENDING
   PAYMENT_COMPLETED
   KEYS_DISTRIBUTED
   COMPLETED
-}
-
-enum GuestSex {
-  MALE
-  FEMALE
-  OTHER
-}
-
-enum PaymentStatus {
-  PENDING
-  PROCESSING
-  SUCCEEDED
-  FAILED
-  CANCELED
+  CANCELLED
 }
 
 enum VirtualKeyType {

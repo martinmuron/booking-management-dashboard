@@ -1,30 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-
-// Mock booking data - will be replaced with database queries
-const mockBookings = {
-  'BK001': {
-    id: 'BK001',
-    propertyName: 'Downtown Loft',
-    checkInDate: '2024-08-10T15:00:00Z',
-    checkOutDate: '2024-08-15T11:00:00Z',
-    numberOfGuests: 3,
-    guestLeaderName: 'John Smith',
-    cityTaxAmount: 15.00,
-    cityTaxPerPerson: 5.00,
-    status: 'confirmed'
-  },
-  'BK002': {
-    id: 'BK002',
-    propertyName: 'Seaside Villa',
-    checkInDate: '2024-08-12T16:00:00Z',
-    checkOutDate: '2024-08-18T10:00:00Z',
-    numberOfGuests: 4,
-    guestLeaderName: 'Maria Garcia',
-    cityTaxAmount: 20.00,
-    cityTaxPerPerson: 5.00,
-    status: 'confirmed'
-  }
-};
+import { prisma } from '@/lib/database';
 
 export async function GET(
   request: NextRequest,
@@ -33,8 +8,13 @@ export async function GET(
   try {
     const { bookingId } = await params;
     
-    // Mock data lookup - replace with actual database query
-    const booking = mockBookings[bookingId as keyof typeof mockBookings];
+    const booking = await prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: {
+        guests: true,
+        payments: true
+      }
+    });
     
     if (!booking) {
       return NextResponse.json(
@@ -54,6 +34,44 @@ export async function GET(
     return NextResponse.json(
       { 
         error: 'Failed to fetch booking',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ bookingId: string }> }
+) {
+  try {
+    const { bookingId } = await params;
+    const body = await request.json();
+    
+    const updatedBooking = await prisma.booking.update({
+      where: { id: bookingId },
+      data: {
+        status: body.status,
+        updatedAt: new Date()
+      },
+      include: {
+        guests: true,
+        payments: true
+      }
+    });
+
+    return NextResponse.json({
+      success: true,
+      data: updatedBooking
+    });
+
+  } catch (error) {
+    console.error('Error updating booking:', error);
+    
+    return NextResponse.json(
+      { 
+        error: 'Failed to update booking',
         message: error instanceof Error ? error.message : 'Unknown error'
       },
       { status: 500 }

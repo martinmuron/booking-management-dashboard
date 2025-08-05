@@ -6,8 +6,9 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Calendar, Users, Home, RefreshCw, Loader2, AlertCircle } from "lucide-react";
+import { Search, Calendar, Users, Home, RefreshCw, Loader2, AlertCircle, ExternalLink } from "lucide-react";
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 interface BookingData {
   id: string;
@@ -54,6 +55,7 @@ const formatDate = (dateString: string) => {
 };
 
 export default function AdminDashboard() {
+  const router = useRouter();
   const [bookings, setBookings] = useState<BookingData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -61,24 +63,17 @@ export default function AdminDashboard() {
 
   const fetchBookings = async () => {
     try {
-      console.log('📋 Loading bookings from database...');
       const response = await fetch('/api/bookings');
-      console.log('📡 Response received:', response.status, response.statusText);
-      
       const data = await response.json();
-      console.log('📊 Data received:', data);
       
       if (data.success) {
         setBookings(data.data);
         setError(null);
-        console.log(`✅ Successfully loaded ${data.data.length} bookings from database`);
       } else {
         setError(data.error || 'Failed to fetch bookings');
-        console.error('❌ API returned error:', data.error);
       }
     } catch (err) {
       setError('Network error: Unable to fetch bookings');
-      console.error('❌ Network error fetching bookings:', err);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -87,37 +82,27 @@ export default function AdminDashboard() {
 
   const syncWithHostAway = async () => {
     try {
-      console.log('🔄 Starting HostAway sync...');
       setRefreshing(true);
       
       const response = await fetch('/api/bookings/sync', {
         method: 'POST'
       });
-      console.log('📡 Sync response received:', response.status, response.statusText);
       
       const data = await response.json();
-      console.log('📊 Sync data received:', data);
       
       if (data.success) {
-        console.log(`✅ Sync completed: ${data.data.newBookings} new, ${data.data.updatedBookings} updated, ${data.data.totalBookings} total`);
-        console.log(`🔄 Sync type: ${data.data.isInitialSync ? 'Initial' : 'Incremental'}`);
-        
-        // Refresh the bookings list
         await fetchBookings();
       } else {
         setError(data.error || 'Sync failed');
-        console.error('❌ Sync returned error:', data.error);
       }
     } catch (err) {
       setError('Network error: Unable to sync bookings');
-      console.error('❌ Network error during sync:', err);
     } finally {
       setRefreshing(false);
     }
   };
 
   const handleRefresh = async () => {
-    console.log('🔄 Sync button clicked - starting sync...');
     await syncWithHostAway();
   };
 
@@ -151,28 +136,6 @@ export default function AdminDashboard() {
               >
                 <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
                 {refreshing ? 'Syncing...' : 'Sync with HostAway'}
-              </Button>
-              <Button 
-                variant="outline"
-                onClick={async () => {
-                  console.log('🔧 Debug button clicked');
-                  try {
-                    const response = await fetch('/api/hostaway/test');
-                    const data = await response.json();
-                    console.log('🔧 HostAway comprehensive test results:', data);
-                    
-                    // Log each endpoint result for easy viewing
-                    if (data.results?.endpoints) {
-                      Object.entries(data.results.endpoints).forEach(([name, result]: [string, unknown]) => {
-                        console.log(`📊 ${name}:`, result);
-                      });
-                    }
-                  } catch (error) {
-                    console.error('🔧 Debug error:', error);
-                  }
-                }}
-              >
-                Debug API
               </Button>
             </div>
           </div>
@@ -300,7 +263,11 @@ export default function AdminDashboard() {
                     </TableHeader>
                     <TableBody>
                       {bookings.map((booking) => (
-                        <TableRow key={booking.id}>
+                        <TableRow 
+                          key={booking.id}
+                          className="cursor-pointer hover:bg-muted/50 transition-colors"
+                          onClick={() => router.push(`/admin/booking/${booking.id}`)}
+                        >
                           <TableCell className="font-medium">
                             {booking.propertyName}
                           </TableCell>
@@ -318,9 +285,28 @@ export default function AdminDashboard() {
                             </Badge>
                           </TableCell>
                           <TableCell className="text-right">
-                            <Button variant="ghost" size="sm">
-                              Manage Booking
-                            </Button>
+                            <div className="flex items-center justify-end gap-2">
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  router.push(`/admin/booking/${booking.id}`);
+                                }}
+                              >
+                                Manage
+                              </Button>
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  window.open(`/checkin/${booking.id}`, '_blank');
+                                }}
+                              >
+                                <ExternalLink className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}
