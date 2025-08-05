@@ -31,16 +31,19 @@ export async function GET() {
       dateFrom,
       fetchParams,
       totalReservations: reservations.length,
-      sampleReservations: reservations.slice(0, 3).map(r => ({
+      sampleReservations: reservations.slice(0, 5).map(r => ({
         id: r.id,
         checkInDate: r.checkInDate,
         checkOutDate: r.checkOutDate,
         guestName: `${r.guestFirstName} ${r.guestLastName}`,
-        status: r.status
+        status: r.status,
+        listingId: r.listingId,
+        personCapacity: r.personCapacity,
+        rawReservation: r // Show full object to see all fields
       })),
       reservationDateRange: reservations.length > 0 ? {
-        earliest: Math.min(...reservations.map(r => new Date(r.checkInDate).getTime())),
-        latest: Math.max(...reservations.map(r => new Date(r.checkInDate).getTime()))
+        earliest: new Date(Math.min(...reservations.map(r => new Date(r.checkInDate).getTime()))).toISOString(),
+        latest: new Date(Math.max(...reservations.map(r => new Date(r.checkInDate).getTime()))).toISOString()
       } : null
     });
 

@@ -86,6 +86,13 @@ class BookingService {
       // Process each reservation
       for (const reservation of hostawayReservations) {
         try {
+          console.log(`🔍 Processing reservation ${reservation.id}:`, {
+            checkInDate: reservation.checkInDate,
+            checkOutDate: reservation.checkOutDate,
+            guestName: `${reservation.guestFirstName} ${reservation.guestLastName}`,
+            listingId: reservation.listingId
+          });
+
           // Find the corresponding listing
           const listing = hostawayListings.find(l => l.id === reservation.listingId);
           
