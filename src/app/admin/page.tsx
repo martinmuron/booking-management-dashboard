@@ -11,12 +11,17 @@ import { useState, useEffect } from "react";
 
 interface BookingData {
   id: string;
+  hostAwayId: string;
   propertyName: string;
   guestLeaderName: string;
+  guestLeaderEmail: string;
   checkInDate: string;
+  checkOutDate: string;
   numberOfGuests: number;
-  bookingStatus?: string; // Our platform status (not HostAway)
-  hostawaStatus?: string; // HostAway status for reference
+  status: string; // Our platform status
+  checkInToken: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 const getStatusColor = (status?: string) => {
@@ -56,8 +61,8 @@ export default function AdminDashboard() {
 
   const fetchBookings = async () => {
     try {
-      console.log('🔄 Starting HostAway sync...');
-      const response = await fetch('/api/hostaway/reservations');
+      console.log('📋 Loading bookings from database...');
+      const response = await fetch('/api/bookings/sync');
       console.log('📡 Response received:', response.status, response.statusText);
       
       const data = await response.json();
@@ -66,7 +71,7 @@ export default function AdminDashboard() {
       if (data.success) {
         setBookings(data.data);
         setError(null);
-        console.log(`✅ Successfully loaded ${data.data.length} bookings from ${data.source}`);
+        console.log(`✅ Successfully loaded ${data.data.length} bookings from database`);
       } else {
         setError(data.error || 'Failed to fetch bookings');
         console.error('❌ API returned error:', data.error);
@@ -80,10 +85,40 @@ export default function AdminDashboard() {
     }
   };
 
+  const syncWithHostAway = async () => {
+    try {
+      console.log('🔄 Starting HostAway sync...');
+      setRefreshing(true);
+      
+      const response = await fetch('/api/bookings/sync', {
+        method: 'POST'
+      });
+      console.log('📡 Sync response received:', response.status, response.statusText);
+      
+      const data = await response.json();
+      console.log('📊 Sync data received:', data);
+      
+      if (data.success) {
+        console.log(`✅ Sync completed: ${data.data.newBookings} new, ${data.data.updatedBookings} updated, ${data.data.totalBookings} total`);
+        console.log(`🔄 Sync type: ${data.data.isInitialSync ? 'Initial' : 'Incremental'}`);
+        
+        // Refresh the bookings list
+        await fetchBookings();
+      } else {
+        setError(data.error || 'Sync failed');
+        console.error('❌ Sync returned error:', data.error);
+      }
+    } catch (err) {
+      setError('Network error: Unable to sync bookings');
+      console.error('❌ Network error during sync:', err);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   const handleRefresh = async () => {
-    console.log('🔄 Sync button clicked - starting refresh...');
-    setRefreshing(true);
-    await fetchBookings();
+    console.log('🔄 Sync button clicked - starting sync...');
+    await syncWithHostAway();
   };
 
   useEffect(() => {
@@ -91,10 +126,9 @@ export default function AdminDashboard() {
   }, []);
 
   const totalBookings = bookings.length;
-  // Note: Since we're not using booking status from our platform yet, we'll show HostAway status for reference
-  const confirmedBookings = bookings.filter(b => b.hostawaStatus?.toLowerCase() === "confirmed").length;
-  const pendingBookings = bookings.filter(b => b.hostawaStatus?.toLowerCase() === "pending").length;
-  const checkedInBookings = bookings.filter(b => b.hostawaStatus?.toLowerCase() === "checkedin").length;
+  const pendingBookings = bookings.filter(b => b.status === "PENDING").length;
+  const checkedInBookings = bookings.filter(b => b.status === "CHECKED_IN").length;
+  const completedBookings = bookings.filter(b => b.status === "COMPLETED").length;
 
   return (
     <div className="min-h-screen bg-background">
@@ -156,11 +190,11 @@ export default function AdminDashboard() {
             </Card>
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Confirmed</CardTitle>
+                <CardTitle className="text-sm font-medium">Completed</CardTitle>
                 <Calendar className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-blue-600">{confirmedBookings}</div>
+                <div className="text-2xl font-bold text-blue-600">{completedBookings}</div>
               </CardContent>
             </Card>
             <Card>
@@ -233,7 +267,7 @@ export default function AdminDashboard() {
             <CardHeader>
               <CardTitle className="text-lg">HostAway Reservations</CardTitle>
               <CardDescription>
-                Live data from HostAway API (Booking Status managed by your platform)
+                Database bookings synced from HostAway (Status managed by your platform)
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -260,7 +294,7 @@ export default function AdminDashboard() {
                         <TableHead>Guest Leader Name</TableHead>
                         <TableHead>Check-in Date</TableHead>
                         <TableHead>Number of Guests</TableHead>
-                        <TableHead>HostAway Status</TableHead>
+                        <TableHead>Booking Status</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -279,8 +313,8 @@ export default function AdminDashboard() {
                             </div>
                           </TableCell>
                           <TableCell>
-                            <Badge className={getStatusColor(booking.hostawaStatus)}>
-                              {booking.hostawaStatus || 'Unknown'}
+                            <Badge className={getStatusColor(booking.status.toLowerCase())}>
+                              {booking.status.replace('_', ' ')}
                             </Badge>
                           </TableCell>
                           <TableCell className="text-right">
