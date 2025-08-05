@@ -58,11 +58,11 @@ export async function GET(request: NextRequest) {
       hostAwayService.getListings()
     ]);
 
-    const [reservations, listings] = await Promise.race([fetchPromise, timeoutPromise]) as any;
+    const [reservations, listings] = await Promise.race([fetchPromise, timeoutPromise]) as [unknown[], unknown[]];
 
     // Transform data for dashboard
-    const transformedReservations = reservations.map((reservation: any) => 
-      hostAwayService.transformReservationForDashboard(reservation, listings)
+    const transformedReservations = reservations.map((reservation: unknown) => 
+      hostAwayService.transformReservationForDashboard(reservation as Record<string, unknown>, listings as Record<string, unknown>[])
     );
 
     console.log(`Successfully fetched ${transformedReservations.length} reservations from HostAway`);

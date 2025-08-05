@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 
 // GET /api/bookings - Fetch all bookings (READ-ONLY from HostAway)
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     // TODO: Implement HostAway API integration (READ-ONLY)
     // This will fetch bookings from HostAway without modifying any data
@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
 }
 
 // POST /api/bookings - Sync bookings from HostAway (READ-ONLY)
-export async function POST(request: NextRequest) {
+export async function POST() {
   try {
     // TODO: Implement booking synchronization from HostAway (READ-ONLY)
     // This will only read data from HostAway and store it locally

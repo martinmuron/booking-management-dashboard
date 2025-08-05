@@ -6,12 +6,10 @@ import {
   Elements,
   CardElement,
   useStripe,
-  useElements,
-  PaymentElement,
-  useElements as useStripeElements
+  useElements
 } from '@stripe/react-stripe-js';
 import { Button } from '@/components/ui/button';
-import { Loader2, CreditCard, CheckCircle } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 

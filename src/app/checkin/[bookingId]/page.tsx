@@ -131,7 +131,7 @@ export default function CheckInPage() {
         }]);
 
         setLoading(false);
-      } catch (err) {
+      } catch {
         setError('Failed to load booking information');
         setLoading(false);
       }
@@ -193,7 +193,7 @@ export default function CheckInPage() {
       // Submit guest registration and complete check-in
       await new Promise(resolve => setTimeout(resolve, 2000));
       alert('Check-in completed successfully!');
-    } catch (err) {
+    } catch {
       setError('Failed to complete check-in. Please try again.');
     } finally {
       setSubmitting(false);

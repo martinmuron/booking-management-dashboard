@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Filter, Calendar, Users, Home, RefreshCw, Loader2, AlertCircle } from "lucide-react";
+import { Search, Calendar, Users, Home, RefreshCw, Loader2, AlertCircle } from "lucide-react";
 import { useState, useEffect } from "react";
 
 interface BookingData {
