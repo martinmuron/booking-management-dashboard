@@ -33,8 +33,8 @@ export async function GET() {
       totalReservations: reservations.length,
       sampleReservations: reservations.slice(0, 5).map(r => ({
         id: r.id,
-        checkInDate: r.checkInDate,
-        checkOutDate: r.checkOutDate,
+        arrivalDate: r.arrivalDate,
+        departureDate: r.departureDate,
         guestName: `${r.guestFirstName} ${r.guestLastName}`,
         status: r.status,
         listingId: r.listingId,
@@ -45,7 +45,7 @@ export async function GET() {
         earliest: (() => {
           try {
             const validDates = reservations
-              .map(r => r.checkInDate)
+              .map(r => r.arrivalDate)
               .filter(date => date && date !== null && date !== '')
               .map(date => new Date(date))
               .filter(date => !isNaN(date.getTime()));
@@ -57,7 +57,7 @@ export async function GET() {
         latest: (() => {
           try {
             const validDates = reservations
-              .map(r => r.checkInDate)
+              .map(r => r.arrivalDate)
               .filter(date => date && date !== null && date !== '')
               .map(date => new Date(date))
               .filter(date => !isNaN(date.getTime()));

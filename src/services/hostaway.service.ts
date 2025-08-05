@@ -6,8 +6,8 @@ interface HostAwayAuthResponse {
 
 interface HostAwayReservation {
   id: number;
-  checkInDate: string;
-  checkOutDate: string;
+  arrivalDate: string;
+  departureDate: string;
   guestFirstName: string;
   guestLastName: string;
   personCapacity: number;
@@ -218,7 +218,7 @@ class HostAwayService {
       id: reservation.id.toString(),
       propertyName: listing?.name || `Property ${reservation.listingId}`,
       guestLeaderName: `${reservation.guestFirstName} ${reservation.guestLastName}`.trim(),
-      checkInDate: reservation.checkInDate,
+      checkInDate: reservation.arrivalDate,
       numberOfGuests: reservation.personCapacity || 1,
       // Note: We're not using HostAway's status as requested - booking status will be managed by your platform
       hostawaStatus: reservation.status, // Keep this for reference

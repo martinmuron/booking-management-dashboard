@@ -87,25 +87,25 @@ class BookingService {
       for (const reservation of hostawayReservations) {
         try {
           console.log(`🔍 Processing reservation ${reservation.id}:`, {
-            checkInDate: reservation.checkInDate,
-            checkOutDate: reservation.checkOutDate,
+            arrivalDate: reservation.arrivalDate,
+            departureDate: reservation.departureDate,
             guestName: `${reservation.guestFirstName} ${reservation.guestLastName}`,
             listingId: reservation.listingId
           });
 
           // Validate dates before processing
-          if (!reservation.checkInDate || !reservation.checkOutDate) {
+          if (!reservation.arrivalDate || !reservation.departureDate) {
             console.log(`⚠️  Skipping reservation ${reservation.id}: Missing dates`);
             continue;
           }
 
-          const checkInDate = new Date(reservation.checkInDate);
-          const checkOutDate = new Date(reservation.checkOutDate);
+          const checkInDate = new Date(reservation.arrivalDate);
+          const checkOutDate = new Date(reservation.departureDate);
 
           if (isNaN(checkInDate.getTime()) || isNaN(checkOutDate.getTime())) {
             console.log(`⚠️  Skipping reservation ${reservation.id}: Invalid dates`, {
-              checkInDate: reservation.checkInDate,
-              checkOutDate: reservation.checkOutDate
+              arrivalDate: reservation.arrivalDate,
+              departureDate: reservation.departureDate
             });
             continue;
           }
