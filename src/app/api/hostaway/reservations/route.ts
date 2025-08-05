@@ -1,28 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { hostAwayService } from '@/services/hostaway.service';
-
-// Import types from the service file
-type HostAwayReservation = {
-  id: number;
-  checkInDate: string;
-  checkOutDate: string;
-  guestFirstName: string;
-  guestLastName: string;
-  personCapacity: number;
-  status: string;
-  listingId: number;
-  channelId: number;
-  listing?: {
-    name: string;
-    address: string;
-  };
-};
-
-type HostAwayListing = {
-  id: number;
-  name: string;
-  address: string;
-};
+import { hostAwayService, type HostAwayReservation, type HostAwayListing } from '@/services/hostaway.service';
 
 // Mock data as fallback when HostAway API fails
 const mockTransformedReservations = [
