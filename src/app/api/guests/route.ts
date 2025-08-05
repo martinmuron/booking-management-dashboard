@@ -35,6 +35,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     
     // TODO: Implement guest data creation/update in database
+    console.log('Guest data received:', body);
     
     return NextResponse.json({
       success: true,

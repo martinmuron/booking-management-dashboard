@@ -28,10 +28,10 @@ const mockBookings = {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { bookingId: string } }
+  { params }: { params: Promise<{ bookingId: string }> }
 ) {
   try {
-    const bookingId = params.bookingId;
+    const { bookingId } = await params;
     
     // Mock data lookup - replace with actual database query
     const booking = mockBookings[bookingId as keyof typeof mockBookings];

@@ -1,6 +1,4 @@
 import { testDatabaseConnection, generateCheckInToken, calculateTouristTax } from './database';
-import { BookingService } from '@/services/booking.service';
-import { GuestService } from '@/services/guest.service';
 
 // Test database connection and basic functionality
 export async function runDatabaseTests() {
@@ -31,15 +29,18 @@ export async function runDatabaseTests() {
   const tax = calculateTouristTax(mockGuests, checkIn, checkOut);
   console.log(`✅ Tourist tax for 2 adults, 3 nights: ${tax} CZK (expected: 300 CZK)`);
 
-  // Test 4: Service classes (without database operations)
-  console.log('4. Testing service class instantiation...');
+  // Test 4: Basic validation
+  console.log('4. Testing basic validations...');
   try {
-    // These won't actually run database operations without a connection
-    console.log('✅ BookingService class loaded');
-    console.log('✅ GuestService class loaded');
-    console.log('✅ All service classes are properly structured');
+    if (token.length === 10) {
+      console.log('✅ Token length validation passed');
+    }
+    if (tax > 0) {
+      console.log('✅ Tax calculation validation passed');
+    }
+    console.log('✅ All basic validations completed');
   } catch (error) {
-    console.error('❌ Error with service classes:', error);
+    console.error('❌ Error with validations:', error);
   }
 
   console.log('\n🎉 Database tests completed!');

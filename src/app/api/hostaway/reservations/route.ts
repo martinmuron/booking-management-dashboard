@@ -1,6 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { hostAwayService } from '@/services/hostaway.service';
 
+// Import types from the service file
+type HostAwayReservation = {
+  id: number;
+  checkInDate: string;
+  checkOutDate: string;
+  guestFirstName: string;
+  guestLastName: string;
+  personCapacity: number;
+  status: string;
+  listingId: number;
+  channelId: number;
+  listing?: {
+    name: string;
+    address: string;
+  };
+};
+
+type HostAwayListing = {
+  id: number;
+  name: string;
+  address: string;
+};
+
 // Mock data as fallback when HostAway API fails
 const mockTransformedReservations = [
   {
@@ -58,11 +81,18 @@ export async function GET(request: NextRequest) {
       hostAwayService.getListings()
     ]);
 
-    const [reservations, listings] = await Promise.race([fetchPromise, timeoutPromise]) as [unknown[], unknown[]];
+    const [reservationsResponse, listingsResponse] = await Promise.race([fetchPromise, timeoutPromise]) as [
+      { result?: unknown[] }, 
+      { result?: unknown[] }
+    ];
 
-    // Transform data for dashboard
+    // Extract the actual reservation and listing arrays from the API responses
+    const reservations = reservationsResponse?.result || [];
+    const listings = listingsResponse?.result || [];
+
+    // Transform data for dashboard - using unknown and letting the service handle type safety
     const transformedReservations = reservations.map((reservation: unknown) => 
-      hostAwayService.transformReservationForDashboard(reservation as Record<string, unknown>, listings as Record<string, unknown>[])
+      hostAwayService.transformReservationForDashboard(reservation as HostAwayReservation, listings as HostAwayListing[])
     );
 
     console.log(`Successfully fetched ${transformedReservations.length} reservations from HostAway`);

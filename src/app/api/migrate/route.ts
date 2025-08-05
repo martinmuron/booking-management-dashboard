@@ -9,25 +9,25 @@ export async function POST() {
     // Create enums using simple approach
     try {
       await prisma.$executeRawUnsafe(`CREATE TYPE "BookingStatus" AS ENUM ('PENDING', 'CHECKED_IN', 'PAYMENT_PENDING', 'PAYMENT_COMPLETED', 'KEYS_DISTRIBUTED', 'COMPLETED')`);
-    } catch (e) {
+    } catch {
       // Type already exists, ignore
     }
     
     try {
       await prisma.$executeRawUnsafe(`CREATE TYPE "GuestSex" AS ENUM ('MALE', 'FEMALE', 'OTHER')`);
-    } catch (e) {
+    } catch {
       // Type already exists, ignore
     }
     
     try {
       await prisma.$executeRawUnsafe(`CREATE TYPE "PaymentStatus" AS ENUM ('PENDING', 'PROCESSING', 'SUCCEEDED', 'FAILED', 'CANCELED')`);
-    } catch (e) {
+    } catch {
       // Type already exists, ignore
     }
     
     try {
       await prisma.$executeRawUnsafe(`CREATE TYPE "VirtualKeyType" AS ENUM ('MAIN_ENTRANCE', 'LUGGAGE_ROOM', 'LAUNDRY_ROOM', 'ROOM')`);
-    } catch (e) {
+    } catch {
       // Type already exists, ignore
     }
 
@@ -99,44 +99,44 @@ export async function POST() {
     // Create indexes if they don't exist
     try {
       await prisma.$executeRawUnsafe(`CREATE UNIQUE INDEX "bookings_hostAwayId_key" ON "bookings"("hostAwayId")`);
-    } catch (e) {
+    } catch {
       // Index already exists, ignore
     }
     
     try {
       await prisma.$executeRawUnsafe(`CREATE UNIQUE INDEX "bookings_checkInToken_key" ON "bookings"("checkInToken")`);
-    } catch (e) {
+    } catch {
       // Index already exists, ignore
     }
     
     try {
       await prisma.$executeRawUnsafe(`CREATE UNIQUE INDEX "payments_stripePaymentId_key" ON "payments"("stripePaymentId")`);
-    } catch (e) {
+    } catch {
       // Index already exists, ignore
     }
     
     try {
       await prisma.$executeRawUnsafe(`CREATE UNIQUE INDEX "virtual_keys_nukiKeyId_key" ON "virtual_keys"("nukiKeyId")`);
-    } catch (e) {
+    } catch {
       // Index already exists, ignore
     }
 
     // Add foreign keys if they don't exist
     try {
       await prisma.$executeRawUnsafe(`ALTER TABLE "guests" ADD CONSTRAINT "guests_bookingId_fkey" FOREIGN KEY ("bookingId") REFERENCES "bookings"("id") ON DELETE CASCADE ON UPDATE CASCADE`);
-    } catch (e) {
+    } catch {
       // Constraint already exists, ignore
     }
     
     try {
       await prisma.$executeRawUnsafe(`ALTER TABLE "payments" ADD CONSTRAINT "payments_bookingId_fkey" FOREIGN KEY ("bookingId") REFERENCES "bookings"("id") ON DELETE CASCADE ON UPDATE CASCADE`);
-    } catch (e) {
+    } catch {
       // Constraint already exists, ignore
     }
     
     try {
       await prisma.$executeRawUnsafe(`ALTER TABLE "virtual_keys" ADD CONSTRAINT "virtual_keys_bookingId_fkey" FOREIGN KEY ("bookingId") REFERENCES "bookings"("id") ON DELETE CASCADE ON UPDATE CASCADE`);
-    } catch (e) {
+    } catch {
       // Constraint already exists, ignore
     }
 
