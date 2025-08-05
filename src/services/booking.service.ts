@@ -45,26 +45,17 @@ class BookingService {
       const existingBookingsCount = await prisma.booking.count();
       const isInitialSync = existingBookingsCount === 0;
 
-      let dateFrom: string;
-      const today = new Date();
-      const todayStr = today.toISOString().split('T')[0];
+      // Always fetch from 30 days ago + ALL upcoming bookings
+      const pastDate = new Date();
+      pastDate.setDate(pastDate.getDate() - 30);
+      const dateFrom = pastDate.toISOString().split('T')[0];
+      
+      console.log(`📅 ${isInitialSync ? 'Initial' : 'Incremental'} sync: Fetching from ${dateFrom} to future (30 days back + all upcoming)`);
 
-      if (isInitialSync) {
-        // Initial sync: Last 30 days + ALL upcoming bookings
-        const pastDate = new Date();
-        pastDate.setDate(pastDate.getDate() - 30);
-        dateFrom = pastDate.toISOString().split('T')[0];
-        console.log('📅 Initial sync: Fetching from', dateFrom, 'to future (all upcoming)');
-      } else {
-        // Subsequent sync: Only upcoming bookings (from today onwards)
-        dateFrom = todayStr;
-        console.log('📅 Incremental sync: Fetching upcoming bookings from', dateFrom);
-      }
-
-      // For upcoming bookings, we don't set an end date to get ALL future bookings
+      // Fetch bookings from 30 days ago onwards (no end date = all future bookings)
       const fetchParams: Record<string, string | number> = {
         checkInDateFrom: dateFrom,
-        limit: isInitialSync ? 200 : 100 // More for initial sync
+        limit: 200 // Fixed limit since we're always fetching the same range
       };
 
       // Fetch bookings from HostAway
