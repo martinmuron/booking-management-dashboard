@@ -53,7 +53,7 @@ const mockTransformedReservations = [
 ];
 
 export async function GET(request: NextRequest) {
-  console.log('HostAway API route called');
+  console.log('🔄 HostAway API route called at:', new Date().toISOString());
   
   try {
     const searchParams = request.nextUrl.searchParams;
@@ -63,7 +63,9 @@ export async function GET(request: NextRequest) {
     const checkInDateTo = searchParams.get('checkInDateTo');
     const status = searchParams.get('status');
 
-    console.log('Attempting to fetch from HostAway...');
+    console.log('🔍 Attempting to fetch from HostAway API with params:', {
+      limit, offset, checkInDateFrom, checkInDateTo, status
+    });
 
     // Add timeout to the entire operation
     const timeoutPromise = new Promise((_, reject) => {
@@ -105,7 +107,8 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('HostAway API error, falling back to mock data:', error);
+    console.error('❌ HostAway API error, falling back to mock data:', error);
+    console.log('📊 Returning mock data with', mockTransformedReservations.length, 'reservations');
     
     // Return mock data as fallback
     return NextResponse.json({

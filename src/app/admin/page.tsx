@@ -56,18 +56,24 @@ export default function AdminDashboard() {
 
   const fetchBookings = async () => {
     try {
+      console.log('🔄 Starting HostAway sync...');
       const response = await fetch('/api/hostaway/reservations');
+      console.log('📡 Response received:', response.status, response.statusText);
+      
       const data = await response.json();
+      console.log('📊 Data received:', data);
       
       if (data.success) {
         setBookings(data.data);
         setError(null);
+        console.log(`✅ Successfully loaded ${data.data.length} bookings from ${data.source}`);
       } else {
         setError(data.error || 'Failed to fetch bookings');
+        console.error('❌ API returned error:', data.error);
       }
     } catch (err) {
       setError('Network error: Unable to fetch bookings');
-      console.error('Error fetching bookings:', err);
+      console.error('❌ Network error fetching bookings:', err);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -75,6 +81,7 @@ export default function AdminDashboard() {
   };
 
   const handleRefresh = async () => {
+    console.log('🔄 Sync button clicked - starting refresh...');
     setRefreshing(true);
     await fetchBookings();
   };
