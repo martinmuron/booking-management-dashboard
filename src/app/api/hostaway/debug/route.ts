@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { hostAwayService } from '@/services/hostaway.service';
 
 export async function GET() {
   console.log('🔧 HostAway Debug endpoint called - exploring all available data');
@@ -38,7 +37,10 @@ export async function GET() {
     console.log('✅ Authentication successful');
 
     // Test multiple endpoints to see what's available
-    const results: any = {
+    const results: {
+      credentials: { hasApiKey: boolean; hasAccountId: boolean };
+      endpoints: Record<string, unknown>;
+    } = {
       credentials: { hasApiKey: !!apiKey, hasAccountId: !!accountId },
       endpoints: {}
     };

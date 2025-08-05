@@ -62,7 +62,7 @@ class BookingService {
       }
 
       // For upcoming bookings, we don't set an end date to get ALL future bookings
-      const fetchParams: any = {
+      const fetchParams: Record<string, string | number> = {
         checkInDateFrom: dateFrom,
         limit: isInitialSync ? 200 : 100 // More for initial sync
       };
@@ -93,8 +93,8 @@ class BookingService {
             hostAwayId: reservation.id.toString(),
             propertyName: listing?.name || `Property ${reservation.listingId}`,
             guestLeaderName: `${reservation.guestFirstName} ${reservation.guestLastName}`.trim(),
-            guestLeaderEmail: reservation.guestEmail || 'noemail@example.com', // HostAway might not always provide email
-            guestLeaderPhone: reservation.guestPhone || null,
+            guestLeaderEmail: 'noemail@example.com', // HostAway doesn't provide email in basic reservation data
+            guestLeaderPhone: null, // HostAway doesn't provide phone in basic reservation data
             checkInDate: new Date(reservation.checkInDate),
             checkOutDate: new Date(reservation.checkOutDate),
             numberOfGuests: reservation.personCapacity || 1,
@@ -196,20 +196,21 @@ class BookingService {
     limit?: number;
   }) {
     try {
-      const where: any = {};
+      const where: Record<string, unknown> = {};
 
       if (filters?.status) {
         where.status = filters.status;
       }
 
       if (filters?.checkInDateFrom || filters?.checkInDateTo) {
-        where.checkInDate = {};
+        const dateFilter: { gte?: Date; lte?: Date } = {};
         if (filters.checkInDateFrom) {
-          where.checkInDate.gte = filters.checkInDateFrom;
+          dateFilter.gte = filters.checkInDateFrom;
         }
         if (filters.checkInDateTo) {
-          where.checkInDate.lte = filters.checkInDateTo;
+          dateFilter.lte = filters.checkInDateTo;
         }
+        where.checkInDate = dateFilter;
       }
 
       const bookings = await prisma.booking.findMany({
@@ -264,7 +265,7 @@ class BookingService {
       // We could store this as a setting in the database or use file system
       // For simplicity, let's return null for now (always do full sync)
       return null;
-    } catch (error) {
+    } catch {
       return null;
     }
   }

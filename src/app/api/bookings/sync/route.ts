@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { bookingService } from '@/services/booking.service';
 
-export async function POST(request: NextRequest) {
+export async function POST() {
   console.log('🚀 Booking sync API endpoint called');
   
   try {

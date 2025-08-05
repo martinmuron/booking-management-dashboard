@@ -62,7 +62,7 @@ export default function AdminDashboard() {
   const fetchBookings = async () => {
     try {
       console.log('📋 Loading bookings from database...');
-      const response = await fetch('/api/bookings/sync');
+      const response = await fetch('/api/bookings');
       console.log('📡 Response received:', response.status, response.statusText);
       
       const data = await response.json();
@@ -163,7 +163,7 @@ export default function AdminDashboard() {
                     
                     // Log each endpoint result for easy viewing
                     if (data.results?.endpoints) {
-                      Object.entries(data.results.endpoints).forEach(([name, result]: [string, any]) => {
+                      Object.entries(data.results.endpoints).forEach(([name, result]: [string, unknown]) => {
                         console.log(`📊 ${name}:`, result);
                       });
                     }

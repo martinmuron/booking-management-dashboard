@@ -56,7 +56,10 @@ export async function GET() {
     console.log('✅ Authentication successful, testing endpoints...');
 
     // Test multiple endpoints to see what's available
-    const results: any = {
+    const results: {
+      credentials: { hasApiKey: boolean; hasAccountId: boolean };
+      endpoints: Record<string, unknown>;
+    } = {
       credentials: { hasApiKey: !!apiKey, hasAccountId: !!accountId },
       endpoints: {}
     };
