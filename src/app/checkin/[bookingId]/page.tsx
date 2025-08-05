@@ -62,6 +62,30 @@ const formatTime = (dateString: string) => {
   });
 };
 
+const calculateAge = (dateOfBirth: string): number => {
+  if (!dateOfBirth) return 0;
+  const today = new Date();
+  const birthDate = new Date(dateOfBirth);
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const monthDiff = today.getMonth() - birthDate.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+    age--;
+  }
+  return age;
+};
+
+const calculateCityTax = (guests: Guest[], nights: number): number => {
+  const TAX_PER_PERSON_PER_NIGHT = 50; // 50 CZK
+  const MIN_AGE_FOR_TAX = 18;
+  
+  const eligibleGuests = guests.filter(guest => {
+    const age = calculateAge(guest.dateOfBirth);
+    return age >= MIN_AGE_FOR_TAX;
+  });
+  
+  return eligibleGuests.length * nights * TAX_PER_PERSON_PER_NIGHT;
+};
+
 export default function CheckInPage() {
   const params = useParams();
   const bookingId = params.bookingId as string;
@@ -399,9 +423,14 @@ export default function CheckInPage() {
             <CardContent>
               <div className="space-y-4">
                 <div className="bg-muted p-4 rounded-lg">
-                  <div className="flex justify-between items-center">
-                    <span>City Tax ({guests.length} guests × €{booking.cityTaxPerPerson})</span>
-                    <span className="font-semibold">€{(guests.length * booking.cityTaxPerPerson).toFixed(2)}</span>
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span>City Tax (50 CZK per person per night for guests 18+)</span>
+                      <span className="font-semibold">{calculateCityTax(guests, nights)} CZK</span>
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      {guests.filter(g => calculateAge(g.dateOfBirth) >= 18).length} eligible guests × {nights} nights × 50 CZK
+                    </div>
                   </div>
                 </div>
                 
@@ -420,7 +449,7 @@ export default function CheckInPage() {
                 ) : showPaymentForm ? (
                   <div className="space-y-4">
                     <StripePayment
-                      amount={guests.length * booking.cityTaxPerPerson}
+                      amount={calculateCityTax(guests, nights) / 24} // Convert CZK to EUR (approx rate)
                       bookingId={booking.id}
                       guestCount={guests.length}
                       onSuccess={handlePaymentSuccess}
@@ -440,7 +469,7 @@ export default function CheckInPage() {
                     className="w-full"
                   >
                     <CreditCard className="mr-2 h-4 w-4" />
-                    Pay City Tax (€{(guests.length * booking.cityTaxPerPerson).toFixed(2)})
+                    Pay City Tax ({calculateCityTax(guests, nights)} CZK / €{(calculateCityTax(guests, nights) / 24).toFixed(2)})
                   </Button>
                 )}
               </div>

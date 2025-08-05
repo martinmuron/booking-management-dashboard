@@ -65,15 +65,10 @@ class HostAwayService {
       const response = await fetch('https://api.hostaway.com/v1/accessTokens', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/x-www-form-urlencoded',
           'Cache-control': 'no-cache',
         },
-        body: JSON.stringify({
-          grant_type: 'client_credentials',
-          client_id: this.accountId,
-          client_secret: this.apiKey,
-          scope: 'general'
-        }),
+        body: `grant_type=client_credentials&client_id=${this.accountId}&client_secret=${this.apiKey}&scope=general`,
         signal: controller.signal
       });
 

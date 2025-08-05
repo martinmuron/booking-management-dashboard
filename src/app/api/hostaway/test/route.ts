@@ -20,22 +20,23 @@ export async function GET() {
       });
     }
 
-    // Test auth endpoint
+    // Test auth endpoint with timeout
     console.log('Testing HostAway auth...');
+    
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
     
     const authResponse = await fetch('https://api.hostaway.com/v1/accessTokens', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/x-www-form-urlencoded',
         'Cache-control': 'no-cache',
       },
-      body: JSON.stringify({
-        grant_type: 'client_credentials',
-        client_id: accountId,
-        client_secret: apiKey,
-        scope: 'general'
-      })
+      body: `grant_type=client_credentials&client_id=${accountId}&client_secret=${apiKey}&scope=general`,
+      signal: controller.signal
     });
+    
+    clearTimeout(timeoutId);
 
     const authText = await authResponse.text();
     console.log('Auth response status:', authResponse.status);
