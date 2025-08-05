@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import StripePayment from "@/components/ui/stripe-payment";
 import { 
   Calendar, 
   Users, 
@@ -70,7 +71,9 @@ export default function CheckInPage() {
   const [error, setError] = useState<string | null>(null);
   const [guests, setGuests] = useState<Guest[]>([]);
   const [paymentCompleted, setPaymentCompleted] = useState(false);
+  const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [showPaymentForm, setShowPaymentForm] = useState(false);
 
   // Mock booking data - will be replaced with API call
   useEffect(() => {
@@ -138,17 +141,21 @@ export default function CheckInPage() {
     ));
   };
 
-  const handlePayment = async () => {
-    // Placeholder for Stripe integration
-    setSubmitting(true);
-    try {
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      setPaymentCompleted(true);
-    } catch (err) {
-      setError('Payment failed. Please try again.');
-    } finally {
-      setSubmitting(false);
-    }
+  const handlePaymentSuccess = (intentId: string) => {
+    setPaymentIntentId(intentId);
+    setPaymentCompleted(true);
+    setShowPaymentForm(false);
+    setError(null);
+  };
+
+  const handlePaymentError = (errorMessage: string) => {
+    setError(`Payment failed: ${errorMessage}`);
+    setShowPaymentForm(false);
+  };
+
+  const initiatePayment = () => {
+    setShowPaymentForm(true);
+    setError(null);
   };
 
   const handleSubmit = async () => {
@@ -399,27 +406,41 @@ export default function CheckInPage() {
                 </div>
                 
                 {paymentCompleted ? (
-                  <div className="flex items-center text-green-600">
-                    <CheckCircle className="mr-2 h-5 w-5" />
-                    Payment completed successfully
+                  <div className="space-y-2">
+                    <div className="flex items-center text-green-600">
+                      <CheckCircle className="mr-2 h-5 w-5" />
+                      Payment completed successfully
+                    </div>
+                    {paymentIntentId && (
+                      <p className="text-xs text-muted-foreground">
+                        Payment ID: {paymentIntentId}
+                      </p>
+                    )}
+                  </div>
+                ) : showPaymentForm ? (
+                  <div className="space-y-4">
+                    <StripePayment
+                      amount={guests.length * booking.cityTaxPerPerson}
+                      bookingId={booking.id}
+                      guestCount={guests.length}
+                      onSuccess={handlePaymentSuccess}
+                      onError={handlePaymentError}
+                    />
+                    <Button 
+                      variant="outline"
+                      onClick={() => setShowPaymentForm(false)}
+                      className="w-full"
+                    >
+                      Cancel Payment
+                    </Button>
                   </div>
                 ) : (
                   <Button 
-                    onClick={handlePayment}
-                    disabled={submitting}
+                    onClick={initiatePayment}
                     className="w-full"
                   >
-                    {submitting ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Processing Payment...
-                      </>
-                    ) : (
-                      <>
-                        <CreditCard className="mr-2 h-4 w-4" />
-                        Pay City Tax (€{(guests.length * booking.cityTaxPerPerson).toFixed(2)})
-                      </>
-                    )}
+                    <CreditCard className="mr-2 h-4 w-4" />
+                    Pay City Tax (€{(guests.length * booking.cityTaxPerPerson).toFixed(2)})
                   </Button>
                 )}
               </div>
