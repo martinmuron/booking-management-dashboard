@@ -99,6 +99,8 @@ class HostAwayService {
       });
     }
 
+    console.log('🌐 Making HostAway API request:', url.toString());
+
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
@@ -144,26 +146,39 @@ class HostAwayService {
     status?: string;
   }): Promise<HostAwayReservation[]> {
     try {
+      // Default to get reservations from 30 days ago to 90 days ahead
+      const defaultFromDate = new Date();
+      defaultFromDate.setDate(defaultFromDate.getDate() - 30);
+      const defaultToDate = new Date();
+      defaultToDate.setDate(defaultToDate.getDate() + 90);
+
       const queryParams: Record<string, string> = {
         includeResources: '1', // Include related data like listing info
         limit: params?.limit?.toString() || '50',
-        offset: params?.offset?.toString() || '0'
+        offset: params?.offset?.toString() || '0',
+        checkInDateFrom: params?.checkInDateFrom || defaultFromDate.toISOString().split('T')[0],
+        checkInDateTo: params?.checkInDateTo || defaultToDate.toISOString().split('T')[0]
       };
 
-      if (params?.checkInDateFrom) {
-        queryParams.checkInDateFrom = params.checkInDateFrom;
-      }
-      if (params?.checkInDateTo) {
-        queryParams.checkInDateTo = params.checkInDateTo;
-      }
       if (params?.status) {
         queryParams.status = params.status;
       }
 
+      console.log('🔍 HostAway API request params:', queryParams);
+
       const response = await this.makeRequest<HostAwayReservationsResponse>('/reservations', queryParams);
+      
+      console.log('📊 HostAway API response:', {
+        status: response.status,
+        count: response.count,
+        resultLength: response.result?.length || 0,
+        limit: response.limit,
+        offset: response.offset
+      });
+      
       return response.result || [];
     } catch (error) {
-      console.error('Failed to fetch reservations:', error);
+      console.error('❌ Failed to fetch reservations:', error);
       return [];
     }
   }
