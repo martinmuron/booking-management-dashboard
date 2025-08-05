@@ -110,14 +110,30 @@ export default function AdminDashboard() {
                 Manage all bookings and guest information
               </p>
             </div>
-            <Button 
-              className="mt-4 md:mt-0" 
-              onClick={handleRefresh}
-              disabled={refreshing}
-            >
-              <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-              {refreshing ? 'Syncing...' : 'Sync with HostAway'}
-            </Button>
+            <div className="flex gap-2 mt-4 md:mt-0">
+              <Button 
+                onClick={handleRefresh}
+                disabled={refreshing}
+              >
+                <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+                {refreshing ? 'Syncing...' : 'Sync with HostAway'}
+              </Button>
+              <Button 
+                variant="outline"
+                onClick={async () => {
+                  console.log('🔧 Debug button clicked');
+                  try {
+                    const response = await fetch('/api/hostaway/debug');
+                    const data = await response.json();
+                    console.log('🔧 Debug response:', data);
+                  } catch (error) {
+                    console.error('🔧 Debug error:', error);
+                  }
+                }}
+              >
+                Debug
+              </Button>
+            </div>
           </div>
 
           {/* Summary Stats */}
