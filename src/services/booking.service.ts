@@ -138,6 +138,7 @@ class BookingService {
           };
 
           if (existingBooking) {
+            console.log(`🔍 [SYNC DEBUG] Found existing booking: ${existingBooking.id}`);
             // Update existing booking only if HostAway data has changed
             // CRITICAL: Never overwrite our platform's status or check-in token
             const hasHostAwayChanges = (
@@ -151,7 +152,8 @@ class BookingService {
             );
 
             if (hasHostAwayChanges) {
-              await prisma.booking.update({
+              console.log(`🔍 [SYNC DEBUG] Updating booking ${existingBooking.id} with new data`);
+              const updatedBooking = await prisma.booking.update({
                 where: { id: existingBooking.id },
                 data: {
                   // Only update HostAway data, preserve our platform status and token
@@ -168,18 +170,27 @@ class BookingService {
                 }
               });
               updatedBookings++;
-              console.log(`📝 Updated HostAway data for booking: ${bookingData.hostAwayId} - ${bookingData.guestLeaderName}`);
+              console.log(`📝 [SYNC DEBUG] Updated booking: ${updatedBooking.id} - ${bookingData.guestLeaderName}`);
+            } else {
+              console.log(`🔍 [SYNC DEBUG] No changes for booking ${existingBooking.id}, skipping update`);
             }
           } else {
+            console.log(`🔍 [SYNC DEBUG] Creating new booking for reservation ${reservation.id}`);
             // Create new booking
-            await prisma.booking.create({
+            const newBooking = await prisma.booking.create({
               data: {
                 id: `BK_${reservation.id}`,
                 ...bookingData
               }
             });
             newBookings++;
-            console.log(`➕ Created new booking: ${bookingData.hostAwayId} - ${bookingData.guestLeaderName}`);
+            console.log(`➕ [SYNC DEBUG] Created new booking: ${newBooking.id} - ${bookingData.guestLeaderName}`);
+            
+            // Verify the booking was created
+            const verifyBooking = await prisma.booking.findUnique({
+              where: { id: newBooking.id }
+            });
+            console.log(`🔍 [SYNC DEBUG] Verification - booking exists after creation:`, !!verifyBooking);
           }
         } catch (error) {
           console.error(`❌ Error processing reservation ${reservation.id}:`, error);
@@ -228,10 +239,13 @@ class BookingService {
     limit?: number;
   }) {
     try {
+      console.log('📋 [SERVICE DEBUG] getBookings called with filters:', filters);
+      
       const where: Record<string, unknown> = {};
 
       if (filters?.status) {
         where.status = filters.status;
+        console.log('📋 [SERVICE DEBUG] Added status filter:', filters.status);
       }
 
       if (filters?.checkInDateFrom || filters?.checkInDateTo) {
@@ -243,17 +257,35 @@ class BookingService {
           dateFilter.lte = filters.checkInDateTo;
         }
         where.checkInDate = dateFilter;
+        console.log('📋 [SERVICE DEBUG] Added date filter:', dateFilter);
       }
 
+      console.log('📋 [SERVICE DEBUG] Final where clause:', where);
+      console.log('📋 [SERVICE DEBUG] Limit:', filters?.limit || 100);
+      
+      console.log('📋 [SERVICE DEBUG] Executing prisma.booking.findMany...');
       const bookings = await prisma.booking.findMany({
         where,
         orderBy: { checkInDate: 'asc' },
         take: filters?.limit || 100
       });
 
+      console.log(`📋 [SERVICE DEBUG] prisma.booking.findMany returned ${bookings.length} bookings`);
+      if (bookings.length > 0) {
+        console.log('📋 [SERVICE DEBUG] Sample booking:', {
+          id: bookings[0].id,
+          hostAwayId: bookings[0].hostAwayId,
+          propertyName: bookings[0].propertyName,
+          guestName: bookings[0].guestLeaderName,
+          checkInDate: bookings[0].checkInDate
+        });
+      }
+
       return bookings;
     } catch (error) {
-      console.error('Error fetching bookings:', error);
+      console.error('❌ [SERVICE DEBUG] Error fetching bookings:', error);
+      console.error('❌ [SERVICE DEBUG] Error details:', error instanceof Error ? error.message : 'Unknown error');
+      console.error('❌ [SERVICE DEBUG] Error stack:', error instanceof Error ? error.stack : 'No stack');
       return [];
     }
   }
