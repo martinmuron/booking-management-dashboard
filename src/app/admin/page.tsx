@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Calendar, Users, Home, RefreshCw, Loader2, AlertCircle, ExternalLink } from "lucide-react";
+import { Search, Calendar, Users, Home, RefreshCw, Loader2, AlertCircle, ExternalLink, Copy, Check } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
@@ -60,6 +60,7 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [copiedLinks, setCopiedLinks] = useState<Record<string, boolean>>({});
 
   const fetchBookings = async () => {
     try {
@@ -104,6 +105,33 @@ export default function AdminDashboard() {
 
   const handleRefresh = async () => {
     await syncWithHostAway();
+  };
+
+  const copyCheckInLink = async (bookingId: string, checkInToken: string) => {
+    const checkInUrl = `${window.location.origin}/checkin/${checkInToken}`;
+    
+    try {
+      await navigator.clipboard.writeText(checkInUrl);
+      setCopiedLinks(prev => ({ ...prev, [bookingId]: true }));
+      
+      // Reset the copied state after 2 seconds
+      setTimeout(() => {
+        setCopiedLinks(prev => ({ ...prev, [bookingId]: false }));
+      }, 2000);
+    } catch {
+      // Fallback for browsers that don't support clipboard API
+      const textArea = document.createElement('textarea');
+      textArea.value = checkInUrl;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      
+      setCopiedLinks(prev => ({ ...prev, [bookingId]: true }));
+      setTimeout(() => {
+        setCopiedLinks(prev => ({ ...prev, [bookingId]: false }));
+      }, 2000);
+    }
   };
 
   useEffect(() => {
@@ -258,6 +286,7 @@ export default function AdminDashboard() {
                         <TableHead>Check-in Date</TableHead>
                         <TableHead>Number of Guests</TableHead>
                         <TableHead>Booking Status</TableHead>
+                        <TableHead>Check-in Link</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -283,6 +312,31 @@ export default function AdminDashboard() {
                             <Badge className={getStatusColor(booking.status.toLowerCase())}>
                               {booking.status.replace('_', ' ')}
                             </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  copyCheckInLink(booking.id, booking.checkInToken);
+                                }}
+                                className="h-8 px-3"
+                              >
+                                {copiedLinks[booking.id] ? (
+                                  <>
+                                    <Check className="h-3 w-3 mr-1" />
+                                    Copied
+                                  </>
+                                ) : (
+                                  <>
+                                    <Copy className="h-3 w-3 mr-1" />
+                                    Copy Link
+                                  </>
+                                )}
+                              </Button>
+                            </div>
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-2">
