@@ -2,29 +2,100 @@ import { NextResponse } from 'next/server';
 import { hostAwayService } from '@/services/hostaway.service';
 
 export async function GET() {
-  console.log('🔧 HostAway Debug endpoint called');
+  console.log('🔧 HostAway Debug endpoint called - exploring all available data');
   
   try {
-    // Test authentication first
-    console.log('🔑 Testing HostAway authentication...');
+    // Check environment variables
+    const apiKey = process.env.HOSTAWAY_API_KEY;
+    const accountId = process.env.HOSTAWAY_ACCOUNT_ID;
     
-    // Test basic reservations call with minimal params
-    console.log('📋 Testing reservations API...');
-    const reservations = await hostAwayService.getReservations({
-      limit: 10
+    console.log('🔑 API Key present:', !!apiKey);
+    console.log('🔑 Account ID present:', !!accountId);
+    
+    if (!apiKey || !accountId) {
+      return NextResponse.json({
+        success: false,
+        error: 'Missing HostAway API credentials'
+      }, { status: 500 });
+    }
+
+    // Get access token for manual API calls
+    const authResponse = await fetch('https://api.hostaway.com/v1/accessTokens', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Cache-control': 'no-cache',
+      },
+      body: `grant_type=client_credentials&client_id=${accountId}&client_secret=${apiKey}&scope=general`
     });
-    
-    console.log('📋 Testing listings API...');
-    const listings = await hostAwayService.getListings();
+
+    if (!authResponse.ok) {
+      throw new Error(`Auth failed: ${authResponse.status}`);
+    }
+
+    const authData = await authResponse.json();
+    const token = authData.access_token;
+    console.log('✅ Authentication successful');
+
+    // Test multiple endpoints to see what's available
+    const results: any = {
+      credentials: { hasApiKey: !!apiKey, hasAccountId: !!accountId },
+      endpoints: {}
+    };
+
+    const testEndpoints = [
+      { name: 'listings', url: '/listings?limit=10' },
+      { name: 'reservations_no_filter', url: '/reservations?limit=10' },
+      { name: 'reservations_with_dates', url: `/reservations?limit=10&checkInDateFrom=2024-01-01&checkInDateTo=2025-12-31` },
+      { name: 'reservations_future', url: `/reservations?limit=10&checkInDateFrom=${new Date().toISOString().split('T')[0]}` },
+      { name: 'reservations_past', url: `/reservations?limit=10&checkInDateTo=${new Date().toISOString().split('T')[0]}` },
+      { name: 'account_info', url: '/me' },
+      { name: 'channels', url: '/channels?limit=10' }
+    ];
+
+    for (const endpoint of testEndpoints) {
+      try {
+        console.log(`🔍 Testing ${endpoint.name}:`, endpoint.url);
+        
+        const response = await fetch(`https://api.hostaway.com/v1${endpoint.url}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            'Cache-control': 'no-cache',
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          results.endpoints[endpoint.name] = {
+            status: 'success',
+            count: data.result?.length || 0,
+            totalCount: data.count || 0,
+            sampleData: data.result?.slice(0, 2) || [],
+            fullResponse: data
+          };
+          console.log(`✅ ${endpoint.name}: ${data.result?.length || 0} items`);
+        } else {
+          results.endpoints[endpoint.name] = {
+            status: 'error',
+            httpStatus: response.status,
+            error: response.statusText
+          };
+          console.log(`❌ ${endpoint.name}: ${response.status} ${response.statusText}`);
+        }
+      } catch (error) {
+        results.endpoints[endpoint.name] = {
+          status: 'error',
+          error: error instanceof Error ? error.message : 'Unknown error'
+        };
+        console.log(`❌ ${endpoint.name}: ${error}`);
+      }
+    }
     
     return NextResponse.json({
       success: true,
-      debug: {
-        reservationsCount: reservations.length,
-        listingsCount: listings.length,
-        reservations: reservations.slice(0, 2), // Show first 2 for debugging
-        listings: listings.slice(0, 2) // Show first 2 for debugging
-      },
+      message: 'HostAway API exploration complete',
+      results,
       timestamp: new Date().toISOString()
     });
     
