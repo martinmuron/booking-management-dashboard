@@ -93,6 +93,23 @@ class BookingService {
             listingId: reservation.listingId
           });
 
+          // Validate dates before processing
+          if (!reservation.checkInDate || !reservation.checkOutDate) {
+            console.log(`⚠️  Skipping reservation ${reservation.id}: Missing dates`);
+            continue;
+          }
+
+          const checkInDate = new Date(reservation.checkInDate);
+          const checkOutDate = new Date(reservation.checkOutDate);
+
+          if (isNaN(checkInDate.getTime()) || isNaN(checkOutDate.getTime())) {
+            console.log(`⚠️  Skipping reservation ${reservation.id}: Invalid dates`, {
+              checkInDate: reservation.checkInDate,
+              checkOutDate: reservation.checkOutDate
+            });
+            continue;
+          }
+
           // Find the corresponding listing
           const listing = hostawayListings.find(l => l.id === reservation.listingId);
           
@@ -107,8 +124,8 @@ class BookingService {
             guestLeaderName: `${reservation.guestFirstName} ${reservation.guestLastName}`.trim(),
             guestLeaderEmail: 'noemail@example.com', // HostAway doesn't provide email in basic reservation data
             guestLeaderPhone: null, // HostAway doesn't provide phone in basic reservation data
-            checkInDate: new Date(reservation.checkInDate),
-            checkOutDate: new Date(reservation.checkOutDate),
+            checkInDate,
+            checkOutDate,
             numberOfGuests: reservation.personCapacity || 1,
             roomNumber: listing?.address || null,
             checkInToken: existingBooking?.checkInToken || this.generateCheckInToken(),

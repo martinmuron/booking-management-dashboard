@@ -42,8 +42,30 @@ export async function GET() {
         rawReservation: r // Show full object to see all fields
       })),
       reservationDateRange: reservations.length > 0 ? {
-        earliest: new Date(Math.min(...reservations.map(r => new Date(r.checkInDate).getTime()))).toISOString(),
-        latest: new Date(Math.max(...reservations.map(r => new Date(r.checkInDate).getTime()))).toISOString()
+        earliest: (() => {
+          try {
+            const validDates = reservations
+              .map(r => r.checkInDate)
+              .filter(date => date && date !== null && date !== '')
+              .map(date => new Date(date))
+              .filter(date => !isNaN(date.getTime()));
+            return validDates.length > 0 ? new Date(Math.min(...validDates.map(d => d.getTime()))).toISOString() : 'Invalid dates found';
+          } catch (e) {
+            return 'Date parsing error';
+          }
+        })(),
+        latest: (() => {
+          try {
+            const validDates = reservations
+              .map(r => r.checkInDate)
+              .filter(date => date && date !== null && date !== '')
+              .map(date => new Date(date))
+              .filter(date => !isNaN(date.getTime()));
+            return validDates.length > 0 ? new Date(Math.max(...validDates.map(d => d.getTime()))).toISOString() : 'Invalid dates found';
+          } catch (e) {
+            return 'Date parsing error';
+          }
+        })()
       } : null
     });
 
