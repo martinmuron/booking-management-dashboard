@@ -1,18 +1,26 @@
 import { NextResponse } from 'next/server';
+import { bookingService } from '@/services/booking.service';
 
-// GET /api/bookings - Fetch all bookings (READ-ONLY from HostAway)
+// GET /api/bookings - Fetch all bookings from database
 export async function GET() {
   try {
-    // TODO: Implement HostAway API integration (READ-ONLY)
-    // This will fetch bookings from HostAway without modifying any data
+    console.log('📋 Fetching bookings from database...');
+    
+    // Fetch bookings from our database
+    const bookings = await bookingService.getBookings({
+      limit: 100 // Get first 100 bookings
+    });
+    
+    console.log(`📊 Retrieved ${bookings.length} bookings from database`);
     
     return NextResponse.json({
       success: true,
-      data: [],
+      data: bookings,
+      count: bookings.length,
       message: 'Bookings fetched successfully'
     });
   } catch (error) {
-    console.error('Error fetching bookings:', error);
+    console.error('❌ Error fetching bookings:', error);
     return NextResponse.json(
       { success: false, error: 'Failed to fetch bookings' },
       { status: 500 }
@@ -20,18 +28,29 @@ export async function GET() {
   }
 }
 
-// POST /api/bookings - Sync bookings from HostAway (READ-ONLY)
+// POST /api/bookings - Trigger booking sync from HostAway
 export async function POST() {
   try {
-    // TODO: Implement booking synchronization from HostAway (READ-ONLY)
-    // This will only read data from HostAway and store it locally
+    console.log('🔄 Manual booking sync triggered');
+    
+    // Trigger booking sync from HostAway
+    const syncResult = await bookingService.syncBookingsFromHostAway();
+    
+    console.log('📊 Sync result:', syncResult);
     
     return NextResponse.json({
-      success: true,
+      success: syncResult.success,
+      data: {
+        newBookings: syncResult.newBookings,
+        updatedBookings: syncResult.updatedBookings,
+        totalBookings: syncResult.totalBookings,
+        isInitialSync: syncResult.isInitialSync,
+        message: syncResult.message
+      },
       message: 'Bookings synchronized successfully'
     });
   } catch (error) {
-    console.error('Error synchronizing bookings:', error);
+    console.error('❌ Error synchronizing bookings:', error);
     return NextResponse.json(
       { success: false, error: 'Failed to synchronize bookings' },
       { status: 500 }
