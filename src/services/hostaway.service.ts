@@ -6,18 +6,35 @@ interface HostAwayAuthResponse {
 
 interface HostAwayReservation {
   id: number;
-  arrivalDate: string;
-  departureDate: string;
+  listingMapId: number;  // This is the correct field name per API docs
+  listingName: string;   // Property name is included directly in reservation!
+  channelId: number;
+  channelName: string;
+  reservationId: string;
+  guestName: string;
   guestFirstName: string;
   guestLastName: string;
-  personCapacity: number;
+  guestEmail: string | null;    // Available in API - can be null for some bookings
+  phone: string | null;         // Available in API - can be null for some bookings  
+  numberOfGuests: number;
+  adults: number;
+  children?: number;
+  infants?: number;
+  arrivalDate: string;
+  departureDate: string;
+  nights: number;
+  totalPrice: number;
+  currency: string;
   status: string;
-  listingId: number;
-  channelId: number;
-  listing?: {
-    name: string;
-    address: string;
-  };
+  confirmationCode: string;
+  // Optional fields that might be useful
+  guestAddress?: string;
+  guestCity?: string;
+  guestCountry?: string;
+  guestZipCode?: string;
+  doorCode?: string;
+  checkInTime?: number;
+  checkOutTime?: number;
 }
 
 interface HostAwayReservationsResponse {
@@ -212,14 +229,16 @@ class HostAwayService {
 
   // Transform HostAway data to our dashboard format
   transformReservationForDashboard(reservation: HostAwayReservation, listings: HostAwayListing[]) {
-    const listing = listings.find(l => l.id === reservation.listingId);
+    const listing = listings.find(l => l.id === reservation.listingMapId);
     
     return {
       id: reservation.id.toString(),
-      propertyName: listing?.name || `Property ${reservation.listingId}`,
+      propertyName: reservation.listingName || listing?.name || `Property ${reservation.listingMapId}`,
       guestLeaderName: `${reservation.guestFirstName} ${reservation.guestLastName}`.trim(),
+      guestLeaderEmail: reservation.guestEmail,
+      guestLeaderPhone: reservation.phone,
       checkInDate: reservation.arrivalDate,
-      numberOfGuests: reservation.personCapacity || 1,
+      numberOfGuests: reservation.numberOfGuests || reservation.adults || 1,
       // Note: We're not using HostAway's status as requested - booking status will be managed by your platform
       hostawaStatus: reservation.status, // Keep this for reference
       rawData: reservation // Keep raw data for debugging

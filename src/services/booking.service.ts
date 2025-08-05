@@ -90,7 +90,10 @@ class BookingService {
             arrivalDate: reservation.arrivalDate,
             departureDate: reservation.departureDate,
             guestName: `${reservation.guestFirstName} ${reservation.guestLastName}`,
-            listingId: reservation.listingId
+            guestEmail: reservation.guestEmail,
+            phone: reservation.phone,
+            listingMapId: reservation.listingMapId,
+            listingName: reservation.listingName
           });
 
           // Validate dates before processing
@@ -110,8 +113,8 @@ class BookingService {
             continue;
           }
 
-          // Find the corresponding listing
-          const listing = hostawayListings.find(l => l.id === reservation.listingId);
+          // Find the corresponding listing using listingMapId (for address info)
+          const listing = hostawayListings.find(l => l.id === reservation.listingMapId);
           
           // Check if booking already exists in our database
           const existingBooking = await prisma.booking.findUnique({
@@ -120,13 +123,13 @@ class BookingService {
 
           const bookingData = {
             hostAwayId: reservation.id.toString(),
-            propertyName: listing?.name || `Property ${reservation.listingId}`,
+            propertyName: reservation.listingName || listing?.name || `Property ${reservation.listingMapId}`,
             guestLeaderName: `${reservation.guestFirstName} ${reservation.guestLastName}`.trim(),
-            guestLeaderEmail: 'noemail@example.com', // HostAway doesn't provide email in basic reservation data
-            guestLeaderPhone: null, // HostAway doesn't provide phone in basic reservation data
+            guestLeaderEmail: reservation.guestEmail || 'noemail@example.com',
+            guestLeaderPhone: reservation.phone || null,
             checkInDate,
             checkOutDate,
-            numberOfGuests: reservation.personCapacity || 1,
+            numberOfGuests: reservation.numberOfGuests || reservation.adults || 1,
             roomNumber: listing?.address || null,
             checkInToken: existingBooking?.checkInToken || this.generateCheckInToken(),
             // Only update status to PENDING if it's a new booking or current status is PENDING

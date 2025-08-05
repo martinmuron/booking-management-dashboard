@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -13,32 +7,28 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Booking model - main entity from HostAway
 model Booking {
-  id                String   @id @default(cuid())
-  hostAwayId        String   @unique
-  propertyName      String
-  guestLeaderName   String
-  guestLeaderEmail  String
-  guestLeaderPhone  String?
-  checkInDate       DateTime
-  checkOutDate      DateTime
-  numberOfGuests    Int
-  roomNumber        String?
-  checkInToken      String   @unique
-  status            BookingStatus @default(PENDING)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-
-  // Relations
-  guests            Guest[]
-  payments          Payment[]
-  virtualKeys       VirtualKey[]
+  id               String        @id @default(cuid())
+  hostAwayId       String        @unique
+  propertyName     String
+  guestLeaderName  String
+  guestLeaderEmail String
+  guestLeaderPhone String?
+  checkInDate      DateTime
+  checkOutDate     DateTime
+  numberOfGuests   Int
+  roomNumber       String?
+  checkInToken     String        @unique
+  status           BookingStatus @default(PENDING)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  guests           Guest[]
+  payments         Payment[]
+  virtualKeys      VirtualKey[]
 
   @@map("bookings")
 }
 
-// Guest model - individual guest information
 model Guest {
   id               String   @id @default(cuid())
   bookingId        String
@@ -51,47 +41,38 @@ model Guest {
   email            String
   phone            String?
   createdAt        DateTime @default(now())
-
-  // Relations
   booking          Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
 
   @@map("guests")
 }
 
-// Payment model - tourist tax payments via Stripe
 model Payment {
-  id               String        @id @default(cuid())
-  bookingId        String
-  stripePaymentId  String        @unique
-  amount           Int           // Amount in cents
-  currency         String        @default("CZK")
-  status           PaymentStatus @default(PENDING)
-  paidAt           DateTime?
-  createdAt        DateTime      @default(now())
-
-  // Relations
-  booking          Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  id              String        @id @default(cuid())
+  bookingId       String
+  stripePaymentId String        @unique
+  amount          Int
+  currency        String        @default("CZK")
+  status          PaymentStatus @default(PENDING)
+  paidAt          DateTime?
+  createdAt       DateTime      @default(now())
+  booking         Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
 
   @@map("payments")
 }
 
-// Virtual key model - NUKI keys for different access types
 model VirtualKey {
-  id          String         @id @default(cuid())
-  bookingId   String
-  keyType     VirtualKeyType
-  nukiKeyId   String         @unique
-  isActive    Boolean        @default(true)
-  createdAt   DateTime       @default(now())
+  id            String         @id @default(cuid())
+  bookingId     String
+  keyType       VirtualKeyType
+  nukiKeyId     String         @unique
+  isActive      Boolean        @default(true)
+  createdAt     DateTime       @default(now())
   deactivatedAt DateTime?
-
-  // Relations
-  booking     Booking        @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  booking       Booking        @relation(fields: [bookingId], references: [id], onDelete: Cascade)
 
   @@map("virtual_keys")
 }
 
-// Enums
 enum BookingStatus {
   PENDING
   CHECKED_IN

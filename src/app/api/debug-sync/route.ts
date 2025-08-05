@@ -36,9 +36,12 @@ export async function GET() {
         arrivalDate: r.arrivalDate,
         departureDate: r.departureDate,
         guestName: `${r.guestFirstName} ${r.guestLastName}`,
+        guestEmail: r.guestEmail,
+        phone: r.phone,
         status: r.status,
-        listingId: r.listingId,
-        personCapacity: r.personCapacity,
+        listingMapId: r.listingMapId,
+        listingName: r.listingName,
+        numberOfGuests: r.numberOfGuests,
         rawReservation: r // Show full object to see all fields
       })),
       reservationDateRange: reservations.length > 0 ? {
