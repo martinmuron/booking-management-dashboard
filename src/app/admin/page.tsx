@@ -123,15 +123,22 @@ export default function AdminDashboard() {
                 onClick={async () => {
                   console.log('🔧 Debug button clicked');
                   try {
-                    const response = await fetch('/api/hostaway/debug');
+                    const response = await fetch('/api/hostaway/test');
                     const data = await response.json();
-                    console.log('🔧 Debug response:', data);
+                    console.log('🔧 HostAway comprehensive test results:', data);
+                    
+                    // Log each endpoint result for easy viewing
+                    if (data.results?.endpoints) {
+                      Object.entries(data.results.endpoints).forEach(([name, result]: [string, any]) => {
+                        console.log(`📊 ${name}:`, result);
+                      });
+                    }
                   } catch (error) {
                     console.error('🔧 Debug error:', error);
                   }
                 }}
               >
-                Debug
+                Debug API
               </Button>
             </div>
           </div>

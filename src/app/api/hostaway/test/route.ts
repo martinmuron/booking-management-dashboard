@@ -52,12 +52,69 @@ export async function GET() {
     }
 
     const authData = JSON.parse(authText);
+    const token = authData.access_token;
+    console.log('✅ Authentication successful, testing endpoints...');
+
+    // Test multiple endpoints to see what's available
+    const results: any = {
+      credentials: { hasApiKey: !!apiKey, hasAccountId: !!accountId },
+      endpoints: {}
+    };
+
+    const testEndpoints = [
+      { name: 'listings', url: '/listings?limit=10' },
+      { name: 'reservations_no_filter', url: '/reservations?limit=10' },
+      { name: 'reservations_with_dates', url: `/reservations?limit=10&checkInDateFrom=2024-01-01&checkInDateTo=2025-12-31` },
+      { name: 'reservations_future', url: `/reservations?limit=10&checkInDateFrom=${new Date().toISOString().split('T')[0]}` },
+      { name: 'reservations_past', url: `/reservations?limit=10&checkInDateTo=${new Date().toISOString().split('T')[0]}` },
+      { name: 'account_info', url: '/me' }
+    ];
+
+    for (const endpoint of testEndpoints) {
+      try {
+        console.log(`🔍 Testing ${endpoint.name}:`, endpoint.url);
+        
+        const response = await fetch(`https://api.hostaway.com/v1${endpoint.url}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            'Cache-control': 'no-cache',
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          results.endpoints[endpoint.name] = {
+            status: 'success',
+            count: data.result?.length || 0,
+            totalCount: data.count || 0,
+            sampleData: data.result?.slice(0, 3) || []
+          };
+          console.log(`✅ ${endpoint.name}: ${data.result?.length || 0} items (total: ${data.count || 0})`);
+        } else {
+          const errorText = await response.text();
+          results.endpoints[endpoint.name] = {
+            status: 'error',
+            httpStatus: response.status,
+            error: response.statusText,
+            details: errorText
+          };
+          console.log(`❌ ${endpoint.name}: ${response.status} ${response.statusText}`);
+        }
+      } catch (error) {
+        results.endpoints[endpoint.name] = {
+          status: 'error',
+          error: error instanceof Error ? error.message : 'Unknown error'
+        };
+        console.log(`❌ ${endpoint.name}: ${error}`);
+      }
+    }
     
     return NextResponse.json({
       success: true,
-      message: 'HostAway auth successful',
-      tokenReceived: !!authData.access_token,
-      expiresIn: authData.expires_in
+      message: 'HostAway API exploration complete',
+      results,
+      timestamp: new Date().toISOString()
     });
 
   } catch (error) {
