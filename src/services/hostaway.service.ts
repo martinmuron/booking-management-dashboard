@@ -59,6 +59,9 @@ class HostAwayService {
     }
 
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
       const response = await fetch('https://api.hostaway.com/v1/accessTokens', {
         method: 'POST',
         headers: {
@@ -70,8 +73,11 @@ class HostAwayService {
           client_id: this.accountId,
           client_secret: this.apiKey,
           scope: 'general'
-        })
+        }),
+        signal: controller.signal
       });
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         throw new Error(`HostAway auth failed: ${response.status} ${response.statusText}`);
@@ -99,14 +105,20 @@ class HostAwayService {
     }
 
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
       const response = await fetch(url.toString(), {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
           'Cache-control': 'no-cache',
-        }
+        },
+        signal: controller.signal
       });
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         throw new Error(`HostAway API request failed: ${response.status} ${response.statusText}`);
