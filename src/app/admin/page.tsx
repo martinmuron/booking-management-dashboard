@@ -251,7 +251,7 @@ export default function AdminDashboard() {
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
-        <div className="max-w-7xl mx-auto">
+        <div className="w-[90%] mx-auto">
           {/* Header */}
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
             <div>
@@ -382,49 +382,49 @@ export default function AdminDashboard() {
                   No reservations found
                 </div>
               ) : (
-                <div className="rounded-md border">
+                <div className="rounded-md border overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
                         <TableHead 
-                          className="cursor-pointer hover:bg-muted/50 select-none"
+                          className="cursor-pointer hover:bg-muted/50 select-none w-[18%]"
                           onClick={() => handleSort('propertyName')}
                         >
-                          <div className="flex items-center gap-2">
-                            Property Name
-                            {React.createElement(getSortIcon('propertyName'), { className: "h-4 w-4" })}
+                          <div className="flex items-center gap-1 text-xs">
+                            Property
+                            {React.createElement(getSortIcon('propertyName'), { className: "h-3 w-3" })}
                           </div>
                         </TableHead>
                         <TableHead 
-                          className="cursor-pointer hover:bg-muted/50 select-none"
+                          className="cursor-pointer hover:bg-muted/50 select-none w-[15%]"
                           onClick={() => handleSort('guestLeaderName')}
                         >
-                          <div className="flex items-center gap-2">
-                            Guest Leader Name
-                            {React.createElement(getSortIcon('guestLeaderName'), { className: "h-4 w-4" })}
+                          <div className="flex items-center gap-1 text-xs">
+                            Guest
+                            {React.createElement(getSortIcon('guestLeaderName'), { className: "h-3 w-3" })}
                           </div>
                         </TableHead>
                         <TableHead 
-                          className="cursor-pointer hover:bg-muted/50 select-none"
+                          className="cursor-pointer hover:bg-muted/50 select-none w-[12%]"
                           onClick={() => handleSort('checkInDate')}
                         >
-                          <div className="flex items-center gap-2">
-                            Check-in Date
-                            {React.createElement(getSortIcon('checkInDate'), { className: "h-4 w-4" })}
+                          <div className="flex items-center gap-1 text-xs">
+                            Check-in
+                            {React.createElement(getSortIcon('checkInDate'), { className: "h-3 w-3" })}
                           </div>
                         </TableHead>
-                        <TableHead>Number of Guests</TableHead>
+                        <TableHead className="w-[8%] text-xs">Guests</TableHead>
                         <TableHead 
-                          className="cursor-pointer hover:bg-muted/50 select-none"
+                          className="cursor-pointer hover:bg-muted/50 select-none w-[20%]"
                           onClick={() => handleSort('status')}
                         >
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1 text-xs">
                             Status
-                            {React.createElement(getSortIcon('status'), { className: "h-4 w-4" })}
+                            {React.createElement(getSortIcon('status'), { className: "h-3 w-3" })}
                           </div>
                         </TableHead>
-                        <TableHead>Check-in Link</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
+                        <TableHead className="w-[12%] text-xs">Check-in Link</TableHead>
+                        <TableHead className="text-right w-[15%] text-xs">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -438,57 +438,59 @@ export default function AdminDashboard() {
                             className="cursor-pointer hover:bg-muted/50 transition-colors"
                             onClick={() => router.push(`/admin/booking/${booking.id}`)}
                           >
-                            <TableCell className="font-medium">
+                            <TableCell className="font-medium text-sm max-w-0 truncate" title={booking.propertyName}>
                               {booking.propertyName}
                             </TableCell>
-                            <TableCell>{booking.guestLeaderName}</TableCell>
-                            <TableCell>{formatDate(booking.checkInDate)}</TableCell>
-                            <TableCell>
-                              <div className="flex items-center">
-                                <Users className="mr-1 h-4 w-4 text-muted-foreground" />
-                                {booking.numberOfGuests}
+                            <TableCell className="text-sm max-w-0 truncate" title={booking.guestLeaderName}>
+                              {booking.guestLeaderName}
+                            </TableCell>
+                            <TableCell className="text-sm whitespace-nowrap">
+                              {formatDate(booking.checkInDate)}
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <div className="flex items-center justify-center">
+                                <Users className="mr-1 h-3 w-3 text-muted-foreground" />
+                                <span className="text-sm">{booking.numberOfGuests}</span>
                               </div>
                             </TableCell>
                             <TableCell>
-                              <div className="flex items-center gap-2">
-                                <StatusIcon className="h-4 w-4" />
-                                <div className="flex flex-col">
-                                  <Badge className={statusInfo.color}>
+                              <div className="flex items-center gap-1">
+                                <StatusIcon className="h-3 w-3 flex-shrink-0" />
+                                <div className="flex flex-col min-w-0">
+                                  <Badge className={`${statusInfo.color} text-xs px-1 py-0`}>
                                     {statusInfo.text}
                                   </Badge>
-                                  <span className="text-xs text-muted-foreground mt-1">
+                                  <span className="text-[10px] text-muted-foreground mt-1 truncate">
                                     {statusInfo.description}
                                   </span>
                                 </div>
                               </div>
                             </TableCell>
                             <TableCell>
-                              <div className="flex items-center gap-2">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    copyCheckInLink(booking.id, booking.checkInToken);
-                                  }}
-                                  className="h-8 px-3"
-                                >
-                                  {copiedLinks[booking.id] ? (
-                                    <>
-                                      <Check className="h-3 w-3 mr-1" />
-                                      Copied
-                                    </>
-                                  ) : (
-                                    <>
-                                      <Copy className="h-3 w-3 mr-1" />
-                                      Copy Link
-                                    </>
-                                  )}
-                                </Button>
-                              </div>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  copyCheckInLink(booking.id, booking.checkInToken);
+                                }}
+                                className="h-7 px-2 text-xs"
+                              >
+                                {copiedLinks[booking.id] ? (
+                                  <>
+                                    <Check className="h-3 w-3 mr-1" />
+                                    <span className="hidden sm:inline">Copied</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Copy className="h-3 w-3 mr-1" />
+                                    <span className="hidden sm:inline">Copy</span>
+                                  </>
+                                )}
+                              </Button>
                             </TableCell>
                             <TableCell className="text-right">
-                              <div className="flex items-center justify-end gap-2">
+                              <div className="flex items-center justify-end gap-1">
                                 <Button 
                                   variant="ghost" 
                                   size="sm"
@@ -496,6 +498,7 @@ export default function AdminDashboard() {
                                     e.stopPropagation();
                                     router.push(`/admin/booking/${booking.id}`);
                                   }}
+                                  className="h-7 px-2 text-xs"
                                 >
                                   Manage
                                 </Button>
@@ -506,8 +509,9 @@ export default function AdminDashboard() {
                                     e.stopPropagation();
                                     window.open(`/checkin/${booking.checkInToken}`, '_blank');
                                   }}
+                                  className="h-7 px-2"
                                 >
-                                  <ExternalLink className="h-4 w-4" />
+                                  <ExternalLink className="h-3 w-3" />
                                 </Button>
                               </div>
                             </TableCell>
