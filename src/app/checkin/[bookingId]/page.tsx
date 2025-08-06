@@ -14,7 +14,6 @@ import {
   Users, 
   CreditCard, 
   Key, 
-  BookOpen, 
   MapPin, 
   Clock,
   User,
@@ -22,7 +21,17 @@ import {
   Trash2,
   Loader2,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  Home,
+  Wifi,
+  ShoppingBag,
+  Heart,
+  Video,
+  Navigation,
+  Utensils,
+  Building2,
+  Mountain,
+  Activity
 } from "lucide-react";
 
 interface Guest {
@@ -611,35 +620,328 @@ export default function CheckInPage() {
             </CardContent>
           </Card>
 
-          {/* Guidebooks & Guest Information */}
+          {/* Arrival Instructions */}
           <Card className="mb-6">
             <CardHeader>
               <CardTitle className="flex items-center">
-                <BookOpen className="mr-2 h-5 w-5" />
-                Guest Information & Guidebooks
+                <Home className="mr-2 h-5 w-5" />
+                Arrival Instructions
               </CardTitle>
+              <CardDescription>
+                Please refer to the attached videos for step-by-step guidance on how to access the building and your apartment.
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <div className="bg-muted p-4 rounded-lg">
-                  <h4 className="font-medium mb-2">Welcome to {booking.propertyName}</h4>
-                  <p className="text-sm text-muted-foreground mb-3">
-                    Your digital guidebook will be available here with local recommendations, 
-                    property information, and important contacts.
+                <div className="space-y-3">
+                  <div className="flex items-start gap-3">
+                    <span className="font-semibold text-sm">1.</span>
+                    <div>
+                      <p className="font-medium text-sm mb-1">Building Address:</p>
+                      <p className="text-sm text-muted-foreground">Prokopova 9, Praha 3</p>
+                      <a 
+                        href="https://maps.app.goo.gl/u5SknAkE3UzwqJHQA" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700 mt-1"
+                      >
+                        <Navigation className="h-3 w-3" />
+                        View on Google Maps
+                      </a>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-start gap-3">
+                    <span className="font-semibold text-sm">2.</span>
+                    <div>
+                      <p className="font-medium text-sm mb-1">Building and Apartment Access:</p>
+                      <a 
+                        href="https://www.canva.com/design/DAGn4TgtpAE/VD31ZY0LuhpOvtmhslAhcA/watch?utm_content=DAGn4TgtpAE&utm_campaign=designshare&utm_medium=link2&utm_source=uniquelinks&utlId=h56f84bb570"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700"
+                      >
+                        <Video className="h-3 w-3" />
+                        Entry Video Instructions
+                      </a>
+                      <p className="text-sm text-muted-foreground mt-2">
+                        Enter the access code provided to unlock the building entrance.
+                        When you arrive at your apartment, use the same code (in most cases) to unlock the door.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="bg-blue-50 p-3 rounded-lg">
+                  <p className="text-sm text-blue-900">
+                    📎 Click the links above to watch the video with detailed instructions.
                   </p>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <div className="bg-background p-3 rounded border">
-                      <h5 className="font-medium text-sm">Local Attractions</h5>
-                      <p className="text-xs text-muted-foreground">Coming soon...</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Appliances + WiFi */}
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Wifi className="mr-2 h-5 w-5" />
+                Appliances + WiFi
+              </CardTitle>
+              <CardDescription>
+                For info on how to use the appliances, click on the links below:
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="bg-muted p-4 rounded-lg">
+                    <h5 className="font-medium text-sm mb-2">🧺 Laundry Room</h5>
+                    <a 
+                      href="https://www.canva.com/design/DAGn6WOlOo8/fbbNy2mwyb9rrEgGjvtnBA/watch?utm_content=DAGn6WOlOo8&utm_campaign=designshare&utm_medium=link2&utm_source=uniquelinks&utlId=h6be36fd300"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm text-blue-600 hover:text-blue-700"
+                    >
+                      Click here to see how to use the laundry facilities
+                    </a>
+                  </div>
+                  
+                  <div className="bg-muted p-4 rounded-lg">
+                    <h5 className="font-medium text-sm mb-2">🍳 Stove</h5>
+                    <a 
+                      href="https://www.canva.com/design/DAGn6T3LDIE/8-WwGx9YdY-B_5C3_lAOIg/watch?utm_content=DAGn6T3LDIE&utm_campaign=designshare&utm_medium=link2&utm_source=uniquelinks&utlId=hd3fc76a88f"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm text-blue-600 hover:text-blue-700"
+                    >
+                      Click here for instructions on how to use the stove
+                    </a>
+                  </div>
+                </div>
+                
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <h5 className="font-medium text-sm mb-2 flex items-center">
+                    <Wifi className="h-4 w-4 mr-2" />
+                    WiFi Connection
+                  </h5>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <span className="text-xs text-gray-600">Network:</span>
+                      <p className="font-mono font-semibold">prokopka</p>
                     </div>
-                    <div className="bg-background p-3 rounded border">
-                      <h5 className="font-medium text-sm">Restaurants</h5>
-                      <p className="text-xs text-muted-foreground">Coming soon...</p>
+                    <div>
+                      <span className="text-xs text-gray-600">Password:</span>
+                      <p className="font-mono font-semibold">72727272</p>
                     </div>
-                    <div className="bg-background p-3 rounded border">
-                      <h5 className="font-medium text-sm">Emergency Contacts</h5>
-                      <p className="text-xs text-muted-foreground">Coming soon...</p>
-                    </div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Local Points of Interest */}
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Mountain className="mr-2 h-5 w-5" />
+                Local Points of Interest 🇨🇿
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-muted p-4 rounded-lg">
+                  <h5 className="font-medium text-sm mb-2">Vitkov Hill</h5>
+                  <p className="text-xs text-muted-foreground">
+                    Go for the fantastic views of Prague. There is also a military museum and a huge statue of legendary army commander Jan Zizka. At the bottom of the hill is a foot tunnel leading you to Karlin, a very modern district by the river.
+                  </p>
+                </div>
+                
+                <div className="bg-muted p-4 rounded-lg">
+                  <h5 className="font-medium text-sm mb-2">Zizkov Tower</h5>
+                  <p className="text-xs text-muted-foreground">
+                    Prague&apos;s tallest tower. If you go to the restaurant, you get free entry, so you can enjoy a reasonably priced meal with a great view.
+                  </p>
+                </div>
+                
+                <div className="bg-muted p-4 rounded-lg">
+                  <h5 className="font-medium text-sm mb-2">Jiriho z Podebrad</h5>
+                  <p className="text-xs text-muted-foreground">
+                    An imposing gothic church, a farmer&apos;s market (Wed-Sat) and endless cafés, JzP is the place to be.
+                  </p>
+                </div>
+                
+                <div className="bg-muted p-4 rounded-lg">
+                  <h5 className="font-medium text-sm mb-2">FK Viktoria Zizkov</h5>
+                  <p className="text-xs text-muted-foreground">
+                    Sunday, 10:15am there is only one place to be. Soak up the intimate atmosphere at the local football club. Vikotrka, Her, na, nay!
+                  </p>
+                  <a 
+                    href="https://fkzizkov.enigoo.cz/app/tickets"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-blue-600 hover:text-blue-700 mt-2 inline-block"
+                  >
+                    📎 Click here for Tickets
+                  </a>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Restaurants and Bars */}
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Utensils className="mr-2 h-5 w-5" />
+                Restaurants and Bars 🍽️
+              </CardTitle>
+              <CardDescription>
+                The local restaurants are generally much cheaper than in the centre. Here are some of our favourites:
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="bg-muted p-3 rounded-lg">
+                  <h5 className="font-medium text-sm">Restaurant 1</h5>
+                  <p className="text-xs text-muted-foreground">Local Czech cuisine • $-$$</p>
+                </div>
+                
+                <div className="bg-muted p-3 rounded-lg">
+                  <h5 className="font-medium text-sm">Restaurant 2</h5>
+                  <p className="text-xs text-muted-foreground">International menu • $$</p>
+                </div>
+                
+                <div className="bg-muted p-3 rounded-lg">
+                  <h5 className="font-medium text-sm">Restaurant 3</h5>
+                  <p className="text-xs text-muted-foreground">Italian cuisine • $$</p>
+                </div>
+                
+                <div className="bg-muted p-3 rounded-lg">
+                  <h5 className="font-medium text-sm">Restaurant 4</h5>
+                  <p className="text-xs text-muted-foreground">Asian fusion • $-$$</p>
+                </div>
+                
+                <div className="bg-muted p-3 rounded-lg">
+                  <h5 className="font-medium text-sm">Restaurant 5</h5>
+                  <p className="text-xs text-muted-foreground">Vegetarian/Vegan • $$</p>
+                </div>
+                
+                <div className="bg-muted p-3 rounded-lg">
+                  <h5 className="font-medium text-sm">Bar/Pub 6</h5>
+                  <p className="text-xs text-muted-foreground">Craft beers • $</p>
+                </div>
+                
+                <div className="bg-muted p-3 rounded-lg">
+                  <h5 className="font-medium text-sm">Café 7</h5>
+                  <p className="text-xs text-muted-foreground">Coffee & pastries • $</p>
+                </div>
+                
+                <div className="bg-muted p-3 rounded-lg">
+                  <h5 className="font-medium text-sm">Restaurant 8</h5>
+                  <p className="text-xs text-muted-foreground">Steakhouse • $$$</p>
+                </div>
+                
+                <div className="bg-muted p-3 rounded-lg">
+                  <h5 className="font-medium text-sm">Restaurant 9</h5>
+                  <p className="text-xs text-muted-foreground">Seafood • $$-$$$</p>
+                </div>
+                
+                <div className="bg-muted p-3 rounded-lg">
+                  <h5 className="font-medium text-sm">Restaurant 10</h5>
+                  <p className="text-xs text-muted-foreground">Traditional pub food • $</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Shopping */}
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <ShoppingBag className="mr-2 h-5 w-5" />
+                Shopping
+              </CardTitle>
+              <CardDescription>
+                If Tesco next door doesn&apos;t have what you need, try some of these other options:
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                <div className="flex items-center gap-2">
+                  <ShoppingBag className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <p className="font-medium text-sm">Lidl</p>
+                    <p className="text-xs text-muted-foreground">Groceries</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <Heart className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <p className="font-medium text-sm">Teta</p>
+                    <p className="text-xs text-muted-foreground">Beauty products</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <Activity className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <p className="font-medium text-sm">Dr. Max Lékárna</p>
+                    <p className="text-xs text-muted-foreground">Pharmacy</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <Building2 className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <p className="font-medium text-sm">Flora Shopping Centre</p>
+                    <p className="text-xs text-muted-foreground">Multiple retailers, Cinema</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <p className="font-medium text-sm">Zabka</p>
+                    <p className="text-xs text-muted-foreground">Small grocery store, 24hrs</p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Services */}
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Heart className="mr-2 h-5 w-5" />
+                Services
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <div className="flex items-start gap-2">
+                  <span className="text-sm">💵</span>
+                  <div>
+                    <p className="font-medium text-sm">Money exchange / 📦 DHL Service</p>
+                    <p className="text-xs text-muted-foreground">Mobifon, Seifertova street</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-start gap-2">
+                  <span className="text-sm">🏥</span>
+                  <div>
+                    <p className="font-medium text-sm">Hospital (VFN)</p>
+                    <p className="text-xs text-muted-foreground">U Nemocnice 499/2, 128 08 Nové Město</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-start gap-2">
+                  <span className="text-sm">🏥</span>
+                  <div>
+                    <p className="font-medium text-sm">Children&apos;s hospital (FN Motol)</p>
+                    <p className="text-xs text-muted-foreground">V Úvalu 84, 150 06 Praha 5</p>
                   </div>
                 </div>
               </div>
