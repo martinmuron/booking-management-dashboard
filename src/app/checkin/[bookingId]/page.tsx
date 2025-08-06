@@ -464,18 +464,27 @@ export default function CheckInPage() {
           variant="outline"
           size="icon"
           onClick={() => setShowMobileMenu(!showMobileMenu)}
-          className="bg-background shadow-lg"
+          className="bg-background shadow-lg border-2"
         >
-          {showMobileMenu ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+          {showMobileMenu ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </Button>
       </div>
 
       {/* Mobile Navigation Menu */}
       {showMobileMenu && (
         <div className="lg:hidden fixed inset-0 bg-black/50 z-40" onClick={() => setShowMobileMenu(false)}>
-          <div className="fixed left-0 top-0 bottom-0 w-72 bg-background border-r shadow-lg overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+          <div className="fixed left-0 top-0 bottom-0 w-[280px] max-w-[85vw] bg-background border-r shadow-lg overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="p-4">
-              <h3 className="font-semibold text-lg mb-4">Navigation</h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-semibold text-lg">Navigation</h3>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setShowMobileMenu(false)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
               <nav className="space-y-1">
                 {navigationItems.map(item => {
                   const Icon = item.icon;
@@ -483,13 +492,13 @@ export default function CheckInPage() {
                     <button
                       key={item.id}
                       onClick={() => scrollToSection(item.id)}
-                      className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
                         activeSection === item.id 
                           ? 'bg-primary text-primary-foreground' 
-                          : 'hover:bg-muted'
+                          : 'hover:bg-muted active:bg-muted'
                       }`}
                     >
-                      <Icon className="h-4 w-4" />
+                      <Icon className="h-4 w-4 flex-shrink-0" />
                       <span>{item.label}</span>
                       {activeSection === item.id && <ChevronRight className="h-4 w-4 ml-auto" />}
                     </button>
@@ -534,24 +543,26 @@ export default function CheckInPage() {
           <div className="container mx-auto px-4 py-8">
             <div className="max-w-4xl mx-auto">
           {/* Header */}
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-foreground mb-2">
+          <div className="text-center mb-6 lg:mb-8 mt-14 lg:mt-0">
+            <h1 className="text-2xl lg:text-3xl font-bold text-foreground mb-2 px-2">
               Hello {firstName}, we are looking forward to your stay!
             </h1>
-            <p className="text-muted-foreground">
+            <p className="text-sm lg:text-base text-muted-foreground px-2">
               Please complete your check-in below. Provide the required information to complete your stay.
             </p>
           </div>
 
           {error && (
-            <Card className="mb-6 border-red-200">
+            <div className="px-2 lg:px-0">
+            <Card className="mb-4 lg:mb-6 border-red-200">
               <CardContent className="pt-6">
-                <div className="flex items-center space-x-2 text-red-600">
-                  <AlertCircle className="h-5 w-5" />
-                  <span>{error}</span>
+                <div className="flex items-start space-x-2 text-red-600">
+                  <AlertCircle className="h-5 w-5 flex-shrink-0 mt-0.5" />
+                  <span className="text-sm lg:text-base">{error}</span>
                 </div>
               </CardContent>
             </Card>
+            </div>
           )}
 
           {/* Booking Information */}
