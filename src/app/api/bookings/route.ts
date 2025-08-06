@@ -32,10 +32,8 @@ export async function GET() {
     }
     
     console.log('📋 [DEBUG] Calling bookingService.getBookings...');
-    // Fetch bookings from our database
-    const bookings = await bookingService.getBookings({
-      limit: 100 // Get first 100 bookings
-    });
+    // Fetch ALL bookings from our database (no limit)
+    const bookings = await bookingService.getBookings();
     
     console.log(`📋 [DEBUG] bookingService.getBookings returned ${bookings.length} bookings`);
     console.log('📋 [DEBUG] Sample of returned bookings:', bookings.slice(0, 2).map(b => ({

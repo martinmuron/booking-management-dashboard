@@ -348,7 +348,8 @@ class BookingService {
       const bookings = await prisma.booking.findMany({
         where,
         orderBy: { checkInDate: 'asc' },
-        take: filters?.limit || 100
+        // Only apply limit if explicitly provided, otherwise get ALL bookings
+        ...(filters?.limit ? { take: filters.limit } : {})
       });
 
       console.log(`📋 [SERVICE DEBUG] prisma.booking.findMany returned ${bookings.length} bookings`);
