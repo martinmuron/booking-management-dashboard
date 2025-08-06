@@ -261,7 +261,7 @@ class BookingService {
         newBookings,
         updatedBookings,
         totalBookings,
-        isInitialSync,
+        isInitialSync: isInitialSync as boolean,
         clearResult,
         message: `${isInitialSync ? 'Initial' : 'Incremental'} sync completed: ${newBookings} new, ${updatedBookings} updated, ${totalBookings} total bookings${clearResult ? `, cleared ${clearResult.deletedCount} old bookings` : ''}`
       };
