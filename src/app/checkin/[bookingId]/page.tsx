@@ -126,14 +126,16 @@ export default function CheckInPage() {
               lastName: guest.lastName || '',
               email: guest.email || '',
               phone: guest.phone || '',
-              dateOfBirth: guest.dateOfBirth ? guest.dateOfBirth.split('T')[0] : '',
+              dateOfBirth: guest.dateOfBirth ? (typeof guest.dateOfBirth === 'string' ? guest.dateOfBirth.split('T')[0] : '') : '',
               nationality: guest.nationality || ''
             })));
           } else {
+            const guestName = bookingData.guestLeaderName || '';
+            const nameParts = guestName.split(' ');
             setGuests([{
               id: '1',
-              firstName: bookingData.guestLeaderName.split(' ')[0] || '',
-              lastName: bookingData.guestLeaderName.split(' ').slice(1).join(' ') || '',
+              firstName: nameParts[0] || '',
+              lastName: nameParts.slice(1).join(' ') || '',
               email: bookingData.guestLeaderEmail || '',
               phone: '',
               dateOfBirth: '',
