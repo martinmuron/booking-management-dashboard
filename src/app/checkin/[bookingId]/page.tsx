@@ -38,6 +38,7 @@ interface Guest {
 interface BookingData {
   id: string;
   propertyName: string;
+  propertyAddress?: string;
   checkInDate: string;
   checkOutDate: string;
   numberOfGuests: number;
@@ -131,6 +132,7 @@ export default function CheckInPage() {
           setBooking({
             id: bookingData?.id || bookingId || 'unknown',
             propertyName: bookingData?.propertyName || 'Property',
+            propertyAddress: bookingData?.propertyAddress || undefined,
             checkInDate: bookingData?.checkInDate || new Date().toISOString(),
             checkOutDate: bookingData?.checkOutDate || new Date(Date.now() + 86400000).toISOString(), // +1 day
             numberOfGuests: bookingData?.numberOfGuests || 2,
@@ -203,6 +205,7 @@ export default function CheckInPage() {
       setBooking({
         id: bookingId || 'unknown',
         propertyName: 'Property',
+        propertyAddress: undefined,
         checkInDate: new Date().toISOString(),
         checkOutDate: new Date(Date.now() + 86400000).toISOString(), // +1 day
         numberOfGuests: 2,
@@ -337,6 +340,7 @@ export default function CheckInPage() {
     const fallbackBooking = {
       id: bookingId || 'unknown',
       propertyName: 'Property',
+      propertyAddress: undefined,
       checkInDate: new Date().toISOString(),
       checkOutDate: new Date(Date.now() + 86400000).toISOString(),
       numberOfGuests: 2,
@@ -349,6 +353,14 @@ export default function CheckInPage() {
   }
 
   const nights = Math.ceil((new Date(booking.checkOutDate).getTime() - new Date(booking.checkInDate).getTime()) / (1000 * 60 * 60 * 24));
+  
+  // Extract first name from guest leader name for personalized greeting
+  const getFirstName = (fullName: string) => {
+    if (!fullName || fullName === 'Guest') return 'Guest';
+    return fullName.split(' ')[0];
+  };
+  
+  const firstName = getFirstName(booking.guestLeaderName);
 
   return (
     <div className="min-h-screen bg-background">
@@ -357,10 +369,10 @@ export default function CheckInPage() {
           {/* Header */}
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-foreground mb-2">
-              Complete Your Check-in
+              Hello {firstName}, we are looking forward to your stay!
             </h1>
             <p className="text-muted-foreground">
-              Please provide the required information to complete your stay
+              Please complete your check-in below. Provide the required information to complete your stay.
             </p>
           </div>
 
@@ -386,7 +398,10 @@ export default function CheckInPage() {
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <h3 className="font-semibold text-lg mb-2">{booking.propertyName}</h3>
+                  <h3 className="font-semibold text-lg mb-1">{booking.propertyName}</h3>
+                  {booking.propertyAddress && (
+                    <p className="text-sm text-muted-foreground mb-3">{booking.propertyAddress}</p>
+                  )}
                   <div className="space-y-2">
                     <div className="flex items-center text-sm text-muted-foreground">
                       <Calendar className="mr-2 h-4 w-4" />

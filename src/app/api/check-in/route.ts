@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/database';
+import { hostAwayService } from '@/services/hostaway.service';
 
 interface GuestSubmission {
   firstName: string;
@@ -68,9 +69,28 @@ export async function GET(request: NextRequest) {
       );
     }
     
+    // Try to enrich booking with property address from HostAway
+    let enrichedBooking = booking;
+    try {
+      if (booking.hostAwayId) {
+        // Get all listings to find the address
+        const listings = await hostAwayService.getListings();
+        const matchingListing = listings.find(l => l.id.toString() === booking.hostAwayId);
+        if (matchingListing?.address) {
+          // Add property address to booking response
+          enrichedBooking = Object.assign({}, booking, { 
+            propertyAddress: matchingListing.address 
+          });
+        }
+      }
+    } catch (addressError) {
+      console.log('Could not fetch property address, continuing without:', addressError);
+      // Continue without address - this is not critical
+    }
+    
     return NextResponse.json({
       success: true,
-      data: { booking },
+      data: { booking: enrichedBooking },
       message: 'Booking details fetched successfully'
     });
   } catch (error) {
