@@ -131,11 +131,11 @@ export default function CheckInPage() {
             })));
           } else {
             const guestName = bookingData.guestLeaderName || '';
-            const nameParts = guestName.split(' ');
+            const nameParts = guestName ? guestName.split(' ') : [];
             setGuests([{
               id: '1',
               firstName: nameParts[0] || '',
-              lastName: nameParts.slice(1).join(' ') || '',
+              lastName: nameParts.length > 1 ? nameParts.slice(1).join(' ') : '',
               email: bookingData.guestLeaderEmail || '',
               phone: '',
               dateOfBirth: '',

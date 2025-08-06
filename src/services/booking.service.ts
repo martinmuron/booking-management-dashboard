@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/database';
-import { hostAwayService } from './hostaway.service';
+import { hostAwayService, type HostAwayReservation } from './hostaway.service';
 
 interface BookingData {
   id: string;
@@ -104,19 +104,45 @@ class BookingService {
       
       console.log(`📅 ${isInitialSync ? 'Initial' : 'Incremental'} sync: Fetching from ${dateFrom} to future (30 days back + all upcoming)`);
 
-      // Fetch bookings from 30 days ago onwards (no end date = all future bookings)
-      const fetchParams: Record<string, string | number> = {
-        checkInDateFrom: dateFrom,
-        limit: 500 // Higher limit to ensure we get all upcoming bookings
-      };
-
-      // Fetch bookings from HostAway
-      console.log('🔍 About to call HostAway API with params:', fetchParams);
+      // Fetch ALL bookings using pagination
+      console.log('🔍 Starting paginated fetch for all bookings from:', dateFrom);
       
-      const [hostawayReservations, hostawayListings] = await Promise.all([
-        hostAwayService.getReservations(fetchParams),
-        hostAwayService.getListings()
-      ]);
+      const hostawayListings = await hostAwayService.getListings();
+      let allReservations: HostAwayReservation[] = [];
+      let offset = 0;
+      const limit = 500;
+      let hasMorePages = true;
+      
+      while (hasMorePages) {
+        const fetchParams = {
+          checkInDateFrom: dateFrom,
+          limit: limit,
+          offset: offset
+        };
+
+        console.log(`🔍 Fetching page ${Math.floor(offset / limit) + 1} with params:`, fetchParams);
+        
+        const pageReservations = await hostAwayService.getReservations(fetchParams);
+        
+        if (pageReservations.length === 0) {
+          hasMorePages = false;
+          console.log('✅ No more reservations found, pagination complete');
+        } else {
+          allReservations = allReservations.concat(pageReservations);
+          offset += limit;
+          
+          // If we got fewer results than the limit, we're on the last page
+          if (pageReservations.length < limit) {
+            hasMorePages = false;
+            console.log(`✅ Last page reached with ${pageReservations.length} reservations`);
+          } else {
+            console.log(`📄 Page complete: ${pageReservations.length} reservations, continuing...`);
+          }
+        }
+      }
+      
+      console.log(`📊 Pagination complete: Total ${allReservations.length} reservations fetched`);
+      const hostawayReservations = allReservations;
 
       console.log(`📊 HostAway API Results:`);
       console.log(`  - Reservations: ${hostawayReservations.length}`);
@@ -126,7 +152,8 @@ class BookingService {
       if (hostawayReservations.length === 0) {
         console.log('⚠️  No reservations returned from HostAway API');
         console.log('🔍 Debug info:', {
-          fetchParams,
+          dateFrom,
+          limit,
           accountId: process.env.HOSTAWAY_ACCOUNT_ID?.substring(0, 6) + '...',
           apiKeyLength: process.env.HOSTAWAY_API_KEY?.length
         });
