@@ -26,24 +26,76 @@ class BookingService {
   }
 
   /**
+   * Clear all existing bookings from database (use with caution!)
+   */
+  async clearAllBookings(): Promise<{
+    success: boolean;
+    deletedCount: number;
+    message: string;
+  }> {
+    try {
+      console.log('🗑️  CLEARING ALL BOOKINGS FROM DATABASE...');
+      
+      // Delete all related data first (cascade should handle this, but let's be explicit)
+      await prisma.guest.deleteMany();
+      await prisma.payment.deleteMany();
+      await prisma.virtualKey.deleteMany();
+      
+      // Now delete all bookings
+      const deleteResult = await prisma.booking.deleteMany();
+      
+      console.log(`🗑️  Deleted ${deleteResult.count} bookings and all related data`);
+      
+      return {
+        success: true,
+        deletedCount: deleteResult.count,
+        message: `Successfully cleared ${deleteResult.count} bookings from database`
+      };
+    } catch (error) {
+      console.error('❌ Failed to clear bookings:', error);
+      return {
+        success: false,
+        deletedCount: 0,
+        message: `Failed to clear bookings: ${error instanceof Error ? error.message : 'Unknown error'}`
+      };
+    }
+  }
+
+  /**
    * Sync bookings from HostAway with smart incremental strategy
    * - Initial sync: Last 30 days + ALL upcoming bookings
    * - Subsequent syncs: Only upcoming bookings (never delete existing)
+   * - Can optionally clear database first for fresh import
    */
-  async syncBookingsFromHostAway(): Promise<{
+  async syncBookingsFromHostAway(options?: { 
+    clearFirst?: boolean;
+    forceFullSync?: boolean;
+  }): Promise<{
     success: boolean;
     newBookings: number;
     updatedBookings: number;
     totalBookings: number;
     message: string;
     isInitialSync: boolean;
+    clearResult?: { deletedCount: number };
   }> {
     try {
       console.log('🔄 Starting smart HostAway booking sync...');
 
+      // Clear database first if requested
+      let clearResult: { deletedCount: number } | undefined;
+      if (options?.clearFirst) {
+        const result = await this.clearAllBookings();
+        if (!result.success) {
+          throw new Error(result.message);
+        }
+        clearResult = { deletedCount: result.deletedCount };
+        console.log(`🗑️  Database cleared: ${result.deletedCount} bookings removed`);
+      }
+
       // Check if this is initial sync or subsequent sync
       const existingBookingsCount = await prisma.booking.count();
-      const isInitialSync = existingBookingsCount === 0;
+      const isInitialSync = existingBookingsCount === 0 || options?.clearFirst || options?.forceFullSync;
 
       // Always fetch from 30 days ago + ALL upcoming bookings
       const pastDate = new Date();
@@ -55,7 +107,7 @@ class BookingService {
       // Fetch bookings from 30 days ago onwards (no end date = all future bookings)
       const fetchParams: Record<string, string | number> = {
         checkInDateFrom: dateFrom,
-        limit: 200 // Fixed limit since we're always fetching the same range
+        limit: 500 // Higher limit to ensure we get all upcoming bookings
       };
 
       // Fetch bookings from HostAway
@@ -210,7 +262,8 @@ class BookingService {
         updatedBookings,
         totalBookings,
         isInitialSync,
-        message: `${isInitialSync ? 'Initial' : 'Incremental'} sync completed: ${newBookings} new, ${updatedBookings} updated, ${totalBookings} total bookings`
+        clearResult,
+        message: `${isInitialSync ? 'Initial' : 'Incremental'} sync completed: ${newBookings} new, ${updatedBookings} updated, ${totalBookings} total bookings${clearResult ? `, cleared ${clearResult.deletedCount} old bookings` : ''}`
       };
 
       console.log('✅ Booking sync completed:', result);
@@ -224,6 +277,7 @@ class BookingService {
         updatedBookings: 0,
         totalBookings: 0,
         isInitialSync: false,
+        clearResult: undefined,
         message: `Sync failed: ${error instanceof Error ? error.message : 'Unknown error'}`
       };
     }

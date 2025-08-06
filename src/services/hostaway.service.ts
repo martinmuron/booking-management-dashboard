@@ -178,19 +178,22 @@ class HostAwayService {
     status?: string;
   }): Promise<HostAwayReservation[]> {
     try {
-      // Default to get reservations from 30 days ago to 90 days ahead
+      // Default to get reservations from 30 days ago onwards (NO END DATE for all future bookings)
       const defaultFromDate = new Date();
       defaultFromDate.setDate(defaultFromDate.getDate() - 30);
-      const defaultToDate = new Date();
-      defaultToDate.setDate(defaultToDate.getDate() + 90);
 
       const queryParams: Record<string, string> = {
         includeResources: '1', // Include related data like listing info
-        limit: params?.limit?.toString() || '50',
+        limit: params?.limit?.toString() || '200', // Increased default limit to capture more bookings
         offset: params?.offset?.toString() || '0',
-        checkInDateFrom: params?.checkInDateFrom || defaultFromDate.toISOString().split('T')[0],
-        checkInDateTo: params?.checkInDateTo || defaultToDate.toISOString().split('T')[0]
+        checkInDateFrom: params?.checkInDateFrom || defaultFromDate.toISOString().split('T')[0]
+        // NO checkInDateTo parameter = gets ALL future bookings
       };
+
+      // Only add checkInDateTo if explicitly provided (to allow filtering)
+      if (params?.checkInDateTo) {
+        queryParams.checkInDateTo = params.checkInDateTo;
+      }
 
       if (params?.status) {
         queryParams.status = params.status;

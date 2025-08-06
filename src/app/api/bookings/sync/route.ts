@@ -1,12 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { bookingService } from '@/services/booking.service';
 
-export async function POST() {
+export async function POST(request: NextRequest) {
   console.log('🚀 Booking sync API endpoint called');
   
   try {
-    // Perform smart booking sync
-    const syncResult = await bookingService.syncBookingsFromHostAway();
+    // Get query parameters to check for clear option
+    const { searchParams } = new URL(request.url);
+    const clearFirst = searchParams.get('clear') === 'true';
+    const forceFullSync = searchParams.get('force') === 'true';
+    
+    if (clearFirst) {
+      console.log('⚠️  CLEAR FLAG DETECTED - Will clear database before import');
+    }
+    
+    // Perform smart booking sync with options
+    const syncResult = await bookingService.syncBookingsFromHostAway({
+      clearFirst,
+      forceFullSync
+    });
     
     console.log('📊 Sync result:', syncResult);
     
@@ -17,6 +29,7 @@ export async function POST() {
         updatedBookings: syncResult.updatedBookings,
         totalBookings: syncResult.totalBookings,
         isInitialSync: syncResult.isInitialSync,
+        clearResult: syncResult.clearResult,
         message: syncResult.message
       },
       timestamp: new Date().toISOString()
