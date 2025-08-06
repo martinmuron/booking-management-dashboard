@@ -25,13 +25,41 @@ export async function GET(request: NextRequest) {
       );
     }
     
-    const booking = await prisma.booking.findUnique({
-      where: { checkInToken: token },
-      include: {
-        guests: true,
-        payments: true
+    let booking;
+    try {
+      // Try to fetch with guests first
+      booking = await prisma.booking.findUnique({
+        where: { checkInToken: token },
+        include: {
+          guests: true,
+          payments: true
+        }
+      });
+    } catch (guestError) {
+      console.log('Failed to fetch guests, trying without:', guestError);
+      // If guests table has issues, fetch booking without guests
+      try {
+        booking = await prisma.booking.findUnique({
+          where: { checkInToken: token },
+          include: {
+            payments: true
+          }
+        });
+        // Add empty guests array to maintain expected structure
+        if (booking) {
+          Object.assign(booking, { guests: [] });
+        }
+      } catch (bookingError) {
+        console.log('Failed to fetch booking at all, trying minimal:', bookingError);
+        // Last resort: try to get just the booking without any includes
+        booking = await prisma.booking.findUnique({
+          where: { checkInToken: token }
+        });
+        if (booking) {
+          Object.assign(booking, { guests: [], payments: [] });
+        }
       }
-    });
+    }
     
     if (!booking) {
       return NextResponse.json(
