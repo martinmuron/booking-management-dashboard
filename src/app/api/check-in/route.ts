@@ -12,9 +12,11 @@ interface GuestSubmission {
 
 // GET /api/check-in - Get booking details for check-in
 export async function GET(request: NextRequest) {
+  let token: string | null = null;
+  
   try {
     const { searchParams } = new URL(request.url);
-    const token = searchParams.get('token');
+    token = searchParams.get('token');
     
     if (!token) {
       return NextResponse.json(
@@ -45,8 +47,14 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error('Error fetching check-in details:', error);
+    console.error('Error details:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      token: token || 'undefined',
+      timestamp: new Date().toISOString()
+    });
     return NextResponse.json(
-      { success: false, error: 'Failed to fetch check-in details' },
+      { success: false, error: `Failed to fetch check-in details: ${error instanceof Error ? error.message : 'Unknown error'}` },
       { status: 500 }
     );
   }
@@ -54,9 +62,13 @@ export async function GET(request: NextRequest) {
 
 // POST /api/check-in - Complete check-in process
 export async function POST(request: NextRequest) {
+  let token: string | undefined;
+  let guests: GuestSubmission[] | undefined;
+  
   try {
     const body = await request.json();
-    const { token, guests, paymentIntentId } = body;
+    ({ token, guests } = body);
+    const { paymentIntentId } = body;
     
     if (!token || !guests) {
       return NextResponse.json(
@@ -129,8 +141,15 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error('Error completing check-in:', error);
+    console.error('Error details:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      token: token || 'undefined',
+      guestsCount: guests?.length,
+      timestamp: new Date().toISOString()
+    });
     return NextResponse.json(
-      { success: false, error: 'Failed to complete check-in' },
+      { success: false, error: `Failed to complete check-in: ${error instanceof Error ? error.message : 'Unknown error'}` },
       { status: 500 }
     );
   }

@@ -102,11 +102,31 @@ export default function CheckInPage() {
   useEffect(() => {
     const fetchBooking = async () => {
       try {
+        console.log('Fetching booking with token:', bookingId);
         const response = await fetch(`/api/check-in?token=${bookingId}`);
+        console.log('Response status:', response.status);
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('API Error:', response.status, errorText);
+          setError(`Server error: ${response.status} - ${errorText}`);
+          setLoading(false);
+          return;
+        }
+        
         const data = await response.json();
+        console.log('API Response data:', data);
         
         if (data.success) {
           const bookingData = data.data.booking;
+          console.log('Processing booking data:', {
+            id: bookingData.id,
+            guestLeaderName: bookingData.guestLeaderName,
+            guestLeaderEmail: bookingData.guestLeaderEmail,
+            hasGuests: !!bookingData.guests,
+            guestsLength: bookingData.guests?.length || 0
+          });
+          
           setBooking({
             id: bookingData.id,
             propertyName: bookingData.propertyName,
@@ -126,7 +146,7 @@ export default function CheckInPage() {
               lastName: guest.lastName || '',
               email: guest.email || '',
               phone: guest.phone || '',
-              dateOfBirth: guest.dateOfBirth ? (typeof guest.dateOfBirth === 'string' ? guest.dateOfBirth.split('T')[0] : '') : '',
+              dateOfBirth: guest.dateOfBirth ? (typeof guest.dateOfBirth === 'string' && guest.dateOfBirth.includes('T') ? guest.dateOfBirth.split('T')[0] : guest.dateOfBirth) : '',
               nationality: guest.nationality || ''
             })));
           } else {
@@ -151,8 +171,9 @@ export default function CheckInPage() {
           setError(data.error || 'Failed to load booking information');
         }
         setLoading(false);
-      } catch {
-        setError('Failed to load booking information');
+      } catch (error) {
+        console.error('JavaScript Error in fetchBooking:', error);
+        setError(`Failed to load booking information: ${error instanceof Error ? error.message : 'Unknown error'}`);
         setLoading(false);
       }
     };
