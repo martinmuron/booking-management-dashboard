@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -31,7 +31,10 @@ import {
   Utensils,
   Building2,
   Mountain,
-  Activity
+  Activity,
+  Menu,
+  X,
+  ChevronRight
 } from "lucide-react";
 
 interface Guest {
@@ -108,6 +111,75 @@ export default function CheckInPage() {
   const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [showPaymentForm, setShowPaymentForm] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [activeSection, setActiveSection] = useState('booking-details');
+
+  // Refs for sections
+  const bookingDetailsRef = useRef<HTMLDivElement>(null);
+  const guestRegistrationRef = useRef<HTMLDivElement>(null);
+  const cityTaxRef = useRef<HTMLDivElement>(null);
+  const arrivalRef = useRef<HTMLDivElement>(null);
+  const appliancesRef = useRef<HTMLDivElement>(null);
+  const localInterestRef = useRef<HTMLDivElement>(null);
+  const restaurantsRef = useRef<HTMLDivElement>(null);
+  const shoppingRef = useRef<HTMLDivElement>(null);
+  const servicesRef = useRef<HTMLDivElement>(null);
+  const virtualKeysRef = useRef<HTMLDivElement>(null);
+
+  const scrollToSection = (sectionId: string) => {
+    const refs: { [key: string]: React.RefObject<HTMLDivElement | null> } = {
+      'booking-details': bookingDetailsRef,
+      'guest-registration': guestRegistrationRef,
+      'city-tax': cityTaxRef,
+      'arrival': arrivalRef,
+      'appliances': appliancesRef,
+      'local-interest': localInterestRef,
+      'restaurants': restaurantsRef,
+      'shopping': shoppingRef,
+      'services': servicesRef,
+      'virtual-keys': virtualKeysRef
+    };
+
+    const ref = refs[sectionId];
+    if (ref?.current) {
+      ref.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      setActiveSection(sectionId);
+      setShowMobileMenu(false);
+    }
+  };
+
+  // Track active section on scroll
+  useEffect(() => {
+    const handleScroll = () => {
+      const sections = [
+        { id: 'booking-details', ref: bookingDetailsRef },
+        { id: 'guest-registration', ref: guestRegistrationRef },
+        { id: 'city-tax', ref: cityTaxRef },
+        { id: 'arrival', ref: arrivalRef },
+        { id: 'appliances', ref: appliancesRef },
+        { id: 'local-interest', ref: localInterestRef },
+        { id: 'restaurants', ref: restaurantsRef },
+        { id: 'shopping', ref: shoppingRef },
+        { id: 'services', ref: servicesRef },
+        { id: 'virtual-keys', ref: virtualKeysRef }
+      ];
+
+      const scrollPosition = window.scrollY + 100;
+
+      for (const section of sections) {
+        if (section.ref.current) {
+          const { offsetTop, offsetHeight } = section.ref.current;
+          if (scrollPosition >= offsetTop && scrollPosition < offsetTop + offsetHeight) {
+            setActiveSection(section.id);
+            break;
+          }
+        }
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   useEffect(() => {
     const fetchBooking = async () => {
@@ -371,10 +443,96 @@ export default function CheckInPage() {
   
   const firstName = getFirstName(booking.guestLeaderName);
 
+  const navigationItems = [
+    { id: 'booking-details', label: 'Booking Details', icon: MapPin },
+    { id: 'guest-registration', label: 'Guest Registration', icon: User },
+    { id: 'city-tax', label: 'City Tax Payment', icon: CreditCard },
+    { id: 'arrival', label: 'Arrival Instructions', icon: Home },
+    { id: 'appliances', label: 'Appliances & WiFi', icon: Wifi },
+    { id: 'local-interest', label: 'Local Attractions', icon: Mountain },
+    { id: 'restaurants', label: 'Restaurants & Bars', icon: Utensils },
+    { id: 'shopping', label: 'Shopping', icon: ShoppingBag },
+    { id: 'services', label: 'Services', icon: Heart },
+    { id: 'virtual-keys', label: 'Virtual Keys', icon: Key }
+  ];
+
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto">
+      {/* Mobile Menu Button */}
+      <div className="lg:hidden fixed top-4 left-4 z-50">
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => setShowMobileMenu(!showMobileMenu)}
+          className="bg-background shadow-lg"
+        >
+          {showMobileMenu ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+        </Button>
+      </div>
+
+      {/* Mobile Navigation Menu */}
+      {showMobileMenu && (
+        <div className="lg:hidden fixed inset-0 bg-black/50 z-40" onClick={() => setShowMobileMenu(false)}>
+          <div className="fixed left-0 top-0 bottom-0 w-72 bg-background border-r shadow-lg overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="p-4">
+              <h3 className="font-semibold text-lg mb-4">Navigation</h3>
+              <nav className="space-y-1">
+                {navigationItems.map(item => {
+                  const Icon = item.icon;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => scrollToSection(item.id)}
+                      className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+                        activeSection === item.id 
+                          ? 'bg-primary text-primary-foreground' 
+                          : 'hover:bg-muted'
+                      }`}
+                    >
+                      <Icon className="h-4 w-4" />
+                      <span>{item.label}</span>
+                      {activeSection === item.id && <ChevronRight className="h-4 w-4 ml-auto" />}
+                    </button>
+                  );
+                })}
+              </nav>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="flex">
+        {/* Desktop Sidebar Navigation */}
+        <aside className="hidden lg:block w-64 fixed left-0 top-0 bottom-0 bg-background border-r overflow-y-auto">
+          <div className="p-6">
+            <h3 className="font-semibold text-lg mb-6">Check-in Navigation</h3>
+            <nav className="space-y-1">
+              {navigationItems.map(item => {
+                const Icon = item.icon;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => scrollToSection(item.id)}
+                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+                      activeSection === item.id 
+                        ? 'bg-primary text-primary-foreground' 
+                        : 'hover:bg-muted'
+                    }`}
+                  >
+                    <Icon className="h-4 w-4 flex-shrink-0" />
+                    <span className="text-left">{item.label}</span>
+                    {activeSection === item.id && <ChevronRight className="h-4 w-4 ml-auto" />}
+                  </button>
+                );
+              })}
+            </nav>
+          </div>
+        </aside>
+
+        {/* Main Content */}
+        <div className="flex-1 lg:ml-64">
+          <div className="container mx-auto px-4 py-8">
+            <div className="max-w-4xl mx-auto">
           {/* Header */}
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-foreground mb-2">
@@ -397,6 +555,7 @@ export default function CheckInPage() {
           )}
 
           {/* Booking Information */}
+          <div ref={bookingDetailsRef}>
           <Card className="mb-6">
             <CardHeader>
               <CardTitle className="flex items-center">
@@ -436,8 +595,10 @@ export default function CheckInPage() {
               </div>
             </CardContent>
           </Card>
+          </div>
 
           {/* Guest Registration */}
+          <div ref={guestRegistrationRef}>
           <Card className="mb-6">
             <CardHeader>
               <CardTitle className="flex items-center">
@@ -552,8 +713,10 @@ export default function CheckInPage() {
               </div>
             </CardContent>
           </Card>
+          </div>
 
           {/* City Tax Payment */}
+          <div ref={cityTaxRef}>
           <Card className="mb-6">
             <CardHeader>
               <CardTitle className="flex items-center">
@@ -619,8 +782,10 @@ export default function CheckInPage() {
               </div>
             </CardContent>
           </Card>
+          </div>
 
           {/* Arrival Instructions */}
+          <div ref={arrivalRef}>
           <Card className="mb-6">
             <CardHeader>
               <CardTitle className="flex items-center">
@@ -680,8 +845,10 @@ export default function CheckInPage() {
               </div>
             </CardContent>
           </Card>
+          </div>
 
           {/* Appliances + WiFi */}
+          <div ref={appliancesRef}>
           <Card className="mb-6">
             <CardHeader>
               <CardTitle className="flex items-center">
@@ -739,8 +906,10 @@ export default function CheckInPage() {
               </div>
             </CardContent>
           </Card>
+          </div>
 
           {/* Local Points of Interest */}
+          <div ref={localInterestRef}>
           <Card className="mb-6">
             <CardHeader>
               <CardTitle className="flex items-center">
@@ -788,8 +957,10 @@ export default function CheckInPage() {
               </div>
             </CardContent>
           </Card>
+          </div>
 
           {/* Restaurants and Bars */}
+          <div ref={restaurantsRef}>
           <Card className="mb-6">
             <CardHeader>
               <CardTitle className="flex items-center">
@@ -854,8 +1025,10 @@ export default function CheckInPage() {
               </div>
             </CardContent>
           </Card>
+          </div>
 
           {/* Shopping */}
+          <div ref={shoppingRef}>
           <Card className="mb-6">
             <CardHeader>
               <CardTitle className="flex items-center">
@@ -910,8 +1083,10 @@ export default function CheckInPage() {
               </div>
             </CardContent>
           </Card>
+          </div>
 
           {/* Services */}
+          <div ref={servicesRef}>
           <Card className="mb-6">
             <CardHeader>
               <CardTitle className="flex items-center">
@@ -947,8 +1122,10 @@ export default function CheckInPage() {
               </div>
             </CardContent>
           </Card>
+          </div>
 
           {/* Virtual Keys */}
+          <div ref={virtualKeysRef}>
           <Card className="mb-6">
             <CardHeader>
               <CardTitle className="flex items-center">
@@ -1000,7 +1177,10 @@ export default function CheckInPage() {
               )}
             </CardContent>
           </Card>
+          </div>
         </div>
+      </div>
+    </div>
       </div>
     </div>
   );
