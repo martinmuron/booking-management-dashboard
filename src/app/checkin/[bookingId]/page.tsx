@@ -545,12 +545,14 @@ export default function CheckInPage() {
             <div className="max-w-4xl mx-auto">
           {/* Header */}
           <div className="text-center mb-6 lg:mb-8 mt-16 lg:mt-0">
-            <h1 className="text-2xl lg:text-3xl font-bold text-foreground mb-2 px-2 pr-16 lg:pr-2">
-              Hello {firstName}, we are looking forward to your stay!
-            </h1>
-            <p className="text-sm lg:text-base text-muted-foreground px-2 pr-16 lg:pr-2">
-              Please complete your check-in below. Provide the required information to complete your stay.
-            </p>
+            <div className="lg:mx-0 mx-8">
+              <h1 className="text-2xl lg:text-3xl font-bold text-foreground mb-2">
+                Hello {firstName}, we are looking forward to your stay!
+              </h1>
+              <p className="text-sm lg:text-base text-muted-foreground">
+                Please complete your check-in below. Provide the required information to complete your stay.
+              </p>
+            </div>
           </div>
 
           {error && (
