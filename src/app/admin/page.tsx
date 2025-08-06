@@ -6,7 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Calendar, Users, Home, RefreshCw, Loader2, AlertCircle, ExternalLink, Copy, Check } from "lucide-react";
+import React from 'react';
+import { Search, Calendar, Users, Home, RefreshCw, Loader2, AlertCircle, ExternalLink, Copy, Check, ArrowUpDown, ArrowUp, ArrowDown, Clock, CreditCard, KeyRound, CheckCircle2, AlertTriangle } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
@@ -25,24 +26,75 @@ interface BookingData {
   updatedAt: string;
 }
 
-const getStatusColor = (status?: string) => {
+const getStatusInfo = (status?: string) => {
   if (!status) {
-    return "bg-gray-100 text-gray-800 hover:bg-gray-100";
+    return {
+      color: "bg-gray-100 text-gray-800 hover:bg-gray-100",
+      icon: AlertTriangle,
+      text: "Unknown",
+      description: "Status unknown"
+    };
   }
   
   switch (status.toLowerCase()) {
     case "confirmed":
-      return "bg-blue-100 text-blue-800 hover:bg-blue-100";
+      return {
+        color: "bg-blue-100 text-blue-800 hover:bg-blue-100",
+        icon: Calendar,
+        text: "Confirmed",
+        description: "Booking confirmed, awaiting check-in"
+      };
     case "pending":
-      return "bg-yellow-100 text-yellow-800 hover:bg-yellow-100";
-    case "checked-in":
+      return {
+        color: "bg-yellow-100 text-yellow-800 hover:bg-yellow-100",
+        icon: Clock,
+        text: "Pending Check-in",
+        description: "Needs guest registration & city tax payment"
+      };
+    case "payment_pending":
+      return {
+        color: "bg-orange-100 text-orange-800 hover:bg-orange-100",
+        icon: CreditCard,
+        text: "Payment Pending",
+        description: "City tax payment required"
+      };
+    case "checked_in":
     case "checkedin":
-      return "bg-green-100 text-green-800 hover:bg-green-100";
+      return {
+        color: "bg-green-100 text-green-800 hover:bg-green-100",
+        icon: CheckCircle2,
+        text: "Checked In",
+        description: "Guest registered and city tax paid"
+      };
+    case "keys_distributed":
+      return {
+        color: "bg-emerald-100 text-emerald-800 hover:bg-emerald-100",
+        icon: KeyRound,
+        text: "Keys Sent",
+        description: "Virtual keys distributed"
+      };
+    case "completed":
+      return {
+        color: "bg-green-200 text-green-900 hover:bg-green-200",
+        icon: CheckCircle2,
+        text: "Completed",
+        description: "Stay completed successfully"
+      };
     case "cancelled":
     case "canceled":
-      return "bg-red-100 text-red-800 hover:bg-red-100";
+      return {
+        color: "bg-red-100 text-red-800 hover:bg-red-100",
+        icon: AlertTriangle,
+        text: "Cancelled",
+        description: "Booking cancelled"
+      };
     default:
-      return "bg-gray-100 text-gray-800 hover:bg-gray-100";
+      return {
+        color: "bg-gray-100 text-gray-800 hover:bg-gray-100",
+        icon: AlertTriangle,
+        text: status.replace('_', ' '),
+        description: "Custom status"
+      };
   }
 };
 
@@ -61,6 +113,8 @@ export default function AdminDashboard() {
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [copiedLinks, setCopiedLinks] = useState<Record<string, boolean>>({});
+  const [sortField, setSortField] = useState<'checkInDate' | 'propertyName' | 'guestLeaderName' | 'status'>('checkInDate');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
   const fetchBookings = async () => {
     try {
@@ -134,14 +188,65 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleSort = (field: typeof sortField) => {
+    if (field === sortField) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  const getSortIcon = (field: typeof sortField) => {
+    if (field !== sortField) return ArrowUpDown;
+    return sortDirection === 'asc' ? ArrowUp : ArrowDown;
+  };
+
+  const sortedBookings = [...bookings].sort((a, b) => {
+    let aVal: string | Date;
+    let bVal: string | Date;
+
+    switch (sortField) {
+      case 'checkInDate':
+        aVal = new Date(a.checkInDate);
+        bVal = new Date(b.checkInDate);
+        break;
+      case 'propertyName':
+        aVal = a.propertyName.toLowerCase();
+        bVal = b.propertyName.toLowerCase();
+        break;
+      case 'guestLeaderName':
+        aVal = a.guestLeaderName.toLowerCase();
+        bVal = b.guestLeaderName.toLowerCase();
+        break;
+      case 'status':
+        aVal = a.status.toLowerCase();
+        bVal = b.status.toLowerCase();
+        break;
+      default:
+        aVal = a.checkInDate;
+        bVal = b.checkInDate;
+    }
+
+    if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
+    if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
+    return 0;
+  });
+
+  // Filter out very old bookings (before 2024) - likely test data
+  const filteredBookings = sortedBookings.filter(booking => {
+    const checkInDate = new Date(booking.checkInDate);
+    return checkInDate.getFullYear() >= 2024;
+  });
+
   useEffect(() => {
     fetchBookings();
   }, []);
 
-  const totalBookings = bookings.length;
-  const pendingBookings = bookings.filter(b => b.status === "PENDING").length;
-  const checkedInBookings = bookings.filter(b => b.status === "CHECKED_IN").length;
-  const completedBookings = bookings.filter(b => b.status === "COMPLETED").length;
+  const totalBookings = filteredBookings.length;
+  const pendingBookings = filteredBookings.filter(b => b.status === "PENDING").length;
+  const checkedInBookings = filteredBookings.filter(b => b.status === "CHECKED_IN").length;
+  const completedBookings = filteredBookings.filter(b => b.status === "COMPLETED").length;
 
   return (
     <div className="min-h-screen bg-background">
@@ -272,7 +377,7 @@ export default function AdminDashboard() {
                   <AlertCircle className="h-8 w-8" />
                   <span className="ml-2">{error}</span>
                 </div>
-              ) : bookings.length === 0 ? (
+              ) : filteredBookings.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   No reservations found
                 </div>
@@ -281,89 +386,134 @@ export default function AdminDashboard() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Property Name</TableHead>
-                        <TableHead>Guest Leader Name</TableHead>
-                        <TableHead>Check-in Date</TableHead>
+                        <TableHead 
+                          className="cursor-pointer hover:bg-muted/50 select-none"
+                          onClick={() => handleSort('propertyName')}
+                        >
+                          <div className="flex items-center gap-2">
+                            Property Name
+                            {React.createElement(getSortIcon('propertyName'), { className: "h-4 w-4" })}
+                          </div>
+                        </TableHead>
+                        <TableHead 
+                          className="cursor-pointer hover:bg-muted/50 select-none"
+                          onClick={() => handleSort('guestLeaderName')}
+                        >
+                          <div className="flex items-center gap-2">
+                            Guest Leader Name
+                            {React.createElement(getSortIcon('guestLeaderName'), { className: "h-4 w-4" })}
+                          </div>
+                        </TableHead>
+                        <TableHead 
+                          className="cursor-pointer hover:bg-muted/50 select-none"
+                          onClick={() => handleSort('checkInDate')}
+                        >
+                          <div className="flex items-center gap-2">
+                            Check-in Date
+                            {React.createElement(getSortIcon('checkInDate'), { className: "h-4 w-4" })}
+                          </div>
+                        </TableHead>
                         <TableHead>Number of Guests</TableHead>
-                        <TableHead>Booking Status</TableHead>
+                        <TableHead 
+                          className="cursor-pointer hover:bg-muted/50 select-none"
+                          onClick={() => handleSort('status')}
+                        >
+                          <div className="flex items-center gap-2">
+                            Status
+                            {React.createElement(getSortIcon('status'), { className: "h-4 w-4" })}
+                          </div>
+                        </TableHead>
                         <TableHead>Check-in Link</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {bookings.map((booking) => (
-                        <TableRow 
-                          key={booking.id}
-                          className="cursor-pointer hover:bg-muted/50 transition-colors"
-                          onClick={() => router.push(`/admin/booking/${booking.id}`)}
-                        >
-                          <TableCell className="font-medium">
-                            {booking.propertyName}
-                          </TableCell>
-                          <TableCell>{booking.guestLeaderName}</TableCell>
-                          <TableCell>{formatDate(booking.checkInDate)}</TableCell>
-                          <TableCell>
-                            <div className="flex items-center">
-                              <Users className="mr-1 h-4 w-4 text-muted-foreground" />
-                              {booking.numberOfGuests}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Badge className={getStatusColor(booking.status.toLowerCase())}>
-                              {booking.status.replace('_', ' ')}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  copyCheckInLink(booking.id, booking.checkInToken);
-                                }}
-                                className="h-8 px-3"
-                              >
-                                {copiedLinks[booking.id] ? (
-                                  <>
-                                    <Check className="h-3 w-3 mr-1" />
-                                    Copied
-                                  </>
-                                ) : (
-                                  <>
-                                    <Copy className="h-3 w-3 mr-1" />
-                                    Copy Link
-                                  </>
-                                )}
-                              </Button>
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex items-center justify-end gap-2">
-                              <Button 
-                                variant="ghost" 
-                                size="sm"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  router.push(`/admin/booking/${booking.id}`);
-                                }}
-                              >
-                                Manage
-                              </Button>
-                              <Button 
-                                variant="outline" 
-                                size="sm"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  window.open(`/checkin/${booking.id}`, '_blank');
-                                }}
-                              >
-                                <ExternalLink className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                      {filteredBookings.map((booking) => {
+                        const statusInfo = getStatusInfo(booking.status);
+                        const StatusIcon = statusInfo.icon;
+                        
+                        return (
+                          <TableRow 
+                            key={booking.id}
+                            className="cursor-pointer hover:bg-muted/50 transition-colors"
+                            onClick={() => router.push(`/admin/booking/${booking.id}`)}
+                          >
+                            <TableCell className="font-medium">
+                              {booking.propertyName}
+                            </TableCell>
+                            <TableCell>{booking.guestLeaderName}</TableCell>
+                            <TableCell>{formatDate(booking.checkInDate)}</TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <Users className="mr-1 h-4 w-4 text-muted-foreground" />
+                                {booking.numberOfGuests}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <StatusIcon className="h-4 w-4" />
+                                <div className="flex flex-col">
+                                  <Badge className={statusInfo.color}>
+                                    {statusInfo.text}
+                                  </Badge>
+                                  <span className="text-xs text-muted-foreground mt-1">
+                                    {statusInfo.description}
+                                  </span>
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    copyCheckInLink(booking.id, booking.checkInToken);
+                                  }}
+                                  className="h-8 px-3"
+                                >
+                                  {copiedLinks[booking.id] ? (
+                                    <>
+                                      <Check className="h-3 w-3 mr-1" />
+                                      Copied
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Copy className="h-3 w-3 mr-1" />
+                                      Copy Link
+                                    </>
+                                  )}
+                                </Button>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    router.push(`/admin/booking/${booking.id}`);
+                                  }}
+                                >
+                                  Manage
+                                </Button>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    window.open(`/checkin/${booking.checkInToken}`, '_blank');
+                                  }}
+                                >
+                                  <ExternalLink className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
                     </TableBody>
                   </Table>
                 </div>
