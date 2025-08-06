@@ -459,7 +459,7 @@ export default function CheckInPage() {
   return (
     <div className="min-h-screen bg-background">
       {/* Mobile Menu Button */}
-      <div className="lg:hidden fixed top-4 left-4 z-50">
+      <div className="lg:hidden fixed top-4 right-4 z-50">
         <Button
           variant="outline"
           size="icon"
@@ -475,12 +475,13 @@ export default function CheckInPage() {
         <div className="lg:hidden fixed inset-0 bg-black/50 z-40" onClick={() => setShowMobileMenu(false)}>
           <div className="fixed left-0 top-0 bottom-0 w-[280px] max-w-[85vw] bg-background border-r shadow-lg overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="p-4">
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center justify-between mb-6 pt-2">
                 <h3 className="font-semibold text-lg">Navigation</h3>
                 <Button
                   variant="ghost"
                   size="icon"
                   onClick={() => setShowMobileMenu(false)}
+                  className="h-8 w-8"
                 >
                   <X className="h-4 w-4" />
                 </Button>
@@ -543,11 +544,11 @@ export default function CheckInPage() {
           <div className="container mx-auto px-4 py-8">
             <div className="max-w-4xl mx-auto">
           {/* Header */}
-          <div className="text-center mb-6 lg:mb-8 mt-14 lg:mt-0">
-            <h1 className="text-2xl lg:text-3xl font-bold text-foreground mb-2 px-2">
+          <div className="text-center mb-6 lg:mb-8 mt-16 lg:mt-0">
+            <h1 className="text-2xl lg:text-3xl font-bold text-foreground mb-2 px-2 pr-16 lg:pr-2">
               Hello {firstName}, we are looking forward to your stay!
             </h1>
-            <p className="text-sm lg:text-base text-muted-foreground px-2">
+            <p className="text-sm lg:text-base text-muted-foreground px-2 pr-16 lg:pr-2">
               Please complete your check-in below. Provide the required information to complete your stay.
             </p>
           </div>
