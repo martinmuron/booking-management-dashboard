@@ -21,7 +21,12 @@ import {
   X,
   ExternalLink,
   Loader2,
-  AlertCircle
+  AlertCircle,
+  CheckCircle2,
+  Clock,
+  DollarSign,
+  UserCheck,
+  Calendar
 } from "lucide-react";
 
 interface Guest {
@@ -93,6 +98,63 @@ const formatTime = (dateString: string) => {
     hour: '2-digit',
     minute: '2-digit'
   });
+};
+
+const calculateCheckInProgress = (booking: BookingData) => {
+  const totalGuests = booking.numberOfGuests;
+  const registeredGuests = booking.guests?.length || 0;
+  const hasPaid = booking.payments?.some(p => p.status === 'paid') || false;
+  
+  const steps = [
+    { 
+      id: 'booking_confirmed', 
+      label: 'Booking Confirmed', 
+      completed: booking.status !== 'PENDING',
+      icon: CheckCircle2 
+    },
+    { 
+      id: 'guests_registered', 
+      label: `Guest Registration (${registeredGuests}/${totalGuests})`, 
+      completed: registeredGuests === totalGuests,
+      icon: UserCheck 
+    },
+    { 
+      id: 'tax_paid', 
+      label: 'Tourist Tax Paid', 
+      completed: hasPaid,
+      icon: DollarSign 
+    },
+    { 
+      id: 'checked_in', 
+      label: 'Checked In', 
+      completed: booking.status === 'CHECKED_IN' || booking.status === 'COMPLETED',
+      icon: Key 
+    }
+  ];
+  
+  const completedSteps = steps.filter(step => step.completed).length;
+  const progressPercent = (completedSteps / steps.length) * 100;
+  
+  return { steps, completedSteps, totalSteps: steps.length, progressPercent };
+};
+
+const calculateTouristTax = (booking: BookingData) => {
+  if (!booking.guests) return { total: 0, breakdown: 'No guests registered yet' };
+  
+  const nights = Math.ceil((new Date(booking.checkOutDate).getTime() - new Date(booking.checkInDate).getTime()) / (1000 * 60 * 60 * 24));
+  const adultGuests = booking.guests.filter(guest => {
+    if (!guest.dateOfBirth) return true; // Assume adult if no birth date
+    const age = new Date().getFullYear() - new Date(guest.dateOfBirth).getFullYear();
+    return age >= 18;
+  }).length;
+  
+  const taxPerPersonPerNight = 50; // CZK
+  const total = adultGuests * nights * taxPerPersonPerNight;
+  
+  return {
+    total,
+    breakdown: `${adultGuests} adults × ${nights} nights × ${taxPerPersonPerNight} CZK = ${total} CZK`
+  };
 };
 
 export default function BookingAdminPage() {
@@ -197,6 +259,8 @@ export default function BookingAdminPage() {
 
   const nights = Math.ceil((new Date(booking.checkOutDate).getTime() - new Date(booking.checkInDate).getTime()) / (1000 * 60 * 60 * 24));
   const checkInUrl = `${window.location.origin}/checkin/${booking.checkInToken}`;
+  const progress = calculateCheckInProgress(booking);
+  const touristTax = calculateTouristTax(booking);
 
   return (
     <div className="min-h-screen bg-background">
@@ -242,6 +306,61 @@ export default function BookingAdminPage() {
               </CardContent>
             </Card>
           )}
+
+          {/* Check-in Progress */}
+          <Card className="mb-6">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center">
+                    <Calendar className="mr-2 h-5 w-5" />
+                    Check-in Progress
+                  </CardTitle>
+                  <CardDescription>
+                    {progress.completedSteps} of {progress.totalSteps} steps completed ({Math.round(progress.progressPercent)}%)
+                  </CardDescription>
+                </div>
+                <Badge 
+                  className={progress.progressPercent === 100 ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}
+                >
+                  {progress.progressPercent === 100 ? 'Complete' : 'In Progress'}
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {/* Progress Bar */}
+              <div className="w-full bg-gray-200 rounded-full h-2 mb-6">
+                <div 
+                  className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+                  style={{ width: `${progress.progressPercent}%` }}
+                ></div>
+              </div>
+              
+              {/* Progress Steps */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {progress.steps.map((step) => {
+                  const Icon = step.icon;
+                  return (
+                    <div key={step.id} className="flex items-center space-x-3">
+                      <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
+                        step.completed ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400'
+                      }`}>
+                        <Icon className="h-4 w-4" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-sm font-medium ${step.completed ? 'text-green-900' : 'text-gray-900'}`}>
+                          {step.label}
+                        </p>
+                      </div>
+                      {step.completed && (
+                        <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0" />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Main Booking Info */}
@@ -474,6 +593,51 @@ export default function BookingAdminPage() {
                     <Mail className="mr-2 h-4 w-4" />
                     Send Email to Guest
                   </Button>
+                </CardContent>
+              </Card>
+
+              {/* Tourist Tax Information */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <DollarSign className="mr-2 h-5 w-5" />
+                    Tourist Tax
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div>
+                    <Label className="text-sm text-muted-foreground">Calculated Amount</Label>
+                    <p className="font-semibold text-lg">{touristTax.total} CZK</p>
+                    <p className="text-xs text-muted-foreground">{touristTax.breakdown}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm text-muted-foreground">Payment Status</Label>
+                    <div className="mt-1">
+                      {booking.payments?.some(p => p.status === 'paid') ? (
+                        <Badge className="bg-green-100 text-green-800">
+                          <CheckCircle2 className="mr-1 h-3 w-3" />
+                          Paid
+                        </Badge>
+                      ) : booking.payments?.some(p => p.status === 'pending') ? (
+                        <Badge className="bg-yellow-100 text-yellow-800">
+                          <Clock className="mr-1 h-3 w-3" />
+                          Pending
+                        </Badge>
+                      ) : (
+                        <Badge className="bg-red-100 text-red-800">
+                          <AlertCircle className="mr-1 h-3 w-3" />
+                          Unpaid
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                  {!booking.payments?.some(p => p.status === 'paid') && (
+                    <div className="pt-2">
+                      <p className="text-xs text-muted-foreground">
+                        Guests will be prompted to pay during check-in
+                      </p>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
