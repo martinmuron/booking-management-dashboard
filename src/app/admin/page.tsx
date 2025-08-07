@@ -157,6 +157,25 @@ export default function AdminDashboard() {
     }
   };
 
+  const clearAndSyncWithHostAway = async () => {
+    try {
+      setRefreshing(true);
+      const response = await fetch('/api/bookings/sync?clear=true', {
+        method: 'POST'
+      });
+      const data = await response.json();
+      if (data.success) {
+        await fetchBookings();
+      } else {
+        setError(data.error || 'Clear + Sync failed');
+      }
+    } catch {
+      setError('Network error: Unable to clear + sync bookings');
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   const handleRefresh = async () => {
     await syncWithHostAway();
   };
@@ -269,6 +288,14 @@ export default function AdminDashboard() {
               >
                 <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
                 {refreshing ? 'Syncing...' : 'Sync with HostAway'}
+              </Button>
+              <Button 
+                onClick={clearAndSyncWithHostAway}
+                variant="destructive"
+                disabled={refreshing}
+              >
+                <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+                {refreshing ? 'Clearing...' : 'Clear + Sync'}
               </Button>
             </div>
           </div>

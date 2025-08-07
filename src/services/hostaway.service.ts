@@ -182,22 +182,21 @@ class HostAwayService {
       const defaultFromDate = new Date();
       defaultFromDate.setDate(defaultFromDate.getDate() - 30);
 
+      // Map our internal params to HostAway API query params
       const queryParams: Record<string, string> = {
-        includeResources: '1', // Include related data like listing info
-        limit: params?.limit?.toString() || '200', // Increased default limit to capture more bookings
+        includeResources: '1',
+        limit: params?.limit?.toString() || '200',
         offset: params?.offset?.toString() || '0',
-        checkInDateFrom: params?.checkInDateFrom || defaultFromDate.toISOString().split('T')[0]
-        // NO checkInDateTo parameter = gets ALL future bookings
+        // HostAway expects arrivalStartDate/arrivalEndDate
+        arrivalStartDate: params?.checkInDateFrom || defaultFromDate.toISOString().split('T')[0]
       };
 
-      // Only add checkInDateTo if explicitly provided (to allow filtering)
+      // Only add arrivalEndDate if explicitly provided (to allow filtering)
       if (params?.checkInDateTo) {
-        queryParams.checkInDateTo = params.checkInDateTo;
+        queryParams.arrivalEndDate = params.checkInDateTo;
       }
 
-      if (params?.status) {
-        queryParams.status = params.status;
-      }
+      // Note: status is not a documented filter for reservations; avoid adding unsupported params
 
       console.log('🔍 HostAway API request params:', queryParams);
 

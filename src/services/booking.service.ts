@@ -63,8 +63,9 @@ class BookingService {
 
   /**
    * Sync bookings from HostAway with smart incremental strategy
-   * - Initial sync: Last 30 days + ALL upcoming bookings
-   * - Subsequent syncs: Only upcoming bookings (never delete existing)
+   * - Initial sync: Last 7 days + ALL upcoming bookings
+   * - Subsequent syncs: Only future bookings (today onwards)
+   * - Never deletes existing bookings unless clearFirst is true
    * - Can optionally clear database first for fresh import
    */
   async syncBookingsFromHostAway(options?: { 
@@ -97,12 +98,19 @@ class BookingService {
       const existingBookingsCount = await prisma.booking.count();
       const isInitialSync = existingBookingsCount === 0 || options?.clearFirst || options?.forceFullSync;
 
-      // Always fetch from 30 days ago + ALL upcoming bookings
+      // For initial sync: fetch last week + ALL upcoming bookings
+      // For subsequent syncs: only fetch future bookings
       const pastDate = new Date();
-      pastDate.setDate(pastDate.getDate() - 30);
+      if (isInitialSync) {
+        // Initial sync: last 7 days + future
+        pastDate.setDate(pastDate.getDate() - 7);
+      } else {
+        // Subsequent syncs: only future bookings (today onwards)
+        pastDate.setHours(0, 0, 0, 0);
+      }
       const dateFrom = pastDate.toISOString().split('T')[0];
       
-      console.log(`📅 ${isInitialSync ? 'Initial' : 'Incremental'} sync: Fetching from ${dateFrom} to future (30 days back + all upcoming)`);
+      console.log(`📅 ${isInitialSync ? 'Initial' : 'Incremental'} sync: Fetching from ${dateFrom} to future (${isInitialSync ? '7 days back + all upcoming' : 'only upcoming bookings'})`);
 
       // Fetch ALL bookings using pagination
       console.log('🔍 Starting paginated fetch for all bookings from:', dateFrom);
