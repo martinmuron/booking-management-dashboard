@@ -150,7 +150,18 @@ class BookingService {
       }
       
       console.log(`📊 Pagination complete: Total ${allReservations.length} reservations fetched`);
-      const hostawayReservations = allReservations;
+      // Safety filter: ensure we only process relevant date range regardless of upstream filtering
+      const thresholdDate = new Date();
+      if (isInitialSync) {
+        thresholdDate.setDate(thresholdDate.getDate() - 7);
+      } else {
+        thresholdDate.setHours(0, 0, 0, 0);
+      }
+      const hostawayReservations = allReservations.filter(r => {
+        const arrival = new Date(r.arrivalDate);
+        return !isNaN(arrival.getTime()) && arrival >= thresholdDate;
+      });
+      console.log(`📊 After threshold filter (${thresholdDate.toISOString().split('T')[0]}+), ${hostawayReservations.length} reservations will be processed`);
 
       console.log(`📊 HostAway API Results:`);
       console.log(`  - Reservations: ${hostawayReservations.length}`);
