@@ -108,6 +108,12 @@ export default function BookingAdminPage() {
 
   useEffect(() => {
     const fetchBooking = async () => {
+      if (!bookingId) {
+        setError('No booking ID provided');
+        setLoading(false);
+        return;
+      }
+      
       try {
         const response = await fetch(`/api/bookings/${bookingId}`);
         const data = await response.json();
@@ -117,9 +123,11 @@ export default function BookingAdminPage() {
           setNewStatus(data.data.status);
         } else {
           setError(data.error || 'Failed to fetch booking');
+          console.error('Failed to fetch booking:', data);
         }
-      } catch {
+      } catch (err) {
         setError('Network error: Unable to fetch booking');
+        console.error('Error fetching booking:', err);
       } finally {
         setLoading(false);
       }
