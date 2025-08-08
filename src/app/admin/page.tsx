@@ -482,7 +482,7 @@ export default function AdminDashboard() {
                           </div>
                         </TableHead>
                         <TableHead className="w-[12%] text-xs">Check-in Link</TableHead>
-                        <TableHead className="text-right w-[15%] text-xs"></TableHead>
+                        <TableHead className="text-right w-[15%] text-xs">Manage</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
