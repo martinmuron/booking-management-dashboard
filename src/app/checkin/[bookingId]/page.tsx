@@ -47,6 +47,15 @@ interface Guest {
   nationality: string;
 }
 
+interface VirtualKey {
+  id: string;
+  keyType: string;
+  nukiKeyId: string;
+  isActive: boolean;
+  createdAt: string;
+  deactivatedAt?: string;
+}
+
 interface BookingData {
   id: string;
   propertyName: string;
@@ -54,9 +63,12 @@ interface BookingData {
   checkInDate: string;
   checkOutDate: string;
   numberOfGuests: number;
+  roomNumber?: string;
   guestLeaderName: string;
   cityTaxAmount: number;
   cityTaxPerPerson: number;
+  universalKeypadCode?: string;
+  virtualKeys?: VirtualKey[];
 }
 
 const formatDate = (dateString: string) => {
@@ -1144,21 +1156,130 @@ export default function CheckInPage() {
             <CardHeader>
               <CardTitle className="flex items-center">
                 <Key className="mr-2 h-5 w-5" />
-                Virtual Keys (NUKI)
+                Your Access Code
               </CardTitle>
               <CardDescription>
-                Your digital keys will be generated after check-in completion
+                {booking?.universalKeypadCode 
+                  ? 'Your universal keypad code for all doors' 
+                  : 'Digital keys will be available after check-in completion'
+                }
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="bg-muted p-4 rounded-lg text-center">
-                <Key className="mx-auto h-12 w-12 text-muted-foreground mb-3" />
-                <h4 className="font-medium mb-2">Digital Keys Not Yet Available</h4>
-                <p className="text-sm text-muted-foreground">
-                  Your NUKI virtual keys will be automatically generated and sent to your email 
-                  once you complete the check-in process and payment.
-                </p>
-              </div>
+              {booking?.universalKeypadCode ? (
+                <div className="space-y-6">
+                  {/* Universal Code Display */}
+                  <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-6 text-center">
+                    <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
+                      <Key className="h-8 w-8 text-blue-600" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-blue-900 mb-2">Your Universal Access Code</h3>
+                    <div className="text-4xl font-bold text-blue-800 font-mono mb-2 tracking-wider">
+                      {booking.universalKeypadCode}
+                    </div>
+                    <p className="text-sm text-blue-600 mb-4">
+                      Use this code on all keypads to access your areas
+                    </p>
+                    <Badge className="bg-green-100 text-green-800 border-green-300">
+                      <CheckCircle className="h-3 w-3 mr-1" />
+                      Active Now
+                    </Badge>
+                  </div>
+
+                  {/* Instructions */}
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                    <h4 className="font-medium text-amber-900 mb-2 flex items-center">
+                      <AlertCircle className="h-4 w-4 mr-2" />
+                      How to Use Your Code
+                    </h4>
+                    <ol className="text-sm text-amber-800 space-y-1">
+                      <li>1. Find the keypad on the door</li>
+                      <li>2. Enter your 6-digit code: <span className="font-mono font-bold">{booking.universalKeypadCode}</span></li>
+                      <li>3. Press the unlock button or wait for auto-unlock</li>
+                      <li>4. Turn the handle to open the door</li>
+                    </ol>
+                  </div>
+
+                  {/* Door Access List */}
+                  <div>
+                    <h4 className="font-medium mb-3">Your Code Works On:</h4>
+                    <div className="grid gap-3">
+                      {[
+                        { 
+                          name: 'Main Building Entrance', 
+                          type: 'MAIN_ENTRANCE',
+                          description: 'Entry to the building',
+                          icon: Building2
+                        },
+                        { 
+                          name: booking.roomNumber ? `Your Room ${booking.roomNumber}` : `Your Apartment`, 
+                          type: 'ROOM',
+                          description: 'Your private accommodation',
+                          icon: Home
+                        },
+                        { 
+                          name: 'Luggage Room', 
+                          type: 'LUGGAGE_ROOM',
+                          description: 'Storage area for luggage',
+                          icon: ShoppingBag
+                        },
+                        { 
+                          name: 'Laundry Room', 
+                          type: 'LAUNDRY_ROOM',
+                          description: 'Washing and drying facilities',
+                          icon: Activity
+                        }
+                      ].map((door) => {
+                        const virtualKey = booking?.virtualKeys?.find(vk => vk.keyType === door.type);
+                        const IconComponent = door.icon;
+                        return (
+                          <div key={door.type} className="flex items-center justify-between p-3 bg-white border rounded-lg">
+                            <div className="flex items-center space-x-3">
+                              <div className="p-2 bg-gray-100 rounded-lg">
+                                <IconComponent className="h-4 w-4 text-gray-600" />
+                              </div>
+                              <div>
+                                <p className="font-medium text-sm">{door.name}</p>
+                                <p className="text-xs text-muted-foreground">{door.description}</p>
+                              </div>
+                            </div>
+                            <Badge 
+                              className={virtualKey && virtualKey.isActive 
+                                ? 'bg-green-100 text-green-800' 
+                                : 'bg-gray-100 text-gray-800'
+                              }
+                            >
+                              {virtualKey && virtualKey.isActive ? 'Active' : 'Pending'}
+                            </Badge>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Contact Info */}
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                    <h4 className="font-medium text-gray-900 mb-2">Need Help?</h4>
+                    <p className="text-sm text-gray-600">
+                      If you have trouble accessing any door, please contact us immediately. 
+                      Keep this code private and don&apos;t share it with others.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-muted p-6 rounded-lg text-center">
+                  <Key className="mx-auto h-12 w-12 text-muted-foreground mb-3" />
+                  <h4 className="font-medium mb-2">Access Code Not Yet Available</h4>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Your universal access code will be generated automatically once you complete 
+                    the check-in process and payment.
+                  </p>
+                  <Badge className="bg-blue-100 text-blue-800">
+                    <Clock className="h-3 w-3 mr-1" />
+                    Pending Check-in Completion
+                  </Badge>
+                </div>
+              )}
             </CardContent>
           </Card>
 

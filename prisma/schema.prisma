@@ -19,6 +19,7 @@ model Booking {
   numberOfGuests   Int
   roomNumber       String?
   checkInToken     String        @unique
+  universalKeypadCode String?    // Universal 6-digit code for all Nuki doors
   status           BookingStatus @default(PENDING)
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt

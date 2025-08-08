@@ -48,6 +48,15 @@ interface Payment {
   createdAt: string;
 }
 
+interface VirtualKey {
+  id: string;
+  keyType: string;
+  nukiKeyId: string;
+  isActive: boolean;
+  createdAt: string;
+  deactivatedAt?: string;
+}
+
 interface BookingData {
   id: string;
   hostAwayId: string;
@@ -57,12 +66,15 @@ interface BookingData {
   checkInDate: string;
   checkOutDate: string;
   numberOfGuests: number;
+  roomNumber?: string;
   status: string;
   checkInToken: string;
+  universalKeypadCode?: string;
   createdAt: string;
   updatedAt: string;
   guests?: Guest[];
   payments?: Payment[];
+  virtualKeys?: VirtualKey[];
 }
 
 const getStatusColor = (status?: string) => {
@@ -267,7 +279,7 @@ export default function BookingAdminPage() {
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
-        <div className="max-w-6xl mx-auto">
+        <div className="w-full">
           {/* Header */}
           <div className="flex items-center justify-between mb-8">
             <div className="flex items-center gap-4">
@@ -640,43 +652,89 @@ export default function BookingAdminPage() {
                 </CardContent>
               </Card>
 
-              {/* Remote Access (Nuki placeholders) */}
+              {/* Virtual Keys */}
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center">
                     <Key className="mr-2 h-5 w-5" />
-                    Remote Access
+                    Virtual Keys
                   </CardTitle>
-                  <CardDescription>Codes and notes (Nuki integration to be added later)</CardDescription>
+                  <CardDescription>
+                    {booking.universalKeypadCode 
+                      ? `Universal code: ${booking.universalKeypadCode}` 
+                      : 'Digital access keys for all doors'
+                    }
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Door</TableHead>
-                        <TableHead>Code Status</TableHead>
-                        <TableHead>Notes</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {[
-                        { name: 'Luggage' },
-                        { name: 'Main Door' },
-                        { name: `Apartment (${booking.propertyName})` },
-                        { name: 'Laundry' },
-                      ].map((row) => (
-                        <TableRow key={row.name}>
-                          <TableCell className="font-medium">{row.name}</TableCell>
-                          <TableCell>
-                            <Badge className="bg-gray-100 text-gray-800">Not Generated</Badge>
-                          </TableCell>
-                          <TableCell>
-                            <Input placeholder="Add notes…" />
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                  {booking.universalKeypadCode ? (
+                    <div className="space-y-4">
+                      {/* Universal Code Display */}
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <Label className="text-sm font-medium text-blue-900">Universal Keypad Code</Label>
+                            <p className="text-2xl font-bold text-blue-800 font-mono">{booking.universalKeypadCode}</p>
+                            <p className="text-sm text-blue-600">Works on all doors below</p>
+                          </div>
+                          <div className="text-blue-600">
+                            <Key className="h-8 w-8" />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Door List */}
+                      <div className="overflow-x-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead className="min-w-[140px]">Door</TableHead>
+                              <TableHead className="min-w-[100px]">Status</TableHead>
+                              <TableHead className="min-w-[80px]">Active</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {[
+                              { name: 'Main Entrance', type: 'MAIN_ENTRANCE' },
+                              { name: booking.roomNumber ? `Room ${booking.roomNumber}` : `Room (${booking.propertyName})`, type: 'ROOM' },
+                              { name: 'Luggage Room', type: 'LUGGAGE_ROOM' },
+                              { name: 'Laundry Room', type: 'LAUNDRY_ROOM' },
+                            ].map((door) => {
+                              const virtualKey = booking.virtualKeys?.find(vk => vk.keyType === door.type);
+                              return (
+                                <TableRow key={door.type}>
+                                  <TableCell className="font-medium">{door.name}</TableCell>
+                                  <TableCell>
+                                    <Badge className={virtualKey ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
+                                      {virtualKey ? 'Generated' : 'Not Generated'}
+                                    </Badge>
+                                  </TableCell>
+                                  <TableCell>
+                                    {virtualKey ? (
+                                      <Badge className={virtualKey.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
+                                        {virtualKey.isActive ? 'Active' : 'Inactive'}
+                                      </Badge>
+                                    ) : (
+                                      <span className="text-muted-foreground text-sm">-</span>
+                                    )}
+                                  </TableCell>
+                                </TableRow>
+                              );
+                            })}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <Key className="mx-auto h-12 w-12 mb-3 opacity-50" />
+                      <p className="text-muted-foreground mb-4">No virtual keys generated yet</p>
+                      <Button>
+                        <Key className="mr-2 h-4 w-4" />
+                        Generate Virtual Keys
+                      </Button>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
               {/* Quick Actions */}
@@ -693,9 +751,13 @@ export default function BookingAdminPage() {
                     <ExternalLink className="mr-2 h-4 w-4" />
                     Open Check-in Page
                   </Button>
-                  <Button className="w-full" variant="outline">
+                  <Button 
+                    className="w-full" 
+                    variant="outline"
+                    disabled={!!booking.universalKeypadCode}
+                  >
                     <Key className="mr-2 h-4 w-4" />
-                    Generate Virtual Keys
+                    {booking.universalKeypadCode ? 'Keys Generated' : 'Generate Virtual Keys'}
                   </Button>
                   <Button className="w-full" variant="outline">
                     <Mail className="mr-2 h-4 w-4" />
