@@ -9,6 +9,8 @@ export async function POST(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const clearFirst = searchParams.get('clear') === 'true';
     const forceFullSync = searchParams.get('force') === 'true';
+    const dateFrom = searchParams.get('start') || undefined;
+    const dateTo = searchParams.get('end') || undefined;
     
     if (clearFirst) {
       console.log('⚠️  CLEAR FLAG DETECTED - Will clear database before import');
@@ -17,7 +19,9 @@ export async function POST(request: NextRequest) {
     // Perform smart booking sync with options
     const syncResult = await bookingService.syncBookingsFromHostAway({
       clearFirst,
-      forceFullSync
+      forceFullSync,
+      dateFrom,
+      dateTo
     });
     
     console.log('📊 Sync result:', syncResult);

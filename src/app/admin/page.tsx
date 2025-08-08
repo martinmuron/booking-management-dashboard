@@ -160,7 +160,9 @@ export default function AdminDashboard() {
   const clearAndSyncWithHostAway = async () => {
     try {
       setRefreshing(true);
-      const response = await fetch('/api/bookings/sync?clear=true', {
+      const now = new Date();
+      const augustFirst = `${now.getFullYear()}-08-01`;
+      const response = await fetch(`/api/bookings/sync?clear=true&start=${augustFirst}`, {
         method: 'POST'
       });
       const data = await response.json();

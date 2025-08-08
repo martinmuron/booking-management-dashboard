@@ -71,6 +71,8 @@ class BookingService {
   async syncBookingsFromHostAway(options?: { 
     clearFirst?: boolean;
     forceFullSync?: boolean;
+    dateFrom?: string; // YYYY-MM-DD
+    dateTo?: string;   // YYYY-MM-DD
   }): Promise<{
     success: boolean;
     newBookings: number;
@@ -98,19 +100,21 @@ class BookingService {
       const existingBookingsCount = await prisma.booking.count();
       const isInitialSync = existingBookingsCount === 0 || options?.clearFirst || options?.forceFullSync;
 
-      // For initial sync: fetch last week + ALL upcoming bookings
-      // For subsequent syncs: only fetch future bookings
-      const pastDate = new Date();
-      if (isInitialSync) {
-        // Initial sync: last 7 days + future
-        pastDate.setDate(pastDate.getDate() - 7);
-      } else {
-        // Subsequent syncs: only future bookings (today onwards)
-        pastDate.setHours(0, 0, 0, 0);
+      // Determine date window
+      let dateFrom = options?.dateFrom || '';
+      const dateTo = options?.dateTo || '';
+      if (!dateFrom) {
+        // Fallback behavior: initial last 7 days + future, incremental from today
+        const pastDate = new Date();
+        if (isInitialSync) {
+          pastDate.setDate(pastDate.getDate() - 7);
+        } else {
+          pastDate.setHours(0, 0, 0, 0);
+        }
+        dateFrom = pastDate.toISOString().split('T')[0];
       }
-      const dateFrom = pastDate.toISOString().split('T')[0];
       
-      console.log(`📅 ${isInitialSync ? 'Initial' : 'Incremental'} sync: Fetching from ${dateFrom} to future (${isInitialSync ? '7 days back + all upcoming' : 'only upcoming bookings'})`);
+      console.log(`📅 ${isInitialSync ? 'Initial' : 'Incremental'} sync: Fetching from ${dateFrom} ${dateTo ? 'to ' + dateTo : 'to future'}${options?.dateFrom ? ' (custom dates)' : ''}`);
 
       // Fetch ALL bookings using pagination
       console.log('🔍 Starting paginated fetch for all bookings from:', dateFrom);
@@ -122,10 +126,11 @@ class BookingService {
       let hasMorePages = true;
       
       while (hasMorePages) {
-        const fetchParams = {
+        const fetchParams: { checkInDateFrom: string; limit: number; offset: number; checkInDateTo?: string } = {
           checkInDateFrom: dateFrom,
           limit: limit,
-          offset: offset
+          offset: offset,
+          ...(dateTo ? { checkInDateTo: dateTo } : {})
         };
 
         console.log(`🔍 Fetching page ${Math.floor(offset / limit) + 1} with params:`, fetchParams);
@@ -150,18 +155,18 @@ class BookingService {
       }
       
       console.log(`📊 Pagination complete: Total ${allReservations.length} reservations fetched`);
-      // Safety filter: ensure we only process relevant date range regardless of upstream filtering
-      const thresholdDate = new Date();
-      if (isInitialSync) {
-        thresholdDate.setDate(thresholdDate.getDate() - 7);
-      } else {
-        thresholdDate.setHours(0, 0, 0, 0);
-      }
+      // Apply safety filter based on requested/custom range
+      const thresholdDate = new Date(dateFrom);
+      const endDate = dateTo ? new Date(dateTo) : null;
       const hostawayReservations = allReservations.filter(r => {
         const arrival = new Date(r.arrivalDate);
-        return !isNaN(arrival.getTime()) && arrival >= thresholdDate;
+        if (isNaN(arrival.getTime())) return false;
+        if (endDate) {
+          return arrival >= thresholdDate && arrival <= endDate;
+        }
+        return arrival >= thresholdDate;
       });
-      console.log(`📊 After threshold filter (${thresholdDate.toISOString().split('T')[0]}+), ${hostawayReservations.length} reservations will be processed`);
+      console.log(`📊 After threshold filter (${thresholdDate.toISOString().split('T')[0]}${endDate ? ' to ' + endDate.toISOString().split('T')[0] : ' +'}), ${hostawayReservations.length} reservations will be processed`);
 
       console.log(`📊 HostAway API Results:`);
       console.log(`  - Reservations: ${hostawayReservations.length}`);
