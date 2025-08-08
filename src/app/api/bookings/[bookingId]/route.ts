@@ -15,7 +15,8 @@ export async function GET(
       where: { id: bookingId },
       include: {
         guests: true,
-        payments: true
+        payments: true,
+        virtualKeys: true
       }
     });
     
@@ -26,7 +27,8 @@ export async function GET(
         where: { hostAwayId: bookingId },
         include: {
           guests: true,
-          payments: true
+          payments: true,
+          virtualKeys: true
         }
       });
     }
@@ -106,7 +108,8 @@ export async function PATCH(
       },
       include: {
         guests: true,
-        payments: true
+        payments: true,
+        virtualKeys: true
       }
     });
 

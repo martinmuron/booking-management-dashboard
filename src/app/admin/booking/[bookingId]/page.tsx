@@ -261,6 +261,8 @@ export default function BookingAdminPage() {
   const checkInUrl = `${window.location.origin}/checkin/${booking.checkInToken}`;
   const progress = calculateCheckInProgress(booking);
   const touristTax = calculateTouristTax(booking);
+  const leadGuestEmail = booking.guestLeaderEmail;
+  const checkedInGuests = booking.guests || [];
 
   return (
     <div className="min-h-screen bg-background">
@@ -365,6 +367,44 @@ export default function BookingAdminPage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Main Booking Info */}
             <div className="lg:col-span-2 space-y-6">
+              {/* Checked-in Guests Summary */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <Users className="mr-2 h-5 w-5" />
+                    Checked-in Guests
+                  </CardTitle>
+                  <CardDescription>
+                    {checkedInGuests.length ? `${checkedInGuests.length} guest(s) registered` : 'No guests have completed online check-in yet'}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {checkedInGuests.length > 0 ? (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Name</TableHead>
+                          <TableHead>Email</TableHead>
+                          <TableHead>Phone</TableHead>
+                          <TableHead>Nationality</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {checkedInGuests.map(g => (
+                          <TableRow key={g.id}>
+                            <TableCell className="font-medium">{g.firstName} {g.lastName}</TableCell>
+                            <TableCell>{g.email || '-'}</TableCell>
+                            <TableCell>{g.phone || '-'}</TableCell>
+                            <TableCell>{g.nationality || '-'}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  ) : (
+                    <div className="text-sm text-muted-foreground">Guests appear here after completing online check-in.</div>
+                  )}
+                </CardContent>
+              </Card>
               {/* Booking Details */}
               <Card>
                 <CardHeader>
@@ -571,6 +611,74 @@ export default function BookingAdminPage() {
 
             {/* Sidebar */}
             <div className="space-y-6">
+              {/* Online Check-in */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Online Check-in</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div>
+                    <Label className="text-sm text-muted-foreground">Lead Guest Email</Label>
+                    <p className="font-medium break-all">{leadGuestEmail}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm text-muted-foreground">Check-in Link</Label>
+                    <Input value={checkInUrl} readOnly className="font-mono text-xs" onClick={(e) => e.currentTarget.select()} />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button className="flex-1" variant="outline" onClick={() => window.open(checkInUrl, '_blank')}>
+                      <ExternalLink className="mr-2 h-4 w-4" /> Open Link
+                    </Button>
+                    <Button className="flex-1" variant="outline" onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(checkInUrl);
+                      } catch {}
+                    }}>
+                      Copy Link
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Remote Access (Nuki placeholders) */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <Key className="mr-2 h-5 w-5" />
+                    Remote Access
+                  </CardTitle>
+                  <CardDescription>Codes and notes (Nuki integration to be added later)</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Door</TableHead>
+                        <TableHead>Code Status</TableHead>
+                        <TableHead>Notes</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {[
+                        { name: 'Luggage' },
+                        { name: 'Main Door' },
+                        { name: `Apartment (${booking.propertyName})` },
+                        { name: 'Laundry' },
+                      ].map((row) => (
+                        <TableRow key={row.name}>
+                          <TableCell className="font-medium">{row.name}</TableCell>
+                          <TableCell>
+                            <Badge className="bg-gray-100 text-gray-800">Not Generated</Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Input placeholder="Add notes…" />
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
               {/* Quick Actions */}
               <Card>
                 <CardHeader>
