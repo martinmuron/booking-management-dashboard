@@ -10,6 +10,7 @@ import React from 'react';
 import { Search, Calendar, Users, Home, RefreshCw, Loader2, AlertCircle, ExternalLink, Copy, Check, ArrowUpDown, ArrowUp, ArrowDown, Clock, CreditCard, KeyRound, CheckCircle2, AlertTriangle } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { Label } from "@/components/ui/label";
 
 interface BookingData {
   id: string;
@@ -115,6 +116,8 @@ export default function AdminDashboard() {
   const [copiedLinks, setCopiedLinks] = useState<Record<string, boolean>>({});
   const [sortField, setSortField] = useState<'checkInDate' | 'propertyName' | 'guestLeaderName' | 'status'>('checkInDate');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [dateFrom, setDateFrom] = useState<string>('');
+  const [dateTo, setDateTo] = useState<string>('');
 
   const fetchBookings = async () => {
     try {
@@ -254,10 +257,21 @@ export default function AdminDashboard() {
     return 0;
   });
 
-  // Filter out very old bookings (before 2024) - likely test data
+  // Apply date range filter
   const filteredBookings = sortedBookings.filter(booking => {
     const checkInDate = new Date(booking.checkInDate);
-    return checkInDate.getFullYear() >= 2024;
+    if (dateFrom) {
+      const from = new Date(dateFrom);
+      if (checkInDate < from) return false;
+    }
+    if (dateTo) {
+      const to = new Date(dateTo);
+      // include the end date day
+      const end = new Date(to);
+      end.setHours(23, 59, 59, 999);
+      if (checkInDate > end) return false;
+    }
+    return true;
   });
 
   useEffect(() => {
@@ -283,7 +297,16 @@ export default function AdminDashboard() {
                 Manage all bookings and guest information
               </p>
             </div>
-            <div className="flex gap-2 mt-4 md:mt-0">
+            <div className="flex flex-col md:flex-row gap-2 mt-4 md:mt-0 md:items-center">
+              <div className="flex items-center gap-2">
+                <Label className="text-xs text-muted-foreground">Check-in from</Label>
+                <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-8 w-[160px]" />
+                <Label className="text-xs text-muted-foreground">to</Label>
+                <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="h-8 w-[160px]" />
+                {(dateFrom || dateTo) && (
+                  <Button variant="ghost" size="sm" className="h-8" onClick={() => { setDateFrom(''); setDateTo(''); }}>Clear</Button>
+                )}
+              </div>
               <Button 
                 onClick={handleRefresh}
                 disabled={refreshing}
@@ -459,7 +482,7 @@ export default function AdminDashboard() {
                           </div>
                         </TableHead>
                         <TableHead className="w-[12%] text-xs">Check-in Link</TableHead>
-                        <TableHead className="text-right w-[15%] text-xs">Manage</TableHead>
+                        <TableHead className="text-right w-[15%] text-xs"></TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -525,26 +548,17 @@ export default function AdminDashboard() {
                               </Button>
                             </TableCell>
                             <TableCell className="text-right">
-                              <div className="flex items-center justify-end gap-1">
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    router.push(`/admin/booking/${booking.id}`);
-                                  }}
-                                  className="h-7 px-2 text-xs"
-                                >
-                                  Manage
-                                </Button>
+                              <div className="flex items-center justify-end">
                                 <Button 
                                   variant="outline" 
-                                  size="sm"
+                                  size="icon"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    window.open(`/checkin/${booking.checkInToken}`, '_blank');
+                                    router.push(`/admin/booking/${encodeURIComponent(booking.id)}`);
                                   }}
-                                  className="h-7 px-2"
+                                  className="h-7 w-7"
+                                  title="Manage booking"
+                                  aria-label="Manage booking"
                                 >
                                   <ExternalLink className="h-3 w-3" />
                                 </Button>
