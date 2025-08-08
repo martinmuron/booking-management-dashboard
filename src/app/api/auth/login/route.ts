@@ -1,16 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const ADMIN_EMAIL = 'nick@investmentsolutions.cz';
-const ADMIN_PASSWORD = '123456';
+const DEFAULT_EMAIL = 'nick@investmentsolutions.cz';
+const DEFAULT_PASSWORD = '123456';
+
+// Read overrides stored in global
+const store = globalThis as unknown as { __adminCreds?: { email: string; password: string } };
 
 export async function POST(request: NextRequest) {
   try {
     const { email, password } = await request.json();
-    if (email !== ADMIN_EMAIL || password !== ADMIN_PASSWORD) {
+    const creds = store.__adminCreds || { email: DEFAULT_EMAIL, password: DEFAULT_PASSWORD };
+    if (email !== creds.email || password !== creds.password) {
       return NextResponse.json({ success: false, error: 'Invalid credentials' }, { status: 401 });
     }
     const res = NextResponse.json({ success: true });
-    // Minimal cookie-based auth token (non-secure; replace with NextAuth later)
     res.cookies.set('admin_session', 'ok', {
       httpOnly: true,
       sameSite: 'lax',

@@ -299,6 +299,12 @@ export default function AdminDashboard() {
                 <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
                 {refreshing ? 'Clearing...' : 'Clear + Sync'}
               </Button>
+              <Button
+                onClick={() => router.push('/admin/settings')}
+                variant="outline"
+              >
+                Settings
+              </Button>
             </div>
           </div>
 
@@ -453,7 +459,7 @@ export default function AdminDashboard() {
                           </div>
                         </TableHead>
                         <TableHead className="w-[12%] text-xs">Check-in Link</TableHead>
-                        <TableHead className="text-right w-[15%] text-xs">Actions</TableHead>
+                        <TableHead className="text-right w-[15%] text-xs">Manage</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
