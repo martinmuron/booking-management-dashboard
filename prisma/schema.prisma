@@ -31,31 +31,31 @@ model Booking {
 }
 
 model Guest {
-  id           String    @id @default(cuid())
-  bookingId    String
-  firstName    String
-  lastName     String
-  dateOfBirth  DateTime?
-  nationality  String?
-  email        String?
-  phone        String?
-  isLeadGuest  Boolean   @default(false)
-  createdAt    DateTime  @default(now())
-  booking      Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  id          String    @id @default(cuid())
+  bookingId   String
+  firstName   String
+  lastName    String
+  dateOfBirth DateTime?
+  nationality String?
+  email       String?
+  phone       String?
+  createdAt   DateTime  @default(now())
+  isLeadGuest Boolean?  @default(false)
+  booking     Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
 
   @@map("guests")
 }
 
 model Payment {
-  id                     String        @id @default(cuid())
-  bookingId              String
-  stripePaymentIntentId  String?       @unique
-  amount                 Int
-  currency               String        @default("eur")
-  status                 String        @default("pending")
-  paidAt                 DateTime?
-  createdAt              DateTime      @default(now())
-  booking                Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  id                    String    @id @default(cuid())
+  bookingId             String
+  stripePaymentIntentId String?   @unique(map: "payments_stripePaymentId_key")
+  amount                Int
+  currency              String    @default("eur")
+  status                String    @default("pending") @db.VarChar(50)
+  paidAt                DateTime?
+  createdAt             DateTime  @default(now())
+  booking               Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
 
   @@map("payments")
 }
