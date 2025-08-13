@@ -358,7 +358,7 @@ export default function AdminDashboard() {
                 Manage all bookings and guest information
               </p>
             </div>
-            <div className="flex flex-col md:flex-row gap-2 mt-4 md:mt-0 md:items-center flex-wrap">
+            <div className="flex flex-col md:flex-row gap-2 mt-4 md:mt-0 md:items-center flex-wrap hidden">
                             <div className="flex items-center gap-2 flex-wrap"> 
                 <Button
                   variant={timeFilter === 'all' ? 'default' : 'outline'}
@@ -482,44 +482,45 @@ export default function AdminDashboard() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="mb-4">
-                <div className="flex flex-col md:flex-row gap-4 flex-wrap">
-                  <div className="flex-1 min-w-[220px]">
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                      <Input
-                        placeholder="Search by guest name or property..."
-                        className="pl-10"
-                      />
-                    </div>
-                  </div>
-                  <Select>
-                    <SelectTrigger className="w-full md:w-48">
-                      <SelectValue placeholder="Booking Status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Statuses</SelectItem>
-                      <SelectItem value="confirmed">Confirmed</SelectItem>
-                      <SelectItem value="pending">Pending</SelectItem>
-                      <SelectItem value="checked-in">Checked In</SelectItem>
-                      <SelectItem value="cancelled">Cancelled</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Select>
-                    <SelectTrigger className="w-full md:w-48">
-                      <SelectValue placeholder="Property" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Properties</SelectItem>
-                      <SelectItem value="downtown-loft">Downtown Loft</SelectItem>
-                      <SelectItem value="seaside-villa">Seaside Villa</SelectItem>
-                      <SelectItem value="mountain-cabin">Mountain Cabin</SelectItem>
-                      <SelectItem value="city-apartment">City Apartment</SelectItem>
-                      <SelectItem value="riverside-cottage">Riverside Cottage</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+                             <div className="mb-4">
+                 <div className="flex flex-col md:flex-row gap-3 md:gap-4 flex-wrap md:items-center">
+                   <div className="flex items-center gap-2 flex-wrap">
+                     <Button
+                       variant={timeFilter === 'all' ? 'default' : 'outline'}
+                       size="sm"
+                       onClick={() => setTimeFilter('all')}
+                       className="h-8"
+                     >
+                       All
+                     </Button>
+                     <Button
+                       variant={timeFilter === 'past' ? 'default' : 'outline'}
+                       size="sm"
+                       onClick={() => setTimeFilter('past')}
+                       className="h-8"
+                     >
+                       Past
+                     </Button>
+                     <Button
+                       variant={timeFilter === 'upcoming' ? 'default' : 'outline'}
+                       size="sm"
+                       onClick={() => setTimeFilter('upcoming')}
+                       className="h-8"
+                     >
+                       Upcoming
+                     </Button>
+                   </div>
+                   <div className="flex items-center gap-2 flex-wrap">
+                     <Label className="text-xs text-muted-foreground">Check-in from</Label>
+                     <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-8 w-[160px]" />
+                     <Label className="text-xs text-muted-foreground">to</Label>
+                     <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="h-8 w-[160px]" />
+                     {(dateFrom || dateTo || timeFilter !== 'all') && (
+                       <Button variant="ghost" size="sm" className="h-8" onClick={() => { setDateFrom(''); setDateTo(''); setTimeFilter('all'); }}>Clear All</Button>
+                     )}
+                   </div>
+                 </div>
+               </div>
               {loading ? (
                 <div className="flex items-center justify-center py-8">
                   <Loader2 className="h-8 w-8 animate-spin" />
