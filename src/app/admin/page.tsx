@@ -345,11 +345,11 @@ export default function AdminDashboard() {
   const completedBookings = filteredBookings.filter(b => b.status === "COMPLETED").length;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background overflow-x-hidden">
       <div className="container mx-auto px-4 py-8">
-        <div className="w-[90%] mx-auto">
+        <div className="max-w-7xl w-full mx-auto">
           {/* Header */}
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
+                      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 md:gap-6">
             <div>
               <h1 className="text-3xl font-bold text-foreground mb-2">
                 Admin Dashboard
@@ -358,8 +358,8 @@ export default function AdminDashboard() {
                 Manage all bookings and guest information
               </p>
             </div>
-            <div className="flex flex-col md:flex-row gap-2 mt-4 md:mt-0 md:items-center">
-              <div className="flex items-center gap-2">
+            <div className="flex flex-col md:flex-row gap-2 mt-4 md:mt-0 md:items-center flex-wrap">
+                            <div className="flex items-center gap-2 flex-wrap"> 
                 <Button
                   variant={timeFilter === 'all' ? 'default' : 'outline'}
                   size="sm"
@@ -385,7 +385,7 @@ export default function AdminDashboard() {
                   Upcoming
                 </Button>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <Label className="text-xs text-muted-foreground">Check-in from</Label>
                 <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-8 w-[160px]" />
                 <Label className="text-xs text-muted-foreground">to</Label>
@@ -542,12 +542,12 @@ export default function AdminDashboard() {
                   No reservations found
                 </div>
               ) : (
-                <div className="rounded-md border overflow-x-auto">
+                <div className="rounded-md border overflow-x-auto md:overflow-x-visible">
                   <Table>
                     <TableHeader>
                       <TableRow>
                         <TableHead 
-                          className="cursor-pointer hover:bg-muted/50 select-none w-[18%]"
+                          className="cursor-pointer hover:bg-muted/50 select-none w-[16%] sm:w-[18%]"
                           onClick={() => handleSort('propertyName')}
                         >
                           <div className="flex items-center gap-1 text-xs">
@@ -556,7 +556,7 @@ export default function AdminDashboard() {
                           </div>
                         </TableHead>
                         <TableHead 
-                          className="cursor-pointer hover:bg-muted/50 select-none w-[15%]"
+                          className="cursor-pointer hover:bg-muted/50 select-none w-[14%] sm:w-[15%]"
                           onClick={() => handleSort('guestLeaderName')}
                         >
                           <div className="flex items-center gap-1 text-xs">
@@ -565,7 +565,7 @@ export default function AdminDashboard() {
                           </div>
                         </TableHead>
                         <TableHead 
-                          className="cursor-pointer hover:bg-muted/50 select-none w-[12%]"
+                          className="cursor-pointer hover:bg-muted/50 select-none w-[11%] sm:w-[12%]"
                           onClick={() => handleSort('checkInDate')}
                         >
                           <div className="flex items-center gap-1 text-xs">
@@ -573,9 +573,9 @@ export default function AdminDashboard() {
                             {React.createElement(getSortIcon('checkInDate'), { className: "h-3 w-3" })}
                           </div>
                         </TableHead>
-                        <TableHead className="w-[8%] text-xs">Guests</TableHead>
+                        <TableHead className="w-[8%] text-xs hidden md:table-cell">Guests</TableHead>
                         <TableHead 
-                          className="cursor-pointer hover:bg-muted/50 select-none w-[20%]"
+                          className="cursor-pointer hover:bg-muted/50 select-none w-[18%] sm:w-[20%]"
                           onClick={() => handleSort('status')}
                         >
                           <div className="flex items-center gap-1 text-xs">
@@ -583,8 +583,8 @@ export default function AdminDashboard() {
                             {React.createElement(getSortIcon('status'), { className: "h-3 w-3" })}
                           </div>
                         </TableHead>
-                        <TableHead className="w-[12%] text-xs">Check-in Link</TableHead>
-                        <TableHead className="text-right w-[15%] text-xs">Manage</TableHead>
+                        <TableHead className="w-[12%] text-xs hidden lg:table-cell">Check-in Link</TableHead>
+                        <TableHead className="text-right w-[14%] text-xs sm:w-[15%]">Manage</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -607,14 +607,14 @@ export default function AdminDashboard() {
                             <TableCell className="text-sm whitespace-nowrap">
                               {formatDate(booking.checkInDate)}
                             </TableCell>
-                            <TableCell className="text-center">
+                            <TableCell className="text-center hidden md:table-cell">
                               <div className="flex items-center justify-center">
                                 <Users className="mr-1 h-3 w-3 text-muted-foreground" />
                                 <span className="text-sm">{booking.numberOfGuests}</span>
                               </div>
                             </TableCell>
                             <TableCell>
-                              <div className="flex items-center gap-1">
+                              <div className="flex items-center gap-1 min-w-0">
                                 <StatusIcon className="h-3 w-3 flex-shrink-0" />
                                 <div className="flex flex-col min-w-0">
                                   <Badge className={`${statusInfo.color} text-xs px-1 py-0`}>
@@ -626,7 +626,7 @@ export default function AdminDashboard() {
                                 </div>
                               </div>
                             </TableCell>
-                            <TableCell>
+                            <TableCell className="hidden lg:table-cell">
                               <Button
                                 variant="outline"
                                 size="sm"
