@@ -4,6 +4,8 @@ A comprehensive booking management web application that integrates with HostAway
 
 ## Features
 
+- **Real-time Webhooks**: Instant booking notifications from HostAway
+- **Complete Import**: Import ALL historical bookings with enhanced pagination
 - **Admin Dashboard**: Centralized booking management with filtering and status tracking
 - **Guest Check-in Portal**: Mobile-optimized check-in experience with Apple-inspired design
 - **HostAway Integration**: Read-only access to booking data (no modifications to reservations)
