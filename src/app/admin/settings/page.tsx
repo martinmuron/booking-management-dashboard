@@ -12,7 +12,7 @@ export default function AdminSettingsPage() {
   const [loading, setLoading] = useState(false);
   
   // Webhook management state
-  const [webhooks, setWebhooks] = useState<any[]>([]);
+  const [webhooks, setWebhooks] = useState<Array<{id: number; url: string; isEnabled: boolean}>>([]);
   const [webhookUrl, setWebhookUrl] = useState("");
   const [webhookLoading, setWebhookLoading] = useState(false);
   const [webhookStatus, setWebhookStatus] = useState<string | null>(null);

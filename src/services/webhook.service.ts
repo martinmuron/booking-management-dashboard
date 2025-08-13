@@ -55,7 +55,7 @@ class WebhookService {
   /**
    * List existing unified webhooks
    */
-  async listHostAwayWebhooks(): Promise<{ success: boolean; webhooks?: any[]; error?: string }> {
+  async listHostAwayWebhooks(): Promise<{ success: boolean; webhooks?: Array<{id: number; url: string; isEnabled: boolean}>; error?: string }> {
     try {
       console.log('📋 Listing HostAway unified webhooks');
       
@@ -179,7 +179,7 @@ class WebhookService {
    */
   private async getAccessToken(): Promise<string> {
     // Access the private method from hostAwayService
-    return (hostAwayService as any).getAccessToken();
+    return (hostAwayService as unknown as {getAccessToken(): Promise<string>}).getAccessToken();
   }
 }
 

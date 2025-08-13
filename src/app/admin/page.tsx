@@ -337,7 +337,7 @@ export default function AdminDashboard() {
     }, 120000); // Check every 2 minutes
 
     return () => clearInterval(interval);
-  }, [autoRefreshEnabled, lastCheck]);
+  }, [autoRefreshEnabled, lastCheck, checkForNewBookings]);
 
   const totalBookings = filteredBookings.length;
   const pendingBookings = filteredBookings.filter(b => b.status === "PENDING").length;

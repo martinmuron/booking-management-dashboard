@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { bookingService } from '@/services/booking.service';
 import { hostAwayService } from '@/services/hostaway.service';
 
 export async function POST(request: NextRequest) {
@@ -62,7 +61,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function handleReservationCreated(reservationData: any) {
+async function handleReservationCreated(reservationData: Record<string, unknown>) {
   console.log('➕ Processing new reservation created');
   
   try {
@@ -92,7 +91,7 @@ async function handleReservationCreated(reservationData: any) {
   }
 }
 
-async function handleReservationUpdated(reservationData: any) {
+async function handleReservationUpdated(reservationData: Record<string, unknown>) {
   console.log('✏️  Processing reservation updated');
   
   try {
@@ -122,7 +121,7 @@ async function handleReservationUpdated(reservationData: any) {
   }
 }
 
-async function syncReservationToDatabase(reservation: any, action: 'created' | 'updated') {
+async function syncReservationToDatabase(reservation: Record<string, unknown>, action: 'created' | 'updated') {
   try {
     const { prisma } = await import('@/lib/database');
     
