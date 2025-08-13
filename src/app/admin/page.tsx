@@ -118,7 +118,7 @@ export default function AdminDashboard() {
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [dateFrom, setDateFrom] = useState<string>('');
   const [dateTo, setDateTo] = useState<string>('');
-  const [timeFilter, setTimeFilter] = useState<'all' | 'past' | 'upcoming' | 'upcoming30'>('all');
+  const [timeFilter, setTimeFilter] = useState<'all' | 'past' | 'upcoming' | 'upcoming30'>('upcoming');
 
   const fetchBookings = async () => {
     try {
