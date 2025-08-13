@@ -473,51 +473,6 @@ export default function AdminDashboard() {
             </Card>
           </div>
 
-          {/* Filters */}
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle className="text-lg">Filters & Search</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col md:flex-row gap-4">
-                <div className="flex-1">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                    <Input
-                      placeholder="Search by guest name or property..."
-                      className="pl-10"
-                    />
-                  </div>
-                </div>
-                <Select>
-                  <SelectTrigger className="w-full md:w-48">
-                    <SelectValue placeholder="Booking Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Statuses</SelectItem>
-                    <SelectItem value="confirmed">Confirmed</SelectItem>
-                    <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="checked-in">Checked In</SelectItem>
-                    <SelectItem value="cancelled">Cancelled</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Select>
-                  <SelectTrigger className="w-full md:w-48">
-                    <SelectValue placeholder="Property" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Properties</SelectItem>
-                    <SelectItem value="downtown-loft">Downtown Loft</SelectItem>
-                    <SelectItem value="seaside-villa">Seaside Villa</SelectItem>
-                    <SelectItem value="mountain-cabin">Mountain Cabin</SelectItem>
-                    <SelectItem value="city-apartment">City Apartment</SelectItem>
-                    <SelectItem value="riverside-cottage">Riverside Cottage</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </CardContent>
-          </Card>
-
           {/* Bookings Table */}
           <Card>
             <CardHeader>
@@ -527,6 +482,44 @@ export default function AdminDashboard() {
               </CardDescription>
             </CardHeader>
             <CardContent>
+              <div className="mb-4">
+                <div className="flex flex-col md:flex-row gap-4 flex-wrap">
+                  <div className="flex-1 min-w-[220px]">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                      <Input
+                        placeholder="Search by guest name or property..."
+                        className="pl-10"
+                      />
+                    </div>
+                  </div>
+                  <Select>
+                    <SelectTrigger className="w-full md:w-48">
+                      <SelectValue placeholder="Booking Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Statuses</SelectItem>
+                      <SelectItem value="confirmed">Confirmed</SelectItem>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="checked-in">Checked In</SelectItem>
+                      <SelectItem value="cancelled">Cancelled</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select>
+                    <SelectTrigger className="w-full md:w-48">
+                      <SelectValue placeholder="Property" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Properties</SelectItem>
+                      <SelectItem value="downtown-loft">Downtown Loft</SelectItem>
+                      <SelectItem value="seaside-villa">Seaside Villa</SelectItem>
+                      <SelectItem value="mountain-cabin">Mountain Cabin</SelectItem>
+                      <SelectItem value="city-apartment">City Apartment</SelectItem>
+                      <SelectItem value="riverside-cottage">Riverside Cottage</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
               {loading ? (
                 <div className="flex items-center justify-center py-8">
                   <Loader2 className="h-8 w-8 animate-spin" />
