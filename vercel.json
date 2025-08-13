@@ -1,0 +1,14 @@
+{
+  "functions": {
+    "src/app/api/webhooks/hostaway/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/webhooks/manage/route.ts": {
+      "maxDuration": 30
+    },
+    "src/app/api/bookings/sync/route.ts": {
+      "maxDuration": 300
+    }
+  },
+  "crons": []
+}
