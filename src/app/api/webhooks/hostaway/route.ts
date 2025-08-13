@@ -1,6 +1,39 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { hostAwayService } from '@/services/hostaway.service';
 
+// Import the HostAwayReservation type from the service
+interface HostAwayReservation {
+  id: number;
+  listingMapId: number;
+  listingName: string;
+  channelId: number;
+  channelName: string;
+  reservationId: string;
+  guestName: string;
+  guestFirstName: string;
+  guestLastName: string;
+  guestEmail: string | null;
+  phone: string | null;
+  numberOfGuests: number;
+  adults: number;
+  children?: number;
+  infants?: number;
+  arrivalDate: string;
+  departureDate: string;
+  nights: number;
+  totalPrice: number;
+  currency: string;
+  status: string;
+  confirmationCode: string;
+  guestAddress?: string;
+  guestCity?: string;
+  guestCountry?: string;
+  guestZipCode?: string;
+  doorCode?: string;
+  checkInTime?: number;
+  checkOutTime?: number;
+}
+
 export async function POST(request: NextRequest) {
   console.log('🔔 HostAway webhook received');
   
@@ -121,7 +154,7 @@ async function handleReservationUpdated(reservationData: Record<string, unknown>
   }
 }
 
-async function syncReservationToDatabase(reservation: Record<string, unknown>, action: 'created' | 'updated') {
+async function syncReservationToDatabase(reservation: HostAwayReservation, action: 'created' | 'updated') {
   try {
     const { prisma } = await import('@/lib/database');
     
