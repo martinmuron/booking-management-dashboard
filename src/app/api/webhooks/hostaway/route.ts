@@ -66,10 +66,10 @@ async function handleReservationCreated(reservationData: Record<string, unknown>
   
   try {
     // Extract reservation ID
-    const reservationId = reservationData.id || reservationData.reservationId;
+    const reservationId = Number(reservationData.id || reservationData.reservationId);
     
-    if (!reservationId) {
-      console.log('⚠️  No reservation ID found in payload');
+    if (!reservationId || isNaN(reservationId)) {
+      console.log('⚠️  No valid reservation ID found in payload');
       return;
     }
     
@@ -96,10 +96,10 @@ async function handleReservationUpdated(reservationData: Record<string, unknown>
   
   try {
     // Extract reservation ID
-    const reservationId = reservationData.id || reservationData.reservationId;
+    const reservationId = Number(reservationData.id || reservationData.reservationId);
     
-    if (!reservationId) {
-      console.log('⚠️  No reservation ID found in payload');
+    if (!reservationId || isNaN(reservationId)) {
+      console.log('⚠️  No valid reservation ID found in payload');
       return;
     }
     
