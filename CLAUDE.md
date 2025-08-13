@@ -2,52 +2,93 @@
 
 ## Booking Sync Strategy
 
-### Current Implementation (Optimized)
+### Full Historical Import + Real-time Updates (Latest)
 
-The booking sync system has been optimized to handle large datasets efficiently:
+The system now supports complete historical data import AND real-time updates via webhooks:
 
-#### Initial Sync (first time or after clearing database):
-- Fetches **last 7 days + all future bookings** from HostAway
-- This gives a reasonable historical context without overwhelming the database
-- Should typically result in a manageable number of bookings (hundreds vs thousands)
+#### Full Historical Import:
+- **Import All**: Fetches ALL historical bookings (no date restrictions)
+- **Enhanced Pagination**: Uses HostAway's totalCount to ensure complete import
+- **Progress Tracking**: Shows "Fetched X out of Y available" during sync
+- **Performance Optimized**: Database indexes on checkInDate, status, createdAt
 
-#### Subsequent Syncs (clicking sync button):
-- Fetches **only future bookings** (from today onwards)
-- Updates existing bookings if HostAway data has changed (guest count, dates, etc.)
-- Never deletes existing bookings
-- Preserves platform-specific status (CHECKED_IN, PAYMENT_COMPLETED, etc.)
+#### Real-time Webhook Integration:
+- **Instant Updates**: New bookings appear immediately via HostAway webhooks
+- **Event Types**: `reservation created`, `reservation updated`, `new message received`
+- **Auto-sync**: No more polling - webhooks trigger immediate database updates
+- **Status Preservation**: Platform statuses never overwritten by webhook updates
 
 ### API Endpoints
 
 #### `/api/bookings/sync` (POST)
-- Default behavior: Incremental sync (future bookings only)
-- Query parameters:
-  - `?clear=true`: Clear database first, then do initial sync
-  - `?force=true`: Force full sync (last 7 days + future)
+- **Default**: Incremental sync (future bookings only)
+- **Full Import**: `?all=true` - Import ALL historical bookings
+- **Clear + Sync**: `?clear=true` - Clear database first, then import
+- **Date Range**: `?start=YYYY-MM-DD&end=YYYY-MM-DD` - Custom date range
+
+#### `/api/webhooks/hostaway` (POST)
+- **Real-time endpoint** for HostAway webhook notifications
+- **Handles**: reservation created, reservation updated events
+- **Auto-sync**: Automatically fetches and syncs individual bookings
+
+#### `/api/webhooks/manage` (GET/POST/PUT/DELETE)
+- **Manage webhooks** in HostAway from admin settings
+- **Create**: Register webhook URLs with HostAway
+- **Monitor**: View and toggle existing webhooks
 
 #### Usage Examples:
 ```bash
-# Normal sync (future bookings only)
-POST /api/bookings/sync
+# Full historical import (ALL bookings)
+POST /api/bookings/sync?all=true
 
-# Clear and resync (last 7 days + future)
-POST /api/bookings/sync?clear=true
+# Clear and import all
+POST /api/bookings/sync?clear=true&all=true
 
-# Force full sync without clearing
-POST /api/bookings/sync?force=true
+# Custom date range import
+POST /api/bookings/sync?start=2023-01-01&end=2024-12-31
+
+# Real-time webhook (automatic)
+POST /api/webhooks/hostaway
 ```
+
+### Real-time Features
+
+#### Webhook Setup (Admin Settings):
+1. Go to Admin → Settings
+2. Create webhook with URL: `https://yourdomain.vercel.app/api/webhooks/hostaway`
+3. HostAway sends instant notifications for booking changes
+4. Dashboard updates automatically without manual syncing
+
+#### Auto-refresh Fallback:
+- **2-minute polling** as backup (can be disabled)
+- **Incremental checks** for new bookings since last update
+- **Silent updates** - no user interruption
+
+### Filtering System
+
+#### Time-based Filters:
+- **All Bookings**: Complete history
+- **Past Bookings**: Before today
+- **Upcoming Bookings**: Today onwards
+- **Date Range**: Custom from/to dates
+
+#### Database Performance:
+- **Indexes**: checkInDate, status, createdAt for fast queries
+- **Pagination**: 500 items per API request
+- **Safety Limits**: 50K offset limit to prevent infinite loops
 
 ### Important Notes
 
-1. **Never fetches all historical bookings** - This was causing database bloat with 10,000+ bookings
-2. **Status preservation** - Platform statuses (CHECKED_IN, PAYMENT_COMPLETED, etc.) are never overwritten by HostAway sync
-3. **Token preservation** - Check-in tokens remain unchanged during updates
-4. **Incremental by default** - Regular sync button only fetches new/future bookings
-5. **Date filtering** - Frontend filters out test bookings before 2024
+1. **Complete Import**: Now fetches ALL available bookings from HostAway
+2. **Real-time Updates**: Webhooks provide instant booking notifications
+3. **Status Preservation**: Platform statuses (CHECKED_IN, PAYMENT_COMPLETED, etc.) never overwritten
+4. **Token Preservation**: Check-in tokens remain unchanged during updates
+5. **Backward Compatible**: Works with existing polling system as fallback
+6. **Performance Optimized**: Database indexes for large dataset handling
 
-### Database Performance
+### Migration Path
 
-- Initial sync: ~200-500 bookings (7 days + future)
-- Regular syncs: Only new future bookings
-- No cascade deletions unless explicitly clearing database
-- Preserves related data (guests, payments, virtual keys)
+1. **First Time**: Use "Import All" to get complete historical data
+2. **Setup Webhooks**: Configure in Admin Settings for real-time updates
+3. **Monitor**: Check webhook status and logs in settings
+4. **Fallback**: Auto-refresh continues as backup every 2 minutes
