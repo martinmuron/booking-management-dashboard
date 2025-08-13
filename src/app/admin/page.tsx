@@ -358,42 +358,8 @@ export default function AdminDashboard() {
                 Manage all bookings and guest information
               </p>
             </div>
-            <div className="flex flex-col md:flex-row gap-2 mt-4 md:mt-0 md:items-center flex-wrap hidden">
-                            <div className="flex items-center gap-2 flex-wrap"> 
-                <Button
-                  variant={timeFilter === 'all' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setTimeFilter('all')}
-                  className="h-8"
-                >
-                  All
-                </Button>
-                <Button
-                  variant={timeFilter === 'past' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setTimeFilter('past')}
-                  className="h-8"
-                >
-                  Past
-                </Button>
-                <Button
-                  variant={timeFilter === 'upcoming' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setTimeFilter('upcoming')}
-                  className="h-8"
-                >
-                  Upcoming
-                </Button>
-              </div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <Label className="text-xs text-muted-foreground">Check-in from</Label>
-                <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-8 w-[160px]" />
-                <Label className="text-xs text-muted-foreground">to</Label>
-                <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="h-8 w-[160px]" />
-                {(dateFrom || dateTo || timeFilter !== 'all') && (
-                  <Button variant="ghost" size="sm" className="h-8" onClick={() => { setDateFrom(''); setDateTo(''); setTimeFilter('all'); }}>Clear All</Button>
-                )}
-              </div>
+                                                   <div className="flex flex-col md:flex-row gap-2 mt-4 md:mt-0 md:items-center flex-wrap">
+              
               <Button 
                 onClick={handleRefresh}
                 disabled={refreshing}
