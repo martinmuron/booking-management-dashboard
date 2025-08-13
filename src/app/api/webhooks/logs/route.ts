@@ -1,22 +1,9 @@
 import { NextResponse } from 'next/server';
-
-// In-memory log storage (simple solution for now)
-// In production, you might want to store this in database
-const webhookLogs: Array<{
-  id: string;
-  timestamp: string;
-  eventType: string;
-  status: 'success' | 'error';
-  message: string;
-  reservationId?: string;
-  error?: string;
-}> = [];
-
-// Keep only last 100 logs to prevent memory issues
-const MAX_LOGS = 100;
+import { getWebhookLogs, clearWebhookLogs } from '@/lib/webhook-logs';
 
 export async function GET() {
   try {
+    const webhookLogs = getWebhookLogs();
     // Return logs in reverse chronological order (newest first)
     const sortedLogs = [...webhookLogs].reverse();
     
@@ -38,25 +25,10 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const logData = await request.json();
-    
-    const logEntry = {
-      id: Math.random().toString(36).substring(2, 15),
-      timestamp: new Date().toISOString(),
-      ...logData
-    };
-    
-    // Add to logs
-    webhookLogs.push(logEntry);
-    
-    // Keep only last MAX_LOGS entries
-    if (webhookLogs.length > MAX_LOGS) {
-      webhookLogs.splice(0, webhookLogs.length - MAX_LOGS);
-    }
-    
+    // This endpoint is no longer used since logs are created directly in the webhook route
     return NextResponse.json({
-      success: true,
-      message: 'Log entry added'
+      success: false,
+      message: 'Logs are now created directly in webhook processing'
     });
   } catch (error) {
     return NextResponse.json(
@@ -71,8 +43,8 @@ export async function POST(request: Request) {
 
 export async function DELETE() {
   try {
-    // Clear all logs
-    webhookLogs.length = 0;
+    // Clear all logs using the shared module
+    clearWebhookLogs();
     
     return NextResponse.json({
       success: true,

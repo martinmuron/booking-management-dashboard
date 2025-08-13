@@ -34,23 +34,17 @@ interface HostAwayReservation {
   checkOutTime?: number;
 }
 
+import { addWebhookLog } from '@/lib/webhook-logs';
+
 // Helper function to log webhook activity
-async function logWebhookActivity(data: {
+function logWebhookActivity(data: {
   eventType: string;
   status: 'success' | 'error';
   message: string;
   reservationId?: string;
   error?: string;
 }) {
-  try {
-    await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/webhooks/logs`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
-    });
-  } catch (error) {
-    console.error('Failed to log webhook activity:', error);
-  }
+  addWebhookLog(data);
 }
 
 export async function POST(request: NextRequest) {
@@ -68,7 +62,7 @@ export async function POST(request: NextRequest) {
     console.log(`🎯 Event type: ${eventType}`);
     
     // Log webhook received
-    await logWebhookActivity({
+    logWebhookActivity({
       eventType,
       status: 'success',
       message: `Webhook received: ${eventType}`,
@@ -80,7 +74,7 @@ export async function POST(request: NextRequest) {
       case 'reservation created':
       case 'reservation_created':
         await handleReservationCreated(reservationData);
-        await logWebhookActivity({
+        logWebhookActivity({
           eventType,
           status: 'success',
           message: `Successfully processed new reservation`,
@@ -91,7 +85,7 @@ export async function POST(request: NextRequest) {
       case 'reservation updated':
       case 'reservation_updated':
         await handleReservationUpdated(reservationData);
-        await logWebhookActivity({
+        logWebhookActivity({
           eventType,
           status: 'success',
           message: `Successfully processed reservation update`,
@@ -102,7 +96,7 @@ export async function POST(request: NextRequest) {
       case 'new message received':
       case 'message_received':
         console.log('📨 New message received - logging only');
-        await logWebhookActivity({
+        logWebhookActivity({
           eventType,
           status: 'success',
           message: `Message received (not processed)`,
@@ -113,7 +107,7 @@ export async function POST(request: NextRequest) {
         
       default:
         console.log(`⚠️  Unknown event type: ${eventType} - logging and continuing`);
-        await logWebhookActivity({
+        logWebhookActivity({
           eventType,
           status: 'success',
           message: `Unknown event type received: ${eventType}`,
@@ -135,7 +129,7 @@ export async function POST(request: NextRequest) {
     console.error('❌ Webhook processing error:', error);
     
     // Log the error
-    await logWebhookActivity({
+    logWebhookActivity({
       eventType: 'error',
       status: 'error',
       message: 'Webhook processing failed',
