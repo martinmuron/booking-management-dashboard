@@ -118,7 +118,7 @@ export default function AdminDashboard() {
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [dateFrom, setDateFrom] = useState<string>('');
   const [dateTo, setDateTo] = useState<string>('');
-  const [timeFilter, setTimeFilter] = useState<'all' | 'past' | 'upcoming'>('all');
+  const [timeFilter, setTimeFilter] = useState<'all' | 'past' | 'upcoming' | 'upcoming30'>('all');
 
   const fetchBookings = async () => {
     try {
@@ -284,9 +284,16 @@ export default function AdminDashboard() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    // Time filter (past/upcoming)
+    // Time filter (past/upcoming/upcoming30)
     if (timeFilter === 'past' && checkInDate >= today) return false;
     if (timeFilter === 'upcoming' && checkInDate < today) return false;
+    if (timeFilter === 'upcoming30') {
+      // Show only bookings within next 30 days
+      const thirtyDaysFromNow = new Date(today);
+      thirtyDaysFromNow.setDate(today.getDate() + 30);
+      thirtyDaysFromNow.setHours(23, 59, 59, 999); // End of 30th day
+      if (checkInDate < today || checkInDate > thirtyDaysFromNow) return false;
+    }
     
     // Date range filter
     if (dateFrom) {
@@ -436,6 +443,14 @@ export default function AdminDashboard() {
                        className="h-8"
                      >
                        Upcoming
+                     </Button>
+                     <Button
+                       variant={timeFilter === 'upcoming30' ? 'default' : 'outline'}
+                       size="sm"
+                       onClick={() => setTimeFilter('upcoming30')}
+                       className="h-8"
+                     >
+                       30 Days
                      </Button>
                    </div>
                    <div className="flex items-center gap-2 flex-wrap">
