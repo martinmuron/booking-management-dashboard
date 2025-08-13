@@ -10,7 +10,7 @@ export async function GET() {
       timestamp: new Date().toISOString(),
       database: dbHealth,
       environment: process.env.NODE_ENV,
-      version: '1.0.0'
+      version: '2.0.0-webhooks'
     });
   } catch (error) {
     console.error('Health check failed:', error);
