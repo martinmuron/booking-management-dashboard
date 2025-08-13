@@ -238,7 +238,7 @@ async function syncReservationToDatabase(reservation: HostAwayReservation, actio
     const bookingData = {
       hostAwayId: reservation.id.toString(),
       propertyName: reservation.listingName || listing?.name || `Property ${reservation.listingMapId}`,
-      guestLeaderName: `${reservation.guestFirstName} ${reservation.guestLastName}`.trim(),
+      guestLeaderName: reservation.guestName || `${reservation.guestFirstName || ''} ${reservation.guestLastName || ''}`.trim() || 'Guest Name Not Available',
       guestLeaderEmail: reservation.guestEmail || 'noemail@example.com',
       guestLeaderPhone: reservation.phone || null,
       checkInDate,
