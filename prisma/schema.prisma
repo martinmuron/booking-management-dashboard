@@ -73,6 +73,20 @@ model VirtualKey {
   @@map("virtual_keys")
 }
 
+model WebhookLog {
+  id            String   @id @default(cuid())
+  eventType     String   @db.VarChar(100)
+  status        String   @db.VarChar(20) // 'success' or 'error'
+  message       String   @db.VarChar(500)
+  reservationId String?  @db.VarChar(50)
+  error         String?  @db.Text
+  createdAt     DateTime @default(now())
+
+  // Index for efficient cleanup and querying
+  @@index([createdAt])
+  @@map("webhook_logs")
+}
+
 enum BookingStatus {
   PENDING
   CONFIRMED

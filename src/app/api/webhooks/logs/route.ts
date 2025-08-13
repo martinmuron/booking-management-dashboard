@@ -3,14 +3,18 @@ import { getWebhookLogs, clearWebhookLogs } from '@/lib/webhook-logs';
 
 export async function GET() {
   try {
-    const webhookLogs = getWebhookLogs();
-    // Return logs in reverse chronological order (newest first)
-    const sortedLogs = [...webhookLogs].reverse();
+    const webhookLogs = await getWebhookLogs();
+    
+    // Convert Date objects to ISO strings for JSON serialization
+    const serializedLogs = webhookLogs.map(log => ({
+      ...log,
+      timestamp: log.createdAt.toISOString() // Add timestamp field for UI compatibility
+    }));
     
     return NextResponse.json({
       success: true,
-      logs: sortedLogs,
-      count: sortedLogs.length
+      logs: serializedLogs,
+      count: serializedLogs.length
     });
   } catch (error) {
     return NextResponse.json(
@@ -44,7 +48,7 @@ export async function POST(request: Request) {
 export async function DELETE() {
   try {
     // Clear all logs using the shared module
-    clearWebhookLogs();
+    await clearWebhookLogs();
     
     return NextResponse.json({
       success: true,
