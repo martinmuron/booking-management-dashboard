@@ -176,22 +176,24 @@ class HostAwayService {
     checkInDateFrom?: string;
     checkInDateTo?: string;
     status?: string;
-  }): Promise<HostAwayReservation[]> {
+  }): Promise<{
+    data: HostAwayReservation[];
+    totalCount: number;
+    currentOffset: number;
+    currentLimit: number;
+  } | HostAwayReservation[]> {
     try {
-      // Default to get reservations from 30 days ago onwards (NO END DATE for all future bookings)
-      const defaultFromDate = new Date();
-      defaultFromDate.setDate(defaultFromDate.getDate() - 30);
-
       // Map our internal params to HostAway API query params
       const queryParams: Record<string, string> = {
         includeResources: '1',
         limit: params?.limit?.toString() || '200',
-        offset: params?.offset?.toString() || '0',
-        // HostAway expects arrivalStartDate/arrivalEndDate
-        arrivalStartDate: params?.checkInDateFrom || defaultFromDate.toISOString().split('T')[0]
+        offset: params?.offset?.toString() || '0'
       };
 
-      // Only add arrivalEndDate if explicitly provided (to allow filtering)
+      // Only add date filters if explicitly provided
+      if (params?.checkInDateFrom) {
+        queryParams.arrivalStartDate = params.checkInDateFrom;
+      }
       if (params?.checkInDateTo) {
         queryParams.arrivalEndDate = params.checkInDateTo;
       }
@@ -204,16 +206,27 @@ class HostAwayService {
       
       console.log('📊 HostAway API response:', {
         status: response.status,
-        count: response.count,
-        resultLength: response.result?.length || 0,
+        totalCount: response.count, // Total records available
+        returnedCount: response.result?.length || 0,
         limit: response.limit,
         offset: response.offset
       });
       
-      return response.result || [];
+      // Return both the data and metadata for pagination
+      return {
+        data: response.result || [],
+        totalCount: response.count,
+        currentOffset: response.offset,
+        currentLimit: response.limit
+      };
     } catch (error) {
       console.error('❌ Failed to fetch reservations:', error);
-      return [];
+      return {
+        data: [],
+        totalCount: 0,
+        currentOffset: 0,
+        currentLimit: 0
+      };
     }
   }
 

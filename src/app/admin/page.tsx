@@ -118,6 +118,9 @@ export default function AdminDashboard() {
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [dateFrom, setDateFrom] = useState<string>('');
   const [dateTo, setDateTo] = useState<string>('');
+  const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(true);
+  const [lastCheck, setLastCheck] = useState<string>(new Date().toISOString());
+  const [timeFilter, setTimeFilter] = useState<'all' | 'past' | 'upcoming'>('all');
 
   const fetchBookings = async () => {
     try {
@@ -171,6 +174,7 @@ export default function AdminDashboard() {
       const data = await response.json();
       if (data.success) {
         await fetchBookings();
+        setLastCheck(new Date().toISOString());
       } else {
         setError(data.error || 'Clear + Sync failed');
       }
@@ -178,6 +182,44 @@ export default function AdminDashboard() {
       setError('Network error: Unable to clear + sync bookings');
     } finally {
       setRefreshing(false);
+    }
+  };
+
+  const importAllBookings = async () => {
+    try {
+      setRefreshing(true);
+      const response = await fetch('/api/bookings/sync?all=true', {
+        method: 'POST'
+      });
+      const data = await response.json();
+      if (data.success) {
+        await fetchBookings();
+        setLastCheck(new Date().toISOString());
+      } else {
+        setError(data.error || 'Import all failed');
+      }
+    } catch {
+      setError('Network error: Unable to import all bookings');
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  const checkForNewBookings = async () => {
+    try {
+      const response = await fetch('/api/bookings/check-new', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lastCheck })
+      });
+      const data = await response.json();
+      if (data.success && data.hasNewBookings) {
+        await fetchBookings();
+        setLastCheck(data.checkTime);
+        console.log(`🔄 Found ${data.data.newBookings} new bookings, ${data.data.updatedBookings} updated`);
+      }
+    } catch (error) {
+      console.error('Error checking for new bookings:', error);
     }
   };
 
@@ -257,9 +299,17 @@ export default function AdminDashboard() {
     return 0;
   });
 
-  // Apply date range filter
+  // Apply filters
   const filteredBookings = sortedBookings.filter(booking => {
     const checkInDate = new Date(booking.checkInDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    // Time filter (past/upcoming)
+    if (timeFilter === 'past' && checkInDate >= today) return false;
+    if (timeFilter === 'upcoming' && checkInDate < today) return false;
+    
+    // Date range filter
     if (dateFrom) {
       const from = new Date(dateFrom);
       if (checkInDate < from) return false;
@@ -277,6 +327,17 @@ export default function AdminDashboard() {
   useEffect(() => {
     fetchBookings();
   }, []);
+
+  // Auto-refresh effect to check for new bookings every 2 minutes
+  useEffect(() => {
+    if (!autoRefreshEnabled) return;
+
+    const interval = setInterval(() => {
+      checkForNewBookings();
+    }, 120000); // Check every 2 minutes
+
+    return () => clearInterval(interval);
+  }, [autoRefreshEnabled, lastCheck]);
 
   const totalBookings = filteredBookings.length;
   const pendingBookings = filteredBookings.filter(b => b.status === "PENDING").length;
@@ -299,12 +360,38 @@ export default function AdminDashboard() {
             </div>
             <div className="flex flex-col md:flex-row gap-2 mt-4 md:mt-0 md:items-center">
               <div className="flex items-center gap-2">
+                <Button
+                  variant={timeFilter === 'all' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setTimeFilter('all')}
+                  className="h-8"
+                >
+                  All
+                </Button>
+                <Button
+                  variant={timeFilter === 'past' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setTimeFilter('past')}
+                  className="h-8"
+                >
+                  Past
+                </Button>
+                <Button
+                  variant={timeFilter === 'upcoming' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setTimeFilter('upcoming')}
+                  className="h-8"
+                >
+                  Upcoming
+                </Button>
+              </div>
+              <div className="flex items-center gap-2">
                 <Label className="text-xs text-muted-foreground">Check-in from</Label>
                 <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-8 w-[160px]" />
                 <Label className="text-xs text-muted-foreground">to</Label>
                 <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="h-8 w-[160px]" />
-                {(dateFrom || dateTo) && (
-                  <Button variant="ghost" size="sm" className="h-8" onClick={() => { setDateFrom(''); setDateTo(''); }}>Clear</Button>
+                {(dateFrom || dateTo || timeFilter !== 'all') && (
+                  <Button variant="ghost" size="sm" className="h-8" onClick={() => { setDateFrom(''); setDateTo(''); setTimeFilter('all'); }}>Clear All</Button>
                 )}
               </div>
               <Button 
@@ -315,12 +402,27 @@ export default function AdminDashboard() {
                 {refreshing ? 'Syncing...' : 'Sync with HostAway'}
               </Button>
               <Button 
+                onClick={importAllBookings}
+                variant="secondary"
+                disabled={refreshing}
+              >
+                <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+                {refreshing ? 'Importing...' : 'Import All'}
+              </Button>
+              <Button 
                 onClick={clearAndSyncWithHostAway}
                 variant="destructive"
                 disabled={refreshing}
               >
                 <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
                 {refreshing ? 'Clearing...' : 'Clear + Sync'}
+              </Button>
+              <Button
+                onClick={() => setAutoRefreshEnabled(!autoRefreshEnabled)}
+                variant={autoRefreshEnabled ? "default" : "outline"}
+                size="sm"
+              >
+                {autoRefreshEnabled ? '🟢 Auto-refresh ON' : '⭕ Auto-refresh OFF'}
               </Button>
               <Button
                 onClick={() => router.push('/admin/settings')}

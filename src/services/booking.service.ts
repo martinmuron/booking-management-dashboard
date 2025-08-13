@@ -71,6 +71,7 @@ class BookingService {
   async syncBookingsFromHostAway(options?: { 
     clearFirst?: boolean;
     forceFullSync?: boolean;
+    importAll?: boolean; // Import ALL historical bookings (no date restrictions)
     dateFrom?: string; // YYYY-MM-DD
     dateTo?: string;   // YYYY-MM-DD
   }): Promise<{
@@ -103,7 +104,12 @@ class BookingService {
       // Determine date window
       let dateFrom = options?.dateFrom || '';
       const dateTo = options?.dateTo || '';
-      if (!dateFrom) {
+      
+      if (options?.importAll) {
+        // Import ALL historical bookings - no date restrictions
+        dateFrom = '';
+        console.log('📅 FULL HISTORICAL IMPORT: No date restrictions - importing ALL bookings');
+      } else if (!dateFrom) {
         // Fallback behavior: initial last 7 days + future, incremental from today
         const pastDate = new Date();
         if (isInitialSync) {
@@ -124,18 +130,41 @@ class BookingService {
       let offset = 0;
       const limit = 500;
       let hasMorePages = true;
+      let totalAvailable = 0;
       
       while (hasMorePages) {
-        const fetchParams: { checkInDateFrom: string; limit: number; offset: number; checkInDateTo?: string } = {
-          checkInDateFrom: dateFrom,
+        // Safety check to prevent infinite loops
+        if (offset > 50000) { // Reasonable upper limit
+          console.log('🛑 Safety limit reached - stopping pagination at offset 50,000');
+          break;
+        }
+        
+        const fetchParams: { checkInDateFrom?: string; limit: number; offset: number; checkInDateTo?: string } = {
           limit: limit,
           offset: offset,
+          ...(dateFrom ? { checkInDateFrom: dateFrom } : {}),
           ...(dateTo ? { checkInDateTo: dateTo } : {})
         };
 
         console.log(`🔍 Fetching page ${Math.floor(offset / limit) + 1} with params:`, fetchParams);
         
-        const pageReservations = await hostAwayService.getReservations(fetchParams);
+        const response = await hostAwayService.getReservations(fetchParams);
+        
+        // Handle both old and new response formats for backward compatibility
+        let pageReservations: HostAwayReservation[] = [];
+        let responseCount = 0;
+        
+        if (Array.isArray(response)) {
+          // Old format - just array of reservations
+          pageReservations = response;
+          responseCount = response.length;
+        } else {
+          // New format - object with data and metadata
+          pageReservations = response.data;
+          responseCount = response.data.length;
+          totalAvailable = response.totalCount;
+          console.log(`📊 Progress: ${offset + responseCount}/${totalAvailable} total available reservations`);
+        }
         
         if (pageReservations.length === 0) {
           hasMorePages = false;
@@ -144,29 +173,51 @@ class BookingService {
           allReservations = allReservations.concat(pageReservations);
           offset += limit;
           
-          // If we got fewer results than the limit, we're on the last page
-          if (pageReservations.length < limit) {
-            hasMorePages = false;
-            console.log(`✅ Last page reached with ${pageReservations.length} reservations`);
+          // Use total count if available, otherwise fall back to page size logic
+          if (totalAvailable > 0) {
+            hasMorePages = offset < totalAvailable;
+            if (!hasMorePages) {
+              console.log(`✅ All ${totalAvailable} reservations fetched`);
+            }
           } else {
-            console.log(`📄 Page complete: ${pageReservations.length} reservations, continuing...`);
+            // Fallback: If we got fewer results than the limit, we're on the last page
+            if (pageReservations.length < limit) {
+              hasMorePages = false;
+              console.log(`✅ Last page reached with ${pageReservations.length} reservations`);
+            } else {
+              console.log(`📄 Page complete: ${pageReservations.length} reservations, continuing...`);
+            }
           }
         }
       }
       
-      console.log(`📊 Pagination complete: Total ${allReservations.length} reservations fetched`);
-      // Apply safety filter based on requested/custom range
-      const thresholdDate = new Date(dateFrom);
-      const endDate = dateTo ? new Date(dateTo) : null;
-      const hostawayReservations = allReservations.filter(r => {
-        const arrival = new Date(r.arrivalDate);
-        if (isNaN(arrival.getTime())) return false;
-        if (endDate) {
-          return arrival >= thresholdDate && arrival <= endDate;
-        }
-        return arrival >= thresholdDate;
-      });
-      console.log(`📊 After threshold filter (${thresholdDate.toISOString().split('T')[0]}${endDate ? ' to ' + endDate.toISOString().split('T')[0] : ' +'}), ${hostawayReservations.length} reservations will be processed`);
+      console.log(`📊 Pagination complete: Total ${allReservations.length} reservations fetched${totalAvailable > 0 ? ` out of ${totalAvailable} available` : ''}`);
+      
+      // Apply safety filter based on requested/custom range (skip if importing all)
+      let hostawayReservations = allReservations;
+      if (!options?.importAll && dateFrom) {
+        const thresholdDate = new Date(dateFrom);
+        const endDate = dateTo ? new Date(dateTo) : null;
+        hostawayReservations = allReservations.filter(r => {
+          const arrival = new Date(r.arrivalDate);
+          if (isNaN(arrival.getTime())) return false;
+          if (endDate) {
+            return arrival >= thresholdDate && arrival <= endDate;
+          }
+          return arrival >= thresholdDate;
+        });
+        console.log(`📊 After threshold filter (${thresholdDate.toISOString().split('T')[0]}${endDate ? ' to ' + endDate.toISOString().split('T')[0] : ' +'}), ${hostawayReservations.length} reservations will be processed`);
+      } else {
+        console.log(`📊 No filtering applied - processing all ${hostawayReservations.length} reservations`);
+      }
+      
+      // Summary of fetch results
+      if (totalAvailable > 0 && allReservations.length < totalAvailable) {
+        console.log(`⚠️  WARNING: Only fetched ${allReservations.length} out of ${totalAvailable} total reservations available in HostAway`);
+        console.log(`🔍 This might indicate pagination issues or API limits`);
+      } else if (totalAvailable > 0) {
+        console.log(`✅ Successfully fetched ALL ${totalAvailable} reservations from HostAway`);
+      }
 
       console.log(`📊 HostAway API Results:`);
       console.log(`  - Reservations: ${hostawayReservations.length}`);

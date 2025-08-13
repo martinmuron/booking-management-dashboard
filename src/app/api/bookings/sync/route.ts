@@ -9,17 +9,22 @@ export async function POST(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const clearFirst = searchParams.get('clear') === 'true';
     const forceFullSync = searchParams.get('force') === 'true';
+    const importAll = searchParams.get('all') === 'true';
     const dateFrom = searchParams.get('start') || undefined;
     const dateTo = searchParams.get('end') || undefined;
     
     if (clearFirst) {
       console.log('⚠️  CLEAR FLAG DETECTED - Will clear database before import');
     }
+    if (importAll) {
+      console.log('📅 IMPORT ALL FLAG DETECTED - Will import ALL historical bookings');
+    }
     
     // Perform smart booking sync with options
     const syncResult = await bookingService.syncBookingsFromHostAway({
       clearFirst,
       forceFullSync,
+      importAll,
       dateFrom,
       dateTo
     });
