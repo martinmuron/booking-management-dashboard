@@ -118,8 +118,6 @@ export default function AdminDashboard() {
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [dateFrom, setDateFrom] = useState<string>('');
   const [dateTo, setDateTo] = useState<string>('');
-  const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(true);
-  const [lastCheck, setLastCheck] = useState<string>(new Date().toISOString());
   const [timeFilter, setTimeFilter] = useState<'all' | 'past' | 'upcoming'>('all');
 
   const fetchBookings = async () => {
@@ -174,7 +172,6 @@ export default function AdminDashboard() {
       const data = await response.json();
       if (data.success) {
         await fetchBookings();
-        setLastCheck(new Date().toISOString());
       } else {
         setError(data.error || 'Clear + Sync failed');
       }
@@ -194,7 +191,6 @@ export default function AdminDashboard() {
       const data = await response.json();
       if (data.success) {
         await fetchBookings();
-        setLastCheck(new Date().toISOString());
       } else {
         setError(data.error || 'Import all failed');
       }
@@ -205,23 +201,6 @@ export default function AdminDashboard() {
     }
   };
 
-  const checkForNewBookings = async () => {
-    try {
-      const response = await fetch('/api/bookings/check-new', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lastCheck })
-      });
-      const data = await response.json();
-      if (data.success && data.hasNewBookings) {
-        await fetchBookings();
-        setLastCheck(data.checkTime);
-        console.log(`🔄 Found ${data.data.newBookings} new bookings, ${data.data.updatedBookings} updated`);
-      }
-    } catch (error) {
-      console.error('Error checking for new bookings:', error);
-    }
-  };
 
   const handleRefresh = async () => {
     await syncWithHostAway();
@@ -328,16 +307,6 @@ export default function AdminDashboard() {
     fetchBookings();
   }, []);
 
-  // Auto-refresh effect to check for new bookings every 2 minutes
-  useEffect(() => {
-    if (!autoRefreshEnabled) return;
-
-    const interval = setInterval(() => {
-      checkForNewBookings();
-    }, 120000); // Check every 2 minutes
-
-    return () => clearInterval(interval);
-  }, [autoRefreshEnabled, lastCheck, checkForNewBookings]);
 
   const totalBookings = filteredBookings.length;
   const pendingBookings = filteredBookings.filter(b => b.status === "PENDING").length;
@@ -382,13 +351,6 @@ export default function AdminDashboard() {
               >
                 <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
                 {refreshing ? 'Clearing...' : 'Clear + Sync'}
-              </Button>
-              <Button
-                onClick={() => setAutoRefreshEnabled(!autoRefreshEnabled)}
-                variant={autoRefreshEnabled ? "default" : "outline"}
-                size="sm"
-              >
-                {autoRefreshEnabled ? '🟢 Auto-refresh ON' : '⭕ Auto-refresh OFF'}
               </Button>
               <Button
                 onClick={() => router.push('/admin/settings')}
