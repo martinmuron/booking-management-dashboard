@@ -16,6 +16,18 @@ export default function AdminSettingsPage() {
   const [webhookUrl, setWebhookUrl] = useState("");
   const [webhookLoading, setWebhookLoading] = useState(false);
   const [webhookStatus, setWebhookStatus] = useState<string | null>(null);
+  
+  // Webhook logs state
+  const [webhookLogs, setWebhookLogs] = useState<Array<{
+    id: string;
+    timestamp: string;
+    eventType: string;
+    status: 'success' | 'error';
+    message: string;
+    reservationId?: string;
+    error?: string;
+  }>>([]);
+  const [logsLoading, setLogsLoading] = useState(false);
 
   const save = async () => {
     setLoading(true);
@@ -121,8 +133,42 @@ export default function AdminSettingsPage() {
     }
   };
 
+  // Load webhook logs
+  const loadWebhookLogs = async () => {
+    setLogsLoading(true);
+    try {
+      const res = await fetch('/api/webhooks/logs');
+      const data = await res.json();
+      if (data.success) {
+        setWebhookLogs(data.logs || []);
+      }
+    } catch (error) {
+      console.error('Failed to load webhook logs:', error);
+    } finally {
+      setLogsLoading(false);
+    }
+  };
+
+  // Clear webhook logs
+  const clearWebhookLogs = async () => {
+    if (!confirm('Are you sure you want to clear all webhook logs?')) return;
+    
+    try {
+      const res = await fetch('/api/webhooks/logs', {
+        method: 'DELETE'
+      });
+      
+      if (res.ok) {
+        setWebhookLogs([]);
+      }
+    } catch (error) {
+      console.error('Failed to clear webhook logs:', error);
+    }
+  };
+
   useEffect(() => {
     loadWebhooks();
+    loadWebhookLogs();
     // Set default webhook URL to current domain
     setWebhookUrl(`${window.location.origin}/api/webhooks/hostaway`);
   }, []);
@@ -236,6 +282,88 @@ export default function AdminSettingsPage() {
               </div>
 
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Webhook Activity Logs */}
+        <Card>
+          <CardHeader>
+            <div className="flex justify-between items-center">
+              <div>
+                <CardTitle>Webhook Activity Logs</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Monitor webhook events and troubleshoot issues
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={loadWebhookLogs}
+                  disabled={logsLoading}
+                >
+                  {logsLoading ? 'Loading...' : 'Refresh'}
+                </Button>
+                {webhookLogs.length > 0 && (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={clearWebhookLogs}
+                  >
+                    Clear Logs
+                  </Button>
+                )}
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {logsLoading ? (
+              <div className="text-center py-4">Loading webhook logs...</div>
+            ) : webhookLogs.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <p>No webhook activity yet</p>
+                <p className="text-xs mt-1">Logs will appear here when HostAway sends webhook notifications</p>
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-96 overflow-y-auto">
+                {webhookLogs.map((log) => (
+                  <div
+                    key={log.id}
+                    className={`p-3 rounded border-l-4 ${
+                      log.status === 'success' 
+                        ? 'border-l-green-500 bg-green-50' 
+                        : 'border-l-red-500 bg-red-50'
+                    }`}
+                  >
+                    <div className="flex justify-between items-start mb-1">
+                      <div className="flex items-center gap-2">
+                        <span className={`text-xs px-2 py-1 rounded ${
+                          log.status === 'success' 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-red-100 text-red-800'
+                        }`}>
+                          {log.status === 'success' ? '✅' : '❌'} {log.eventType}
+                        </span>
+                        {log.reservationId && (
+                          <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                            ID: {log.reservationId}
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-xs text-muted-foreground">
+                        {new Date(log.timestamp).toLocaleString()}
+                      </span>
+                    </div>
+                    <p className="text-sm">{log.message}</p>
+                    {log.error && (
+                      <p className="text-xs text-red-600 mt-1 font-mono bg-red-100 p-2 rounded">
+                        {log.error}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
 

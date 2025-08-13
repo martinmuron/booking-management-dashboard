@@ -34,6 +34,25 @@ interface HostAwayReservation {
   checkOutTime?: number;
 }
 
+// Helper function to log webhook activity
+async function logWebhookActivity(data: {
+  eventType: string;
+  status: 'success' | 'error';
+  message: string;
+  reservationId?: string;
+  error?: string;
+}) {
+  try {
+    await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/webhooks/logs`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+  } catch (error) {
+    console.error('Failed to log webhook activity:', error);
+  }
+}
+
 export async function POST(request: NextRequest) {
   console.log('🔔 HostAway webhook received');
   
@@ -48,26 +67,58 @@ export async function POST(request: NextRequest) {
     
     console.log(`🎯 Event type: ${eventType}`);
     
+    // Log webhook received
+    await logWebhookActivity({
+      eventType,
+      status: 'success',
+      message: `Webhook received: ${eventType}`,
+      reservationId: reservationData?.id?.toString() || reservationData?.reservationId?.toString()
+    });
+    
     // Handle different webhook events
     switch (eventType) {
       case 'reservation created':
       case 'reservation_created':
         await handleReservationCreated(reservationData);
+        await logWebhookActivity({
+          eventType,
+          status: 'success',
+          message: `Successfully processed new reservation`,
+          reservationId: reservationData?.id?.toString() || reservationData?.reservationId?.toString()
+        });
         break;
         
       case 'reservation updated':
       case 'reservation_updated':
         await handleReservationUpdated(reservationData);
+        await logWebhookActivity({
+          eventType,
+          status: 'success',
+          message: `Successfully processed reservation update`,
+          reservationId: reservationData?.id?.toString() || reservationData?.reservationId?.toString()
+        });
         break;
         
       case 'new message received':
       case 'message_received':
         console.log('📨 New message received - logging only');
+        await logWebhookActivity({
+          eventType,
+          status: 'success',
+          message: `Message received (not processed)`,
+          reservationId: reservationData?.id?.toString() || reservationData?.reservationId?.toString()
+        });
         // Future: Handle guest messages
         break;
         
       default:
         console.log(`⚠️  Unknown event type: ${eventType} - logging and continuing`);
+        await logWebhookActivity({
+          eventType,
+          status: 'success',
+          message: `Unknown event type received: ${eventType}`,
+          reservationId: reservationData?.id?.toString() || reservationData?.reservationId?.toString()
+        });
         // Return 200 for unknown events as per HostAway documentation
         break;
     }
@@ -82,6 +133,14 @@ export async function POST(request: NextRequest) {
     
   } catch (error) {
     console.error('❌ Webhook processing error:', error);
+    
+    // Log the error
+    await logWebhookActivity({
+      eventType: 'error',
+      status: 'error',
+      message: 'Webhook processing failed',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
     
     // Return 200 even on errors to prevent HostAway retries for data issues
     // Log the error but don't fail the webhook delivery
