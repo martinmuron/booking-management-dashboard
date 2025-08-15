@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import React from 'react';
-import { Search, Calendar, Users, Home, RefreshCw, Loader2, AlertCircle, ExternalLink, Copy, Check, ArrowUpDown, ArrowUp, ArrowDown, Clock, CreditCard, KeyRound, CheckCircle2, AlertTriangle } from "lucide-react";
+import { Search, Calendar, Users, Home, RefreshCw, Loader2, AlertCircle, ExternalLink, Copy, Check, ArrowUpDown, ArrowUp, ArrowDown, Clock, CreditCard, KeyRound, CheckCircle2, AlertTriangle, Shield, Settings } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Label } from "@/components/ui/label";
@@ -360,9 +360,17 @@ export default function AdminDashboard() {
                 {refreshing ? 'Clearing...' : 'Clear + Sync'}
               </Button>
               <Button
+                onClick={() => router.push('/admin/nuki')}
+                variant="outline"
+              >
+                <Shield className="mr-2 h-4 w-4" />
+                Nuki
+              </Button>
+              <Button
                 onClick={() => router.push('/admin/settings')}
                 variant="outline"
               >
+                <Settings className="mr-2 h-4 w-4" />
                 Settings
               </Button>
             </div>
