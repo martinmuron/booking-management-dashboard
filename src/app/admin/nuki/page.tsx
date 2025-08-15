@@ -126,14 +126,19 @@ export default function NukiManagementPage() {
         throw new Error(result.message || 'Failed to fetch Nuki data');
       }
 
-      const { stats: overviewStats, devices: overviewDevices, recentActivity: activity, authorizations: auths } = result.data;
+      const { stats: overviewStats, devices: overviewDevices, recentActivity: activity, authorizations: auths } = result.data || {};
       
-      setStats(overviewStats);
-      setDevices(overviewDevices);
-      setRecentActivity(activity);
-      setAuthorizations(auths);
+      setStats(overviewStats || null);
+      setDevices(overviewDevices || []);
+      setRecentActivity(activity || []);
+      setAuthorizations(auths || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error occurred');
+      // Set empty defaults on error
+      setStats(null);
+      setDevices([]);
+      setRecentActivity([]);
+      setAuthorizations([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -146,10 +151,11 @@ export default function NukiManagementPage() {
       const result = await response.json();
 
       if (result.success) {
-        setDevices(result.data);
+        setDevices(result.data || []);
       }
     } catch (err) {
       console.error('Error fetching all devices:', err);
+      setDevices([]);
     }
   };
 
@@ -159,10 +165,11 @@ export default function NukiManagementPage() {
       const result = await response.json();
 
       if (result.success) {
-        setAuthorizations(result.data.authorizations);
+        setAuthorizations(result.data?.authorizations || []);
       }
     } catch (err) {
       console.error('Error fetching all authorizations:', err);
+      setAuthorizations([]);
     }
   };
 
@@ -352,7 +359,7 @@ export default function NukiManagementPage() {
           </div>
 
           <div className="grid gap-6">
-            {devices.map((device) => (
+            {devices && devices.length > 0 ? devices.map((device) => (
               <Card key={device.smartlockId}>
                 <CardHeader>
                   <div className="flex items-center justify-between">
@@ -421,7 +428,14 @@ export default function NukiManagementPage() {
                   )}
                 </CardContent>
               </Card>
-            ))}
+            )) : (
+              <Card>
+                <CardContent className="pt-8 pb-8 text-center">
+                  <Shield className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                  <p className="text-muted-foreground">No devices found or failed to load devices</p>
+                </CardContent>
+              </Card>
+            )}
           </div>
         </TabsContent>
 
@@ -435,7 +449,7 @@ export default function NukiManagementPage() {
           </div>
 
           <div className="grid gap-4">
-            {authorizations.map((auth) => (
+            {authorizations && authorizations.length > 0 ? authorizations.map((auth) => (
               <Card key={auth.id}>
                 <CardHeader>
                   <div className="flex items-center justify-between">
@@ -510,7 +524,14 @@ export default function NukiManagementPage() {
                   )}
                 </CardContent>
               </Card>
-            ))}
+            )) : (
+              <Card>
+                <CardContent className="pt-8 pb-8 text-center">
+                  <Users className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                  <p className="text-muted-foreground">No authorizations found or failed to load authorizations</p>
+                </CardContent>
+              </Card>
+            )}
           </div>
         </TabsContent>
 
@@ -518,7 +539,7 @@ export default function NukiManagementPage() {
           <h2 className="text-xl font-semibold">Recent Activity</h2>
 
           <div className="space-y-3">
-            {recentActivity.map((activity, index) => (
+            {recentActivity && recentActivity.length > 0 ? recentActivity.map((activity, index) => (
               <Card key={index}>
                 <CardContent className="pt-4">
                   <div className="flex items-center justify-between">
@@ -544,13 +565,11 @@ export default function NukiManagementPage() {
                   </div>
                 </CardContent>
               </Card>
-            ))}
-
-            {recentActivity.length === 0 && (
+            )) : (
               <Card>
                 <CardContent className="pt-8 pb-8 text-center">
                   <Activity className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                  <p className="text-muted-foreground">No recent activity found</p>
+                  <p className="text-muted-foreground">No recent activity found or failed to load activity</p>
                 </CardContent>
               </Card>
             )}
