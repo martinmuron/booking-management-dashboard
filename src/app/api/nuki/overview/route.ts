@@ -13,16 +13,20 @@ export async function GET() {
 
     // Get recent activity from all devices
     const recentActivity = [];
-    for (const device of devices) {
-      try {
-        const logs = await nukiService.getDeviceLogs(device.smartlockId, 5);
-        recentActivity.push(...logs.map(log => ({
-          ...log,
-          deviceName: device.name,
-          deviceId: device.smartlockId
-        })));
-      } catch (error) {
-        console.warn(`Could not fetch logs for device ${device.smartlockId}:`, error);
+    if (devices && Array.isArray(devices)) {
+      for (const device of devices) {
+        try {
+          const logs = await nukiService.getDeviceLogs(device.smartlockId, 5);
+          if (logs && Array.isArray(logs)) {
+            recentActivity.push(...logs.map(log => ({
+              ...log,
+              deviceName: device.name,
+              deviceId: device.smartlockId
+            })));
+          }
+        } catch (error) {
+          console.warn(`Could not fetch logs for device ${device.smartlockId}:`, error);
+        }
       }
     }
 
@@ -30,10 +34,10 @@ export async function GET() {
     recentActivity.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
     const overviewData = {
-      stats,
-      devices: devices.slice(0, 5), // First 5 devices for overview
-      recentActivity: recentActivity.slice(0, 10), // Last 10 activities
-      authorizations: auths.slice(0, 10) // First 10 authorizations for overview
+      stats: stats || null,
+      devices: devices && Array.isArray(devices) ? devices.slice(0, 5) : [], // First 5 devices for overview
+      recentActivity: recentActivity && Array.isArray(recentActivity) ? recentActivity.slice(0, 10) : [], // Last 10 activities
+      authorizations: auths && Array.isArray(auths) ? auths.slice(0, 10) : [] // First 10 authorizations for overview
     };
 
     return NextResponse.json({

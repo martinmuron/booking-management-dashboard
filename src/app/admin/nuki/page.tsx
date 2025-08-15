@@ -418,7 +418,7 @@ export default function NukiManagementPage() {
                         <span className="text-muted-foreground">
                           {device.authCount} total authorizations, {device.activeAuthCount} active
                         </span>
-                        {device.recentLogs && device.recentLogs.length > 0 && (
+                        {device.recentLogs && Array.isArray(device.recentLogs) && device.recentLogs.length > 0 && device.recentLogs[0] && (
                           <span className="text-muted-foreground">
                             Last activity: {new Date(device.recentLogs[0].date).toLocaleDateString()}
                           </span>
@@ -488,7 +488,7 @@ export default function NukiManagementPage() {
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                     <div>
                       <p className="text-muted-foreground">Devices</p>
-                      <p className="font-medium">{auth.smartlockIds.length} device(s)</p>
+                      <p className="font-medium">{auth.smartlockIds ? auth.smartlockIds.length : 0} device(s)</p>
                     </div>
                     <div>
                       <p className="text-muted-foreground">Created</p>
@@ -510,7 +510,7 @@ export default function NukiManagementPage() {
                     </div>
                   )}
 
-                  {auth.devices && auth.devices.length > 0 && (
+                  {auth.devices && Array.isArray(auth.devices) && auth.devices.length > 0 && (
                     <div className="mt-4 pt-4 border-t">
                       <p className="text-sm text-muted-foreground mb-2">Authorized Devices:</p>
                       <div className="flex flex-wrap gap-2">

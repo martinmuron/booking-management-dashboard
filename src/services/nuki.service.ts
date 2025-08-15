@@ -189,6 +189,12 @@ class NukiService {
     try {
       const devices = await this.makeRequest<NukiDevice[]>('/smartlock');
       
+      // Ensure devices is an array
+      if (!devices || !Array.isArray(devices)) {
+        console.warn('⚠️ Nuki API returned non-array devices response');
+        return [];
+      }
+      
       // Enhance devices with readable state names
       return devices.map(device => ({
         ...device,
@@ -199,7 +205,7 @@ class NukiService {
       }));
     } catch (error) {
       console.error('Error fetching Nuki devices:', error);
-      throw error;
+      return [];
     }
   }
 
@@ -230,6 +236,12 @@ class NukiService {
     try {
       const logs = await this.makeRequest<NukiLogEntry[]>(`/smartlock/${deviceId}/log?limit=${limit}`);
       
+      // Ensure logs is an array
+      if (!logs || !Array.isArray(logs)) {
+        console.warn(`⚠️ Nuki API returned non-array logs response for device ${deviceId}`);
+        return [];
+      }
+      
       // Enhance logs with readable action names
       return logs.map(log => ({
         ...log,
@@ -243,7 +255,7 @@ class NukiService {
       }));
     } catch (error) {
       console.error(`Error fetching logs for device ${deviceId}:`, error);
-      throw error;
+      return [];
     }
   }
 
@@ -254,13 +266,19 @@ class NukiService {
     try {
       const auths = await this.makeRequest<NukiAuth[]>('/smartlock/auth');
       
+      // Ensure auths is an array
+      if (!auths || !Array.isArray(auths)) {
+        console.warn('⚠️ Nuki API returned non-array authorizations response');
+        return [];
+      }
+      
       return auths.map(auth => ({
         ...auth,
         typeName: this.authTypes[auth.type] || 'Unknown'
       }));
     } catch (error) {
       console.error('Error fetching Nuki authorizations:', error);
-      throw error;
+      return [];
     }
   }
 
@@ -270,10 +288,13 @@ class NukiService {
   async getDeviceAuthorizations(deviceId: number): Promise<NukiAuth[]> {
     try {
       const allAuths = await this.getAllAuthorizations();
-      return allAuths.filter(auth => auth.smartlockIds.includes(deviceId));
+      if (!allAuths || !Array.isArray(allAuths)) {
+        return [];
+      }
+      return allAuths.filter(auth => auth.smartlockIds && Array.isArray(auth.smartlockIds) && auth.smartlockIds.includes(deviceId));
     } catch (error) {
       console.error(`Error fetching authorizations for device ${deviceId}:`, error);
-      throw error;
+      return [];
     }
   }
 

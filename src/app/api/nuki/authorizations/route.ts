@@ -10,19 +10,23 @@ export async function GET() {
       nukiService.getAllDevices()
     ]);
 
+    // Ensure arrays are valid
+    const safeAuths = auths && Array.isArray(auths) ? auths : [];
+    const safeDevices = devices && Array.isArray(devices) ? devices : [];
+
     // Create device lookup map
-    const deviceMap = new Map(devices.map(d => [d.smartlockId, d]));
+    const deviceMap = new Map(safeDevices.map(d => [d.smartlockId, d]));
 
     // Enhance authorizations with device information
-    const authsWithDevices = auths.map(auth => ({
+    const authsWithDevices = safeAuths.map(auth => ({
       ...auth,
-      devices: auth.smartlockIds.map(id => ({
+      devices: auth.smartlockIds && Array.isArray(auth.smartlockIds) ? auth.smartlockIds.map(id => ({
         id,
         name: deviceMap.get(id)?.name || `Device ${id}`,
         type: deviceMap.get(id)?.deviceTypeName || 'Unknown',
         state: deviceMap.get(id)?.stateName || 'Unknown',
         serverState: deviceMap.get(id)?.serverStateName || 'Unknown'
-      })),
+      })) : [],
       isExpired: auth.allowedUntilDate ? new Date(auth.allowedUntilDate) < new Date() : false,
       isActive: auth.allowedFromDate && auth.allowedUntilDate ? 
         new Date(auth.allowedFromDate) <= new Date() && new Date(auth.allowedUntilDate) >= new Date() :

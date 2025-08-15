@@ -7,6 +7,15 @@ export async function GET() {
 
     const devices = await nukiService.getAllDevices();
 
+    // Ensure devices is an array
+    if (!devices || !Array.isArray(devices)) {
+      return NextResponse.json({
+        success: true,
+        data: [],
+        count: 0
+      });
+    }
+
     // Get additional details for each device
     const devicesWithDetails = await Promise.all(
       devices.map(async (device) => {
@@ -18,10 +27,10 @@ export async function GET() {
 
           return {
             ...device,
-            recentLogs: logs,
-            authorizations: auths,
-            authCount: auths.length,
-            activeAuthCount: auths.filter(a => a.enabled).length
+            recentLogs: logs || [],
+            authorizations: auths || [],
+            authCount: auths ? auths.length : 0,
+            activeAuthCount: auths ? auths.filter(a => a.enabled).length : 0
           };
         } catch (error) {
           console.warn(`Could not fetch details for device ${device.smartlockId}:`, error);
