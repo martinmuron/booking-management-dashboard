@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { hostAwayService } from '@/services/hostaway.service';
+import { bookingService } from '@/services/booking.service';
 
 // Import the HostAwayReservation type from the service
 interface HostAwayReservation {
@@ -169,8 +170,8 @@ async function handleReservationCreated(reservationData: Record<string, unknown>
       return;
     }
     
-    // Sync this specific reservation to our database
-    await syncReservationToDatabase(fullReservation, 'created');
+    // Sync this specific reservation to our database using the main booking service
+    await syncSingleReservation(fullReservation, 'created');
     
   } catch (error) {
     console.error('❌ Error handling reservation created:', error);
@@ -199,97 +200,32 @@ async function handleReservationUpdated(reservationData: Record<string, unknown>
       return;
     }
     
-    // Sync this specific reservation to our database
-    await syncReservationToDatabase(fullReservation, 'updated');
+    // Sync this specific reservation to our database using the main booking service
+    await syncSingleReservation(fullReservation, 'updated');
     
   } catch (error) {
     console.error('❌ Error handling reservation updated:', error);
   }
 }
 
-async function syncReservationToDatabase(reservation: HostAwayReservation, action: 'created' | 'updated') {
+async function syncSingleReservation(reservation: HostAwayReservation, action: 'created' | 'updated') {
   try {
-    const { prisma } = await import('@/lib/database');
+    console.log(`🔄 [WEBHOOK] Syncing single reservation ${reservation.id} via booking service (${action})`);
     
-    // Validate required fields
-    if (!reservation.arrivalDate || !reservation.departureDate) {
-      console.log(`⚠️  Skipping reservation ${reservation.id}: Missing dates`);
-      return;
-    }
+    // Use the main booking service to sync this single reservation
+    // This ensures consistency with manual sync operations
+    const syncResult = await bookingService.syncSpecificReservation(reservation);
     
-    const checkInDate = new Date(reservation.arrivalDate);
-    const checkOutDate = new Date(reservation.departureDate);
-    
-    if (isNaN(checkInDate.getTime()) || isNaN(checkOutDate.getTime())) {
-      console.log(`⚠️  Skipping reservation ${reservation.id}: Invalid dates`);
-      return;
-    }
-    
-    // Get listings for property name lookup
-    const listings = await hostAwayService.getListings();
-    const listing = listings.find(l => l.id === reservation.listingMapId);
-    
-    const bookingData = {
-      hostAwayId: reservation.id.toString(),
-      propertyName: reservation.listingName || listing?.name || `Property ${reservation.listingMapId}`,
-      guestLeaderName: reservation.guestName || `${reservation.guestFirstName || ''} ${reservation.guestLastName || ''}`.trim() || 'Guest Name Not Available',
-      guestLeaderEmail: reservation.guestEmail || 'noemail@example.com',
-      guestLeaderPhone: reservation.phone || null,
-      checkInDate,
-      checkOutDate,
-      numberOfGuests: reservation.numberOfGuests || reservation.adults || 1,
-      roomNumber: listing?.address || null,
-      // Don't overwrite our platform status if it exists
-      status: 'PENDING' as const
-    };
-    
-    // Check if booking already exists
-    const existingBooking = await prisma.booking.findUnique({
-      where: { hostAwayId: reservation.id.toString() }
-    });
-    
-    if (existingBooking) {
-      console.log(`📝 Updating existing booking: ${existingBooking.id}`);
-      
-      // Update existing booking (preserve our platform status and token)
-      await prisma.booking.update({
-        where: { id: existingBooking.id },
-        data: {
-          propertyName: bookingData.propertyName,
-          guestLeaderName: bookingData.guestLeaderName,
-          guestLeaderEmail: bookingData.guestLeaderEmail,
-          guestLeaderPhone: bookingData.guestLeaderPhone,
-          checkInDate: bookingData.checkInDate,
-          checkOutDate: bookingData.checkOutDate,
-          numberOfGuests: bookingData.numberOfGuests,
-          roomNumber: bookingData.roomNumber,
-          updatedAt: new Date()
-          // Keep existing status and checkInToken
-        }
-      });
-      
-      console.log(`✅ Updated booking ${existingBooking.id} from webhook (${action})`);
-      
+    if (syncResult.success) {
+      console.log(`✅ [WEBHOOK] Successfully synced reservation ${reservation.id}: ${syncResult.message}`);
     } else {
-      console.log(`➕ Creating new booking from webhook`);
-      
-      // Generate check-in token for new booking
-      const checkInToken = Math.random().toString(36).substring(2, 12).toUpperCase();
-      
-      // Create new booking
-      const newBooking = await prisma.booking.create({
-        data: {
-          id: `BK_${reservation.id}`,
-          ...bookingData,
-          checkInToken
-        }
-      });
-      
-      console.log(`✅ Created new booking ${newBooking.id} from webhook (${action})`);
+      console.error(`❌ [WEBHOOK] Failed to sync reservation ${reservation.id}: ${syncResult.message}`);
     }
+    
+    return syncResult;
     
   } catch (error) {
-    console.error('❌ Error syncing reservation to database:', error);
+    console.error(`❌ [WEBHOOK] Error syncing reservation ${reservation.id}:`, error);
     throw error;
   }
 }

@@ -503,6 +503,142 @@ class BookingService {
       console.error('Error updating last sync time:', error);
     }
   }
+
+  /**
+   * Sync a specific reservation from webhook events
+   * Uses the same logic as the main sync but for a single reservation
+   */
+  async syncSpecificReservation(reservation: HostAwayReservation): Promise<{
+    success: boolean;
+    message: string;
+    bookingId?: string;
+    action?: 'created' | 'updated' | 'skipped';
+  }> {
+    try {
+      console.log(`🔄 [SINGLE SYNC] Processing reservation ${reservation.id}`);
+
+      // Validate required fields
+      if (!reservation.arrivalDate || !reservation.departureDate) {
+        console.log(`⚠️  Skipping reservation ${reservation.id}: Missing dates`);
+        return {
+          success: false,
+          message: `Reservation ${reservation.id} missing arrival or departure date`
+        };
+      }
+
+      const checkInDate = new Date(reservation.arrivalDate);
+      const checkOutDate = new Date(reservation.departureDate);
+
+      if (isNaN(checkInDate.getTime()) || isNaN(checkOutDate.getTime())) {
+        console.log(`⚠️  Skipping reservation ${reservation.id}: Invalid dates`);
+        return {
+          success: false,
+          message: `Reservation ${reservation.id} has invalid dates`
+        };
+      }
+
+      // Get listings for property name lookup
+      const listings = await hostAwayService.getListings();
+      const listing = listings.find(l => l.id === reservation.listingMapId);
+
+      // Check if booking already exists
+      const existingBooking = await prisma.booking.findUnique({
+        where: { hostAwayId: reservation.id.toString() }
+      });
+
+      const bookingData = {
+        hostAwayId: reservation.id.toString(),
+        propertyName: reservation.listingName || listing?.name || `Property ${reservation.listingMapId}`,
+        guestLeaderName: reservation.guestName || `${reservation.guestFirstName || ''} ${reservation.guestLastName || ''}`.trim() || 'Guest Name Not Available',
+        guestLeaderEmail: reservation.guestEmail || 'noemail@example.com',
+        guestLeaderPhone: reservation.phone || null,
+        checkInDate,
+        checkOutDate,
+        numberOfGuests: reservation.numberOfGuests || reservation.adults || 1,
+        roomNumber: listing?.address || null,
+        checkInToken: existingBooking?.checkInToken || this.generateCheckInToken(),
+        // Only update status to PENDING if it's a new booking or current status is PENDING
+        // This preserves our platform's status updates (CHECKED_IN, PAYMENT_COMPLETED, etc.)
+        status: existingBooking?.status || 'PENDING' as const
+      };
+
+      if (existingBooking) {
+        console.log(`🔍 [SINGLE SYNC] Found existing booking: ${existingBooking.id}`);
+        
+        // Check if HostAway data has changed
+        const hasHostAwayChanges = (
+          existingBooking.propertyName !== bookingData.propertyName ||
+          existingBooking.guestLeaderName !== bookingData.guestLeaderName ||
+          existingBooking.checkInDate.getTime() !== bookingData.checkInDate.getTime() ||
+          existingBooking.checkOutDate.getTime() !== bookingData.checkOutDate.getTime() ||
+          existingBooking.numberOfGuests !== bookingData.numberOfGuests ||
+          existingBooking.guestLeaderEmail !== bookingData.guestLeaderEmail ||
+          existingBooking.guestLeaderPhone !== bookingData.guestLeaderPhone
+        );
+
+        if (hasHostAwayChanges) {
+          console.log(`🔍 [SINGLE SYNC] Updating booking ${existingBooking.id} with new data`);
+          const updatedBooking = await prisma.booking.update({
+            where: { id: existingBooking.id },
+            data: {
+              // Only update HostAway data, preserve our platform status and token
+              propertyName: bookingData.propertyName,
+              guestLeaderName: bookingData.guestLeaderName,
+              guestLeaderEmail: bookingData.guestLeaderEmail,
+              guestLeaderPhone: bookingData.guestLeaderPhone,
+              checkInDate: bookingData.checkInDate,
+              checkOutDate: bookingData.checkOutDate,
+              numberOfGuests: bookingData.numberOfGuests,
+              roomNumber: bookingData.roomNumber,
+              updatedAt: new Date()
+              // Keep existing status and checkInToken
+            }
+          });
+          
+          console.log(`✅ [SINGLE SYNC] Updated booking: ${updatedBooking.id} - ${bookingData.guestLeaderName}`);
+          return {
+            success: true,
+            message: `Updated booking ${updatedBooking.id}`,
+            bookingId: updatedBooking.id,
+            action: 'updated'
+          };
+        } else {
+          console.log(`🔍 [SINGLE SYNC] No changes for booking ${existingBooking.id}, skipping update`);
+          return {
+            success: true,
+            message: `No changes for booking ${existingBooking.id}`,
+            bookingId: existingBooking.id,
+            action: 'skipped'
+          };
+        }
+      } else {
+        console.log(`🔍 [SINGLE SYNC] Creating new booking for reservation ${reservation.id}`);
+        
+        // Create new booking
+        const newBooking = await prisma.booking.create({
+          data: {
+            id: `BK_${reservation.id}`,
+            ...bookingData
+          }
+        });
+        
+        console.log(`✅ [SINGLE SYNC] Created new booking: ${newBooking.id} - ${bookingData.guestLeaderName}`);
+        return {
+          success: true,
+          message: `Created new booking ${newBooking.id}`,
+          bookingId: newBooking.id,
+          action: 'created'
+        };
+      }
+
+    } catch (error) {
+      console.error(`❌ [SINGLE SYNC] Error syncing reservation ${reservation.id}:`, error);
+      return {
+        success: false,
+        message: `Failed to sync reservation ${reservation.id}: ${error instanceof Error ? error.message : 'Unknown error'}`
+      };
+    }
+  }
 }
 
 export const bookingService = new BookingService();
