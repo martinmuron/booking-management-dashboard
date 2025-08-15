@@ -1,63 +1,21 @@
 import { NextResponse } from 'next/server';
-import { nukiService } from '@/services/nuki.service';
+
+const NUKI_BASE = 'https://api.nuki.io';
 
 export async function GET() {
   try {
-    console.log('🔐 Fetching all Nuki devices');
-
-    const devices = await nukiService.getAllDevices();
-
-    // Ensure devices is an array
-    if (!devices || !Array.isArray(devices)) {
-      return NextResponse.json({
-        success: true,
-        data: [],
-        count: 0
-      });
+    const apiKey = process.env.NUKI_API_KEY;
+    if (!apiKey) {
+      return NextResponse.json({ success: true, data: [] });
     }
-
-    // Get additional details for each device
-    const devicesWithDetails = await Promise.all(
-      devices.map(async (device) => {
-        try {
-          const [logs, auths] = await Promise.all([
-            nukiService.getDeviceLogs(device.smartlockId, 10),
-            nukiService.getDeviceAuthorizations(device.smartlockId)
-          ]);
-
-          return {
-            ...device,
-            recentLogs: logs || [],
-            authorizations: auths || [],
-            authCount: auths ? auths.length : 0,
-            activeAuthCount: auths ? auths.filter(a => a.enabled).length : 0
-          };
-        } catch (error) {
-          console.warn(`Could not fetch details for device ${device.smartlockId}:`, error);
-          return {
-            ...device,
-            recentLogs: [],
-            authorizations: [],
-            authCount: 0,
-            activeAuthCount: 0
-          };
-        }
-      })
-    );
-
-    return NextResponse.json({
-      success: true,
-      data: devicesWithDetails,
-      count: devicesWithDetails.length
+    const res = await fetch(`${NUKI_BASE}/smartlock`, {
+      headers: { Authorization: `Bearer ${apiKey}` }
     });
-
-  } catch (error) {
-    console.error('❌ Error fetching Nuki devices:', error);
-    
-    return NextResponse.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-      message: 'Failed to fetch Nuki devices'
-    }, { status: 500 });
+    if (!res.ok) return NextResponse.json({ success: true, data: [] });
+    const devices: unknown = await res.json();
+    const safeDevices = Array.isArray(devices) ? devices : [];
+    return NextResponse.json({ success: true, data: safeDevices });
+  } catch {
+    return NextResponse.json({ success: true, data: [] });
   }
 }

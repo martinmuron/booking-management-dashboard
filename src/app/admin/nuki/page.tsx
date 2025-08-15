@@ -216,7 +216,11 @@ export default function NukiManagementPage() {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString();
+    if (!dateString) return '-';
+    const asNum = Number(dateString);
+    const d = isNaN(asNum) ? new Date(dateString) : new Date(asNum);
+    if (isNaN(d.getTime())) return '-';
+    return d.toLocaleString();
   };
 
   const getAuthIcon = (auth: NukiAuth) => {
@@ -398,7 +402,11 @@ export default function NukiManagementPage() {
                     <div>
                       <p className="text-muted-foreground">Battery</p>
                       <p className="font-medium">
-                        {device.batteryChargeState ? `${device.batteryChargeState}%` : 'N/A'}
+                        {typeof device.batteryChargeState === 'number' && device.batteryChargeState > 0
+                          ? `${device.batteryChargeState}%`
+                          : device.batteryCritical
+                            ? 'Critical'
+                            : '-'}
                         {device.batteryCharging && ' (Charging)'}
                       </p>
                     </div>
@@ -408,24 +416,37 @@ export default function NukiManagementPage() {
                     </div>
                     <div>
                       <p className="text-muted-foreground">Last Updated</p>
-                      <p className="font-medium">{new Date(device.dateUpdated).toLocaleDateString()}</p>
+                      <p className="font-medium">{formatDate(device.dateUpdated)}</p>
                     </div>
                   </div>
 
-                  {device.authCount !== undefined && (
-                    <div className="mt-4 pt-4 border-t">
-                      <div className="flex justify-between items-center text-sm">
-                        <span className="text-muted-foreground">
-                          {device.authCount} total authorizations, {device.activeAuthCount} active
-                        </span>
-                        {device.recentLogs && Array.isArray(device.recentLogs) && device.recentLogs.length > 0 && device.recentLogs[0] && (
-                          <span className="text-muted-foreground">
-                            Last activity: {new Date(device.recentLogs[0].date).toLocaleDateString()}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  )}
+                  {/* Keys (Authorizations) for this device */}
+                  <div className="mt-4 pt-4 border-t">
+                    {(() => {
+                      const deviceAuths = (authorizations || []).filter(a => Array.isArray(a.smartlockIds) && a.smartlockIds.includes(device.smartlockId));
+                      const activeCount = deviceAuths.filter(a => a.enabled).length;
+                      return (
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground">
+                              {deviceAuths.length} total keys, {activeCount} active
+                            </span>
+                          </div>
+                          {deviceAuths.length > 0 ? (
+                            <div className="flex flex-wrap gap-2">
+                              {deviceAuths.map(a => (
+                                <Badge key={a.id} variant={a.enabled ? 'default' : 'secondary'} className="text-xs">
+                                  {a.name} • {a.typeName || 'Key'}
+                                </Badge>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-sm text-muted-foreground">No keys found for this device</p>
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </div>
                 </CardContent>
               </Card>
             )) : (

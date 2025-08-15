@@ -1,73 +1,21 @@
 import { NextResponse } from 'next/server';
-import { nukiService } from '@/services/nuki.service';
+
+const NUKI_BASE = 'https://api.nuki.io';
 
 export async function GET() {
   try {
-    console.log('🔐 Fetching all Nuki authorizations');
-
-    const [auths, devices] = await Promise.all([
-      nukiService.getAllAuthorizations(),
-      nukiService.getAllDevices()
-    ]);
-
-    // Ensure arrays are valid
-    const safeAuths = auths && Array.isArray(auths) ? auths : [];
-    const safeDevices = devices && Array.isArray(devices) ? devices : [];
-
-    // Create device lookup map
-    const deviceMap = new Map(safeDevices.map(d => [d.smartlockId, d]));
-
-    // Enhance authorizations with device information
-    const authsWithDevices = safeAuths.map(auth => ({
-      ...auth,
-      devices: auth.smartlockIds && Array.isArray(auth.smartlockIds) ? auth.smartlockIds.map(id => ({
-        id,
-        name: deviceMap.get(id)?.name || `Device ${id}`,
-        type: deviceMap.get(id)?.deviceTypeName || 'Unknown',
-        state: deviceMap.get(id)?.stateName || 'Unknown',
-        serverState: deviceMap.get(id)?.serverStateName || 'Unknown'
-      })) : [],
-      isExpired: auth.allowedUntilDate ? new Date(auth.allowedUntilDate) < new Date() : false,
-      isActive: auth.allowedFromDate && auth.allowedUntilDate ? 
-        new Date(auth.allowedFromDate) <= new Date() && new Date(auth.allowedUntilDate) >= new Date() :
-        auth.enabled,
-      hasTimeRestriction: !!(auth.allowedFromDate && auth.allowedUntilDate),
-      hasWeekdayRestriction: !!auth.allowedWeekDays && auth.allowedWeekDays !== 127,
-      hasTimeOfDayRestriction: !!(auth.allowedFromTime !== undefined && auth.allowedUntilTime !== undefined)
-    }));
-
-    // Calculate statistics
-    const stats = {
-      total: authsWithDevices.length,
-      active: authsWithDevices.filter(a => a.isActive).length,
-      expired: authsWithDevices.filter(a => a.isExpired).length,
-      timeRestricted: authsWithDevices.filter(a => a.hasTimeRestriction).length,
-      byType: authsWithDevices.reduce((acc, auth) => {
-        const typeName = auth.typeName || 'Unknown';
-        acc[typeName] = (acc[typeName] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>),
-      recentActivity: authsWithDevices
-        .filter(a => a.lastActiveDate)
-        .sort((a, b) => new Date(b.lastActiveDate).getTime() - new Date(a.lastActiveDate).getTime())
-        .slice(0, 10)
-    };
-
-    return NextResponse.json({
-      success: true,
-      data: {
-        authorizations: authsWithDevices,
-        stats
-      }
+    const apiKey = process.env.NUKI_API_KEY;
+    if (!apiKey) {
+      return NextResponse.json({ success: true, data: { authorizations: [] } });
+    }
+    const res = await fetch(`${NUKI_BASE}/smartlock/auth`, {
+      headers: { Authorization: `Bearer ${apiKey}` }
     });
-
-  } catch (error) {
-    console.error('❌ Error fetching Nuki authorizations:', error);
-    
-    return NextResponse.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-      message: 'Failed to fetch Nuki authorizations'
-    }, { status: 500 });
+    if (!res.ok) return NextResponse.json({ success: true, data: { authorizations: [] } });
+    const auths: unknown = await res.json();
+    const safeAuths = Array.isArray(auths) ? auths : [];
+    return NextResponse.json({ success: true, data: { authorizations: safeAuths } });
+  } catch {
+    return NextResponse.json({ success: true, data: { authorizations: [] } });
   }
 }
