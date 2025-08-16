@@ -37,10 +37,10 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-background flex items-center justify-center px-4">
       <Card className="w-full max-w-md">
-        <CardHeader>
+              <CardHeader>
           <CardTitle className="text-2xl">Sign in</CardTitle>
-        </CardHeader>
-        <CardContent>
+              </CardHeader>
+              <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
@@ -53,10 +53,10 @@ export default function Home() {
             {error && <p className="text-sm text-red-600">{error}</p>}
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? "Signing in..." : "Sign in"}
-            </Button>
+                  </Button>
           </form>
-        </CardContent>
-      </Card>
+              </CardContent>
+            </Card>
     </div>
   );
 }

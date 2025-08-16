@@ -12,8 +12,6 @@ import {
   Unlock, 
   Wifi, 
   WifiOff, 
-  Battery, 
-  BatteryLow, 
   Shield, 
   Activity, 
   Users, 
@@ -94,7 +92,16 @@ interface NukiStats {
   unlockedDevices: number;
   totalAuthorizations: number;
   activeAuthorizations: number;
-  criticalBatteries: number;
+}
+
+interface KeyEntry {
+  id: number;
+  name: string;
+  isActive: boolean;
+  type: number;
+  typeName?: string;
+  deviceId: number;
+  deviceName?: string;
 }
 
 export default function NukiManagementPage() {
@@ -104,6 +111,7 @@ export default function NukiManagementPage() {
   const [stats, setStats] = useState<NukiStats | null>(null);
   const [devices, setDevices] = useState<NukiDevice[]>([]);
   const [authorizations, setAuthorizations] = useState<NukiAuth[]>([]);
+  const [keys, setKeys] = useState<KeyEntry[]>([]);
   const [recentActivity, setRecentActivity] = useState<Array<{
     date: string;
     data?: {
@@ -119,8 +127,12 @@ export default function NukiManagementPage() {
   const fetchOverviewData = async () => {
     try {
       setError(null);
-      const response = await fetch('/api/nuki/overview');
-      const result = await response.json();
+      const [overviewRes, keysRes] = await Promise.all([
+        fetch('/api/nuki/overview'),
+        fetch('/api/nuki/keys')
+      ]);
+      const result = await overviewRes.json();
+      const keysJson = await keysRes.json();
 
       if (!result.success) {
         throw new Error(result.message || 'Failed to fetch Nuki data');
@@ -132,6 +144,7 @@ export default function NukiManagementPage() {
       setDevices(overviewDevices || []);
       setRecentActivity(activity || []);
       setAuthorizations(auths || []);
+      setKeys(Array.isArray(keysJson?.data) ? keysJson.data as KeyEntry[] : []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error occurred');
       // Set empty defaults on error
@@ -139,6 +152,7 @@ export default function NukiManagementPage() {
       setDevices([]);
       setRecentActivity([]);
       setAuthorizations([]);
+      setKeys([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -204,16 +218,7 @@ export default function NukiManagementPage() {
     }
   };
 
-  const getBatteryIcon = (device: NukiDevice) => {
-    const isCritical = device.batteryCritical || device.keypadBatteryCritical;
-    const isCharging = device.batteryCharging;
-    
-    if (isCritical) {
-      return <BatteryLow className="h-4 w-4 text-red-500" />;
-    }
-    
-    return <Battery className={`h-4 w-4 ${isCharging ? 'text-green-500' : 'text-gray-500'}`} />;
-  };
+  // Battery UI removed per requirements
 
   const formatDate = (dateString: string) => {
     if (!dateString) return '-';
@@ -330,19 +335,6 @@ export default function NukiManagementPage() {
               </p>
             </CardContent>
           </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Battery Status</CardTitle>
-              <Battery className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-red-500">{stats.criticalBatteries}</div>
-              <p className="text-xs text-muted-foreground">
-                Critical batteries
-              </p>
-            </CardContent>
-          </Card>
         </div>
       )}
 
@@ -375,7 +367,6 @@ export default function NukiManagementPage() {
                       </div>
                     </div>
                     <div className="flex items-center space-x-2">
-                      {getBatteryIcon(device)}
                       <Badge variant={getStatusColor(device.state, device.serverState)}>
                         {device.stateName}
                       </Badge>
@@ -400,17 +391,6 @@ export default function NukiManagementPage() {
                       <p className="font-medium">{device.smartlockId}</p>
                     </div>
                     <div>
-                      <p className="text-muted-foreground">Battery</p>
-                      <p className="font-medium">
-                        {typeof device.batteryChargeState === 'number' && device.batteryChargeState > 0
-                          ? `${device.batteryChargeState}%`
-                          : device.batteryCritical
-                            ? 'Critical'
-                            : '-'}
-                        {device.batteryCharging && ' (Charging)'}
-                      </p>
-                    </div>
-                    <div>
                       <p className="text-muted-foreground">Door Sensor</p>
                       <p className="font-medium">{device.doorsensorStateName}</p>
                     </div>
@@ -423,8 +403,8 @@ export default function NukiManagementPage() {
                   {/* Keys (Authorizations) for this device */}
                   <div className="mt-4 pt-4 border-t">
                     {(() => {
-                      const deviceAuths = (authorizations || []).filter(a => Array.isArray(a.smartlockIds) && a.smartlockIds.includes(device.smartlockId));
-                      const activeCount = deviceAuths.filter(a => a.enabled).length;
+                      const deviceAuths = (keys || []).filter((k: KeyEntry) => k.deviceId === device.smartlockId);
+                      const activeCount = deviceAuths.filter((a: KeyEntry) => a.isActive).length;
                       return (
                         <div className="space-y-2">
                           <div className="flex items-center justify-between text-sm">
@@ -434,8 +414,8 @@ export default function NukiManagementPage() {
                           </div>
                           {deviceAuths.length > 0 ? (
                             <div className="flex flex-wrap gap-2">
-                              {deviceAuths.map(a => (
-                                <Badge key={a.id} variant={a.enabled ? 'default' : 'secondary'} className="text-xs">
+                              {deviceAuths.map((a: KeyEntry) => (
+                                <Badge key={a.id} variant={a.isActive ? 'default' : 'secondary'} className="text-xs">
                                   {a.name} • {a.typeName || 'Key'}
                                 </Badge>
                               ))}
