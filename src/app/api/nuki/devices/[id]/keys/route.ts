@@ -46,7 +46,7 @@ export async function PUT(
     }
 
     // Create key via Nuki API
-    const result = await nukiFetch<any>(`/smartlock/${deviceId}/auth`, {
+    const result = await nukiFetch<Record<string, unknown>>(`/smartlock/${deviceId}/auth`, {
       method: 'PUT',
       body: JSON.stringify(body)
     });

@@ -46,7 +46,7 @@ export async function GET(
     }
 
     // Get key details from Nuki API
-    const keyData = await nukiFetch<any>(`/smartlock/${deviceId}/auth/${keyId}`);
+    const keyData = await nukiFetch<Record<string, unknown>>(`/smartlock/${deviceId}/auth/${keyId}`);
     
     if (!keyData) {
       return NextResponse.json(
@@ -87,7 +87,7 @@ export async function POST(
     }
 
     // Update key via Nuki API
-    const result = await nukiFetch<any>(`/smartlock/${deviceId}/auth/${keyId}`, {
+    const result = await nukiFetch<Record<string, unknown>>(`/smartlock/${deviceId}/auth/${keyId}`, {
       method: 'POST',
       body: JSON.stringify(updateData)
     });
@@ -132,7 +132,7 @@ export async function DELETE(
     }
 
     // Delete key via Nuki API
-    const result = await nukiFetch<any>(`/smartlock/${deviceId}/auth/${keyId}`, {
+    await nukiFetch<Record<string, unknown>>(`/smartlock/${deviceId}/auth/${keyId}`, {
       method: 'DELETE'
     });
     
