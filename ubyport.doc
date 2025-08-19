@@ -1,0 +1,565 @@
+Technický popis webové služby Ubyport
+Příloha č. 5 dokumentu Provozní řád Internetové aplikace Ubyport
+Aktualizace k 19. 6. 2019
+Počet příloh: 1
+OIPIT - Praha 2019
+PPo
+
+Odbor informatiky a provozu informačních technologií | Příloha č. 5 k Provoznímu řádu Internetové aplikace Ubyport 2/17
+Obsah
+1. Účel dokumentu ........................................................................................................................... 3
+2. Účel služby................................................................................................................................... 4
+2.1 Přístup................................................................................................................................... 4
+3. Seznam metod............................................................................................................................. 5
+4. Popis tříd a výčtových proměnných .............................................................................................. 6
+4.1 Druh číselníku ....................................................................................................................... 6
+4.2 Datové typy - třídy ................................................................................................................. 6
+5. Příklady volání.............................................................................................................................. 8
+5.1 Volání metody ZapisUbytovane............................................................................................. 8
+5.1.1 Návrat s věcnou chybou .................................................................................................... 8
+5.1.2 Návrat při havárii služby..................................................................................................... 9
+5.1.3 Ukázka serializované třídy na vstupu............................................................................... 10
+5.1.4 Ukázka serializované třídy výstupu.................................................................................. 10
+5.2 Volání TestDostupnosti ....................................................................................................... 11
+5.3 Volání DejMiCiselnik ........................................................................................................... 11
+5.3.1 Státní příslušnosti ............................................................................................................ 11
+5.3.2 Chyby .............................................................................................................................. 12
+5.3.3 Důvody pobytu................................................................................................................. 13
+5.4 Volání MaxDelkaSeznamu .................................................................................................. 15
+6. WSDL......................................................................................................................................... 16
+7. Shrnutí ....................................................................................................................................... 17
+
+Odbor informatiky a provozu informačních technologií | Příloha č. 5 k Provoznímu řádu Internetové aplikace Ubyport 3/17
+1. Účel dokumentu
+Tento dokument poskytuje informace potřebné pro vytvoření klienta služby WS_UBY a neřeší technické
+specifikace spojení mezi klientem a serverem (verze TSL SSL, případně verze SOAP, způsob
+autentizace atd..). Pro porozumění textu je vhodná znalost jazyka C#, ale není nezbytně nutná.
+Příklady použití jednotlivých metod jsou vyrobeny aplikací WCFTestClient a nemusí být v jiném
+prostředí funkční. 
+
+Odbor informatiky a provozu informačních technologií | Příloha č. 5 k Provoznímu řádu Internetové aplikace Ubyport 4/17
+2. Účel služby
+Webová služba WS_UBY slouží k automatizovanému odesílání hlášení z informačního systému
+ubytovatele do informačního systému UBY. Služba je založena na protokolu SOAP.
+2.1 Přístup
+Přístup ke službě je autentizován prostřednictvím Windows NTLM.
+Uživatel má přidělené pevné jméno a heslo. Jméno musí souhlasit se zadávanou hodnotou uUzivatel.
+Data za ubytovací zařízení může posílat jen ten uživatel, kterému byl (pro dané ubytovací zařízení - dle
+uIdub) přidělen účet (jméno a heslo).
+Parametr AutenticationCode není používán a je připraven na případnou změnu nebo rozšíření
+autentizace. V současné době se tato položka nepoužívá, ale formálně musí být vyplněna (nesmí být
+prázdná a může v ní být cokoliv, je doporučen znak „X„).
+Služby jsou vystaveny v CMS2 a jejich URL je:
+Testovací prostředí:
+https://ubyport.pcr.cz/ws_uby_test/ws_uby.svc
+Produkční prostředí
+https://ubyport.pcr.cz/ws_uby/ws_uby.svc
+Aktuální WSDL je možné získat voláním výše uvedené url rozšířené o parametr ?singleWsdl
+Poznámka:
+Vzhledem k tomu, že mohou probíhat změny komunikační infrastruktury, případné změny URL nejsou vyloučeny. Informace
+o změnách budou zveřejňovány na webových stránkách Ministerstva vnitra ČR, které je správcem síťové infrastruktury.
+
+Odbor informatiky a provozu informačních technologií | Příloha č. 5 k Provoznímu řádu Internetové aplikace Ubyport 5/17
+3. Seznam metod
+Metoda popis
+bool TestDostupnosti(string
+AutentificationCode);
+Ověří dostupnost služby včetně backendu.
+int MaximalniDelkaSeznamu(string
+AutentificationCode);
+Vrátí maximální délku seznamu ubytovaných
+pro vkládání. Delší pole nebude vloženo a
+služba vrátí chybu
+List<CiselnikType> DejMiCiselnik( string
+AutentificationCode,
+
+DruhCislelniku CoChci);
+Vypíše příslušný číselník daný výčtovým typem.
+Z důvodu různé struktury číselníků, jsou tyto
+struktury ve výpisu unifikovány.
+Chyby ZapisUbytovane(string
+AutentificationCode,
+ SeznamUbytovanych Seznam);
+Vloží seznam ubytovaných a vrátí záznam o
+zpracování a to jak formou seznamu chyb
+v datové třídě tak v PDF dokumentu.
+Parametr AutentificationCode je rezerva, která není zatím využita, ale musí být formálně vyplněna, je
+doporučen znak „X“. 
+
+Odbor informatiky a provozu informačních technologií | Příloha č. 5 k Provoznímu řádu Internetové aplikace Ubyport 6/17
+4. Popis tříd a výčtových proměnných
+4.1 Druh číselníku
+Výčtový typ DruhCislelniku určuje, který číselník bude vypsán.
+Typ Význam
+Staty Číselník státních příslušností
+UcelyPobytu Číselník účelů pobytů
+Chyby Chybovník
+4.2 Datové typy - třídy
+Datové typy – třídy jsou popsány v tabulce. I když jsou proměnné typu string ve WSDL označeny
+nillable="true" neznamená to, že mohou být null vždy. Jedná se o vnitřní popis vytvořený generátorem
+WSDL, protože položka typu string může formálně nabývat hodnotu null.
+Pozor je rozdíl mezi položkou s hodnotou null a prázdnou položkou („“).
+ Třída CiselnikType
+Typ Jméno Význam
+Int (32 bit) Id Číselný identifikátor
+String Kod2 Dvouznakový kód *)
+String Kod3 Tříznakový kód *)
+String TextCZ Český název úplný *)
+String TextKratkyCZ Český název zkrácený *)
+String TextENG Anglický název úplný *)
+String TextKratkyENG Anglický název zkrácený *)
+String PlatiOd Datum od kdy kód platí **)
+String PlatiDo Datum do kdy kód platí **)
+
+*) platí jen pro číselníky států, u číselníku důvodů je použito jen kod2 a TextCZ
+u chybovníku je použit kod 2 pro kód chyby a v ostatních položkách je výklad a význam.
+**) může být i prázdné případně nevyplněné.
+Třída SeznamUbytovanych obsahuje informace o ubytovateli a seznam ubytovaných.
+Typ Jméno Význam
+Boolean VracetPDF Příznak oznamující, že
+ubytovatel chce v odpovědi
+také PDF dokumenty *)
+String uIdub Identifikační číslo
+ubytovatele
+String uMark Zkratka ubytovatele
+String uName Název ubytovatele
+String uCont Kontakt na ubytovatele
+String uOkr Okres z adresy ubytovatele
+String uOb Obec z adresy ubytovatele
+
+Odbor informatiky a provozu informačních technologií | Příloha č. 5 k Provoznímu řádu Internetové aplikace Ubyport 7/17
+String uObCa Část obce z adresy
+ubytovatele
+String UStr Ulice z adresy ubytovatele
+String uHomN Domovní číslo z adresy
+ubytovatele (číslo popisné,
+tj. to červené) max. 4
+číslice a E pro číslo
+evidenční
+String uOriN Orientační číslo z adresy
+ubytovatele (tj. to modré)
+max. 3 číslice a jedno
+písmeno
+String uPsc Poštovní směrovací číslo
+z adresy ubytovatele. 5
+číslic.
+Seznam Ubytovani Seznam tříd Ubytovany
+ *) doplněno na základě změnového požadavku z prosince 2016
+
+
+Třída Ubytovany obsahuje osobní údaje o ubytovaném cizinci
+Typ Jméno Význam
+DateTime cFrom Od kdy je ubytován, musí být
+vždy reálné datum.
+DateTime cUntil Do kdy je ubytován, musí být
+vždy reálné datum.
+String cSurN Příjmení - přípustné jen
+znaky abecedy, znak apostrof
+" ' " a spojník "-"
+String cFirstN Jméno - přípustné jen znaky
+abecedy, znak apostrof " ' "
+a spojník "-"
+String cDate Datum narození ve tvaru
+DDMMRRRR, přípustný tvar je i
+0000RRRR nebo 00DDRRRR
+String cPlac Místo narození, 48 znaků –
+Nevyužito. Položka se
+nepoužívá.
+String cNati Státní občanství podle
+číselníku. V číselníku staty
+je to položka Kod3.
+String cDocN Číslo cestovního dokladu, min
+4 max. 30 znaků, u dětí
+zapsaných v pasu rodičů se
+vyplní slovo „INPASS“ a číslo
+dokladu rodiče se zapíše do
+poznámky. Je-li INPASS pak
+nesmí být poznámka prázdná.
+String cVisN Číslo víza, max. 15 znaků
+nepovinné
+String cResi Bydliště v domovském státě,
+max. 128 znaků - Nepovinné
+
+Odbor informatiky a provozu informačních technologií | Příloha č. 5 k Provoznímu řádu Internetové aplikace Ubyport 8/17
+Int? (32 bit nullable) cPurp Účel pobytu podle číselníku
+účelu cesty – nepovinné,
+není-li vyplněno, použije se
+defaultní hodnota 99
+String cSpz RZ vozidla, kterým cizinec
+přijel, max. 15 znaků -
+Nevyužito. Položka se
+nepoužívá.
+String cNote Poznámka k záznamu max. 255
+znaků alfanumerická položka –
+neformalizováno.
+Třída Chyby obsahuje návratové údaje o tom, zda a jak se povedl zápis seznamu. Pozor některé
+chyby jsou vraceny jako FaultException viz příklad níže (5.1.3).
+Typ Název Význam
+String ChybyHlavicky Čísla chyb oddělené ;
+popisující chyby ve třídě
+SeznamUbytovanych
+String DokumentPotvrzeni PDF dokument ve tvaru
+basecode64 obsahující
+potvrzení o zpracování dat
+String DokumentChybyPotvrzeni PDF dokument ve tvaru
+basecode64 obsahující chyby
+ve zpracovaných datech
+String ChybyZaznamu Čísla chyb jednotlivých
+záznamů v seznamu Ubytovany
+oddělená ; (pokud má jedna
+položka více chyb)
+String PseudoRazitko Značka, která je obsažena
+v PDF dokumentu.
+5. Příklady volání
+5.1 Volání metody ZapisUbytovane
+5.1.1 Návrat s věcnou chybou
+<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
+ <s:Header>
+ <Action s:mustUnderstand="1"
+xmlns="http://schemas.microsoft.com/ws/2005/05/addressing/none">http://UBY.pcr.cz/WS_UBY/IWS
+_UBY/ZapisUbytovane</Action>
+ </s:Header>
+ <s:Body>
+ <ZapisUbytovane xmlns="http://UBY.pcr.cz/WS_UBY">
+ <Seznam xmlns:d4p1="http://schemas.datacontract.org/2004/07/WS_UBY"
+xmlns:i="http://www.w3.org/2001/XMLSchema-instance">
+ <d4p1:Ubytovani>
+ <d4p1:Ubytovany>
+ <d4p1:cDate>01.01.1911</d4p1:cDate>
+
+Odbor informatiky a provozu informačních technologií | Příloha č. 5 k Provoznímu řádu Internetové aplikace Ubyport 9/17
+ <d4p1:cDocN>aaa</d4p1:cDocN>
+ <d4p1:cFirstN>aaa</d4p1:cFirstN>
+ <d4p1:cFrom>2016-04-27T09:28:00</d4p1:cFrom>
+ <d4p1:cNati>AFG</d4p1:cNati>
+ <d4p1:cNote i:nil="true" />
+ <d4p1:cPlac i:nil="true" />
+ <d4p1:cPurp i:nil="true" />
+ <d4p1:cResi i:nil="true" />
+ <d4p1:cSpz i:nil="true" />
+ <d4p1:cSurN i:nil="true" />
+ <d4p1:cUntil>2016-04-27T09:28:00</d4p1:cUntil>
+ <d4p1:cVisN i:nil="true" />
+ </d4p1:Ubytovany>
+ </d4p1:Ubytovani>
+ <d4p1:uCont>aaa</d4p1:uCont>
+ <d4p1:uHomN>aaa</d4p1:uHomN>
+ <d4p1:uIdub>100227887600</d4p1:uIdub>
+ <d4p1:uMark>CZGFW</d4p1:uMark>
+ <d4p1:uName i:nil="true" />
+ <d4p1:uOb i:nil="true" />
+ <d4p1:uObCa i:nil="true" />
+ <d4p1:uOkr i:nil="true" />
+ <d4p1:uOriN i:nil="true" />
+ <d4p1:uPsc>14200</d4p1:uPsc>
+ <d4p1:uStr i:nil="true" />
+ </Seznam>
+ </ZapisUbytovane>
+ </s:Body>
+</s:Envelope>
+<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
+ <s:Header />
+ <s:Body>
+ <ZapisUbytovaneResponse xmlns="http://UBY.pcr.cz/WS_UBY">
+ <ZapisUbytovaneResult xmlns:a="http://schemas.datacontract.org/2004/07/WS_UBY"
+xmlns:i="http://www.w3.org/2001/XMLSchema-instance">
+ <a:ChybyHlavicky>5;6;7;8;9;10;11;12;13;</a:ChybyHlavicky>
+ <a:ChybyZaznamu xmlns:b="http://schemas.microsoft.com/2003/10/Serialization/Arrays">
+ <b:string>;112;106;</b:string>
+ </a:ChybyZaznamu>
+ </ZapisUbytovaneResult>
+ </ZapisUbytovaneResponse>
+ </s:Body>
+</s:Envelope>
+5.1.2 Návrat při havárii služby
+<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
+ <s:Header />
+ <s:Body>
+ <s:Fault>
+ <faultcode>s:Chyba běhu programu</faultcode>
+
+Odbor informatiky a provozu informačních technologií | Příloha č. 5 k Provoznímu řádu Internetové aplikace Ubyport 10/17
+ <faultstring xml:lang="cs-CZ">Server was unable to process request. ---&gt; Length cannot be
+less than zero.
+Parameter name: length</faultstring>
+ </s:Fault>
+ </s:Body>
+</s:Envelope>
+5.1.3 Ukázka serializované třídy na vstupu
+<?xml version="1.0"?>
+<SeznamUbytovanych xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+ <VracetPDF>false</VracetPDF>
+ <uIdub>125</uIdub>
+ <uMark>aaa</uMark>
+ <uName>U Dubu</uName>
+ <uCont>test@seznam.cz</uCont>
+ <uOkr>Praha</uOkr>
+ <uOb>Praha</uOb>
+ <uObCa>Nusle</uObCa>
+ <uStr>Lennonova</uStr>
+ <uHomN>123</uHomN>
+ <uOriN>152</uOriN>
+ <uPsc>1110</uPsc>
+ <Ubytovani>
+ <Ubytovany>
+ <cFrom>2019-06-25T11:09:00</cFrom>
+ <cUntil>2019-06-25T11:09:00</cUntil>
+ <cSurN>Abbas</cSurN>
+ <cFirstN>Hassan</cFirstN>
+ <cDate>00001950</cDate>
+ <cNati>UK</cNati>
+ <cDocN>aa123</cDocN>
+ <cVisN>123456</cVisN>
+ <cResi>Uzgorod</cResi>
+ <cPurp xsi:nil="true" />
+ </Ubytovany>
+ </Ubytovani>
+</SeznamUbytovanych>
+5.1.4 Ukázka serializované třídy výstupu
+PDF v basecode64 je zkrácen.
+<?xml version="1.0"?>
+<Chyby xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+<ChybyHlavicky>5;7;8;9;10;11;12;13;</ChybyHlavicky>
+<DokumentPotvrzeni>JVBERi0xLjQKJdP0zOEKJSBQREZzaGFycCBWZXJzaW9uIDEuMzIuMj
+….. zde je několik kB textu a proto byl vynechán …
+emUgMTkKPj4Kc3RhcnR4cmVmCjU1MzE2CiUlRU9GCg==</DokumentPotvrzeni>
+
+Odbor informatiky a provozu informačních technologií | Příloha č. 5 k Provoznímu řádu Internetové aplikace Ubyport 11/17
+<ChybyZaznamu>
+ <string>;</string>
+</ChybyZaznamu>
+<PseudoRazirko>F8EA613D-C8C5-4671-924D-EE4F8588E08D</PseudoRazirko>
+</Chyby>
+5.2 Volání TestDostupnosti
+<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
+ <s:Header>
+ <Action s:mustUnderstand="1"
+xmlns="http://schemas.microsoft.com/ws/2005/05/addressing/none">http://UBY.pcr.cz/WS_UBY/IWS
+_UBY/TestDostupnosti</Action>
+ </s:Header>
+ <s:Body>
+ <TestDostupnosti xmlns="http://UBY.pcr.cz/WS_UBY" />
+ </s:Body>
+</s:Envelope>
+<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
+ <s:Header />
+ <s:Body>
+ <TestDostupnostiResponse xmlns="http://UBY.pcr.cz/WS_UBY">
+ <TestDostupnostiResult>true</TestDostupnostiResult>
+ </TestDostupnostiResponse>
+ </s:Body>
+</s:Envelope>
+5.3 Volání DejMiCiselnik
+Výstupy z číselníků jsou zkráceny
+5.3.1 Státní příslušnosti
+<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
+ <s:Header>
+ <Action s:mustUnderstand="1"
+xmlns="http://schemas.microsoft.com/ws/2005/05/addressing/none">http://UBY.pcr.cz/WS_UBY/IWS
+_UBY/DejMiCiselnik</Action>
+ </s:Header>
+ <s:Body>
+ <DejMiCiselnik xmlns="http://UBY.pcr.cz/WS_UBY">
+ <CoChci>Staty</CoChci>
+ </DejMiCiselnik>
+ </s:Body>
+</s:Envelope>
+
+Odbor informatiky a provozu informačních technologií | Příloha č. 5 k Provoznímu řádu Internetové aplikace Ubyport 12/17
+<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
+ <s:Header />
+ <s:Body>
+ <DejMiCiselnikResponse xmlns="http://UBY.pcr.cz/WS_UBY">
+ <DejMiCiselnikResult xmlns:a="http://schemas.datacontract.org/2004/07/WS_UBY"
+xmlns:i="http://www.w3.org/2001/XMLSchema-instance">
+ <a:CiselnikType>
+ <a:Id>104</a:Id>
+ <a:Kod2>AF</a:Kod2>
+ <a:Kod3>AFG</a:Kod3>
+ <a:PlatiDo />
+ <a:PlatiOd />
+ <a:TextCZ>Afghánská islámská republika</a:TextCZ>
+ <a:TextENG>Afghanistan</a:TextENG>
+ <a:TextKratkyCZ>Afghánistán</a:TextKratkyCZ>
+ <a:TextKratkyENG />
+ </a:CiselnikType>
+ ….
+
+ <a:CiselnikType>
+ <a:Id>241</a:Id>
+ <a:Kod2>ZW</a:Kod2>
+ <a:Kod3>ZWE</a:Kod3>
+ <a:PlatiDo />
+ <a:PlatiOd />
+ <a:TextCZ>Zimbabwská republika</a:TextCZ>
+ <a:TextENG>Zimbabwe</a:TextENG>
+ <a:TextKratkyCZ>Zimbabwe</a:TextKratkyCZ>
+ <a:TextKratkyENG />
+ </a:CiselnikType>
+ </DejMiCiselnikResult>
+ </DejMiCiselnikResponse>
+ </s:Body>
+</s:Envelope>
+5.3.2 Chyby
+Vrácené texty nejsou ve stejném uspořádání jako číselník států. Text je rozdělen do více položek. Při
+zpracování je nutné vzít tuto anomálii na vědomí.
+Červeně označené číslo znamená skutečné číslo chyby uvedené ve třídě chyby v položkách (bez
+vodících nul) ChybyHlavicky a ChybyZaznamu viz výše:
+ <a:ChybyHlavicky>5;6;7;8;9;10;11;12;13;</a:ChybyHlavicky>
+ <a:ChybyZaznamu xmlns:b="http://schemas.microsoft.com/2003/10/Serialization/Arrays">
+ <b:string>;112;106;</b:string>
+ </a:ChybyZaznamu>
+<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
+ <s:Header>
+
+Odbor informatiky a provozu informačních technologií | Příloha č. 5 k Provoznímu řádu Internetové aplikace Ubyport 13/17
+ <Action s:mustUnderstand="1"
+xmlns="http://schemas.microsoft.com/ws/2005/05/addressing/none">http://UBY.pcr.cz/WS_UBY/IWS
+_UBY/DejMiCiselnik</Action>
+ </s:Header>
+ <s:Body>
+ <DejMiCiselnik xmlns="http://UBY.pcr.cz/WS_UBY">
+ <CoChci>Chyby</CoChci>
+ </DejMiCiselnik>
+ </s:Body>
+</s:Envelope>
+<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
+ <s:Header />
+ <s:Body>
+ <DejMiCiselnikResponse xmlns="http://UBY.pcr.cz/WS_UBY">
+ <DejMiCiselnikResult xmlns:a="http://schemas.datacontract.org/2004/07/WS_UBY"
+xmlns:i="http://www.w3.org/2001/XMLSchema-instance">
+ <a:CiselnikType>
+ <a:Id>0</a:Id>
+ <a:Kod2>ERR_CZE_001</a:Kod2>
+ <a:Kod3>Nekorektní koncovka souboru</a:Kod3>
+ <a:PlatiDo />
+ <a:PlatiOd />
+ <a:TextCZ />
+ <a:TextENG>INFORMACE</a:TextENG>
+ <a:TextKratkyCZ>0</a:TextKratkyCZ>
+ <a:TextKratkyENG>O podezření z chyby je nutno informovat uživatele, procedura pracuje
+dále</a:TextKratkyENG>
+ </a:CiselnikType>
+ ….
+ <a:CiselnikType>
+ <a:Id>0</a:Id>
+ <a:Kod2>ERR_CZE_112</a:Kod2>
+ <a:Kod3>Oznámeno pozdě</a:Kod3>
+ <a:PlatiDo />
+ <a:PlatiOd />
+ <a:TextCZ />
+ <a:TextENG>INFORMACE</a:TextENG>
+ <a:TextKratkyCZ>0</a:TextKratkyCZ>
+ <a:TextKratkyENG>O podezření z chyby je nutno informovat uživatele, procedura pracuje
+dále</a:TextKratkyENG>
+ </a:CiselnikType>
+ </DejMiCiselnikResult>
+ </DejMiCiselnikResponse>
+ </s:Body>
+</s:Envelope>
+5.3.3 Důvody pobytu
+<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
+ <s:Header>
+
+Odbor informatiky a provozu informačních technologií | Příloha č. 5 k Provoznímu řádu Internetové aplikace Ubyport 14/17
+ <Action s:mustUnderstand="1"
+xmlns="http://schemas.microsoft.com/ws/2005/05/addressing/none">http://UBY.pcr.cz/WS_UBY/IWS
+_UBY/DejMiCiselnik</Action>
+ </s:Header>
+ <s:Body>
+ <DejMiCiselnik xmlns="http://UBY.pcr.cz/WS_UBY">
+ <CoChci>UcelyPobytu</CoChci>
+ </DejMiCiselnik>
+ </s:Body>
+</s:Envelope>
+<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
+ <s:Header />
+ <s:Body>
+ <DejMiCiselnikResponse xmlns="http://UBY.pcr.cz/WS_UBY">
+ <DejMiCiselnikResult xmlns:a="http://schemas.datacontract.org/2004/07/WS_UBY"
+xmlns:i="http://www.w3.org/2001/XMLSchema-instance">
+ <a:CiselnikType>
+ <a:Id>0</a:Id>
+ <a:Kod2>00</a:Kod2>
+ <a:Kod3 />
+ <a:PlatiDo />
+ <a:PlatiOd />
+ <a:TextCZ>00 - ZDRAVOTNÍ</a:TextCZ>
+ <a:TextENG />
+ <a:TextKratkyCZ />
+ <a:TextKratkyENG />
+ </a:CiselnikType>
+ …..
+ <a:CiselnikType>
+ <a:Id>0</a:Id>
+ <a:Kod2>93</a:Kod2>
+ <a:Kod3 />
+ <a:PlatiDo />
+ <a:PlatiOd />
+ <a:TextCZ>93 - TZV. ADS vízum udělované občanu Číny</a:TextCZ>
+ <a:TextENG />
+ <a:TextKratkyCZ />
+ <a:TextKratkyENG />
+ </a:CiselnikType>
+ <a:CiselnikType>
+ <a:Id>0</a:Id>
+ <a:Kod2>99</a:Kod2>
+ <a:Kod3 />
+ <a:PlatiDo />
+ <a:PlatiOd />
+ <a:TextCZ>99 - OSTATNÍ / JINÉ</a:TextCZ>
+ <a:TextENG />
+ <a:TextKratkyCZ />
+ <a:TextKratkyENG />
+ </a:CiselnikType>
+ </DejMiCiselnikResult>
+ </DejMiCiselnikResponse>
+ </s:Body>
+
+Odbor informatiky a provozu informačních technologií | Příloha č. 5 k Provoznímu řádu Internetové aplikace Ubyport 15/17
+</s:Envelope>
+5.4 Volání MaxDelkaSeznamu
+<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
+ <s:Header>
+ <Action s:mustUnderstand="1"
+xmlns="http://schemas.microsoft.com/ws/2005/05/addressing/none">http://UBY.pcr.cz/WS_UBY/IWS
+_UBY/MaximalniDelkaSeznamu</Action>
+ </s:Header>
+ <s:Body>
+ <MaximalniDelkaSeznamu xmlns="http://UBY.pcr.cz/WS_UBY" />
+ </s:Body>
+</s:Envelope>
+<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
+ <s:Header />
+ <s:Body>
+ <MaximalniDelkaSeznamuResponse xmlns="http://UBY.pcr.cz/WS_UBY">
+ <MaximalniDelkaSeznamuResult>32</MaximalniDelkaSeznamuResult>
+ </MaximalniDelkaSeznamuResponse>
+ </s:Body>
+</s:Envelope>
+32 – znamená, že v seznamu může být maximálně 32 záznamů o ubytovaných.
+Tato hodnota je na straně serveru konfigurovatelná a může se v budoucnu měnit.
+
+Odbor informatiky a provozu informačních technologií | Příloha č. 5 k Provoznímu řádu Internetové aplikace Ubyport 16/17
+6. WSDL
+WSDL služby je uvedeno v příloze nebo je možné jej stáhnout ze serveru, viz bod 2.1. V produkční
+instalaci je služba dostupná na protokolu HTTPS. URL uvedené ve WSDL bude jiné a je nutné jej
+v aplikaci nakonfigurovat.
+
+Odbor informatiky a provozu informačních technologií | Příloha č. 5 k Provoznímu řádu Internetové aplikace Ubyport 17/17
+7. Shrnutí
+Tato služba je obálkou nad backendovou službou a umožňuje strojní zpracování na stejném
+backgroundu, jako probíhá zpracování ve webové aplikaci.
+Ze zkušeností z provozu doporučujeme:
+- Nepřekládat názvy nodů SOAP, pokud je SOAP tělo vytvářeno jiným způsobem, než použitím
+přístupových tříd.
+- Dodržovat datové typy, tak jak jsou definovány ve WSDL.
+Zpracoval:
+OIPIT PP ČR
+Jan Šich
+Schválil:
+OIPIT PP ČR
+pplk. Ing. David Konvalina

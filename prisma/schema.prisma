@@ -44,6 +44,8 @@ model Guest {
   purposeOfStay    String?
   documentType     String?
   documentNumber   String?
+  visaNumber       String?
+  notes            String?
   email            String?
   phone            String?
   phoneCountryCode String?   @default("+420")

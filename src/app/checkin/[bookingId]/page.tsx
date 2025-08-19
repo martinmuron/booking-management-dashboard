@@ -53,6 +53,8 @@ interface Guest {
   purposeOfStay: string;
   documentType: string;
   documentNumber: string;
+  visaNumber: string;
+  notes: string;
 }
 
 interface VirtualKey {
@@ -79,64 +81,66 @@ interface BookingData {
   virtualKeys?: VirtualKey[];
 }
 
-// Country and nationality data
+// Country and nationality data (Czech Police 3-letter codes)
 const countries = [
-  { code: 'CZ', name: 'Czech Republic' },
-  { code: 'US', name: 'United States' },
-  { code: 'UK', name: 'United Kingdom' },
-  { code: 'DE', name: 'Germany' },
-  { code: 'FR', name: 'France' },
-  { code: 'IT', name: 'Italy' },
-  { code: 'ES', name: 'Spain' },
-  { code: 'NL', name: 'Netherlands' },
-  { code: 'AT', name: 'Austria' },
-  { code: 'BE', name: 'Belgium' },
-  { code: 'CH', name: 'Switzerland' },
-  { code: 'PL', name: 'Poland' },
-  { code: 'HU', name: 'Hungary' },
-  { code: 'SK', name: 'Slovakia' },
-  { code: 'CA', name: 'Canada' },
-  { code: 'AU', name: 'Australia' },
-  { code: 'JP', name: 'Japan' },
-  { code: 'KR', name: 'South Korea' },
-  { code: 'CN', name: 'China' },
-  { code: 'BR', name: 'Brazil' },
-  { code: 'MX', name: 'Mexico' },
-  { code: 'IN', name: 'India' },
-  { code: 'RU', name: 'Russia' },
-  { code: 'TR', name: 'Turkey' },
-  { code: 'SA', name: 'Saudi Arabia' },
-  { code: 'AE', name: 'United Arab Emirates' },
+  { code: 'CZE', name: 'Czech Republic' },
+  { code: 'USA', name: 'United States' },
+  { code: 'GBR', name: 'United Kingdom' },
+  { code: 'DEU', name: 'Germany' },
+  { code: 'FRA', name: 'France' },
+  { code: 'ITA', name: 'Italy' },
+  { code: 'ESP', name: 'Spain' },
+  { code: 'NLD', name: 'Netherlands' },
+  { code: 'AUT', name: 'Austria' },
+  { code: 'BEL', name: 'Belgium' },
+  { code: 'CHE', name: 'Switzerland' },
+  { code: 'POL', name: 'Poland' },
+  { code: 'HUN', name: 'Hungary' },
+  { code: 'SVK', name: 'Slovakia' },
+  { code: 'CAN', name: 'Canada' },
+  { code: 'AUS', name: 'Australia' },
+  { code: 'JPN', name: 'Japan' },
+  { code: 'KOR', name: 'South Korea' },
+  { code: 'CHN', name: 'China' },
+  { code: 'BRA', name: 'Brazil' },
+  { code: 'MEX', name: 'Mexico' },
+  { code: 'IND', name: 'India' },
+  { code: 'RUS', name: 'Russia' },
+  { code: 'TUR', name: 'Turkey' },
+  { code: 'SAU', name: 'Saudi Arabia' },
+  { code: 'ARE', name: 'United Arab Emirates' },
+  { code: 'AFG', name: 'Afghanistan' },
+  { code: 'ZWE', name: 'Zimbabwe' },
 ];
 
-// Document types by nationality
+// Document types by nationality (updated for Czech Police codes)
 const documentTypesByNationality: Record<string, Array<{ code: string; name: string }>> = {
-  'CZ': [
+  'CZE': [
     { code: 'ID_CARD', name: 'ID Card' },
     { code: 'PASSPORT', name: 'Passport' },
     { code: 'DRIVERS_LICENSE', name: 'Driver\'s License' }
   ],
-  'US': [
+  'USA': [
     { code: 'PASSPORT', name: 'Passport' },
     { code: 'DRIVERS_LICENSE', name: 'Driver\'s License' },
     { code: 'STATE_ID', name: 'State ID' }
   ],
-  'UK': [
+  'GBR': [
     { code: 'PASSPORT', name: 'Passport' },
     { code: 'DRIVERS_LICENSE', name: 'Driving Licence' },
     { code: 'ID_CARD', name: 'ID Card' }
   ],
-  'DE': [
+  'DEU': [
     { code: 'ID_CARD', name: 'Personalausweis' },
     { code: 'PASSPORT', name: 'Reisepass' },
     { code: 'DRIVERS_LICENSE', name: 'Führerschein' }
   ],
-  'FR': [
+  'FRA': [
     { code: 'ID_CARD', name: 'Carte d\'identité' },
     { code: 'PASSPORT', name: 'Passeport' },
     { code: 'DRIVERS_LICENSE', name: 'Permis de conduire' }
   ],
-  'IT': [
+  'ITA': [
     { code: 'ID_CARD', name: 'Carta d\'identità' },
     { code: 'PASSPORT', name: 'Passaporto' },
     { code: 'DRIVERS_LICENSE', name: 'Patente' }
@@ -165,17 +169,25 @@ const phoneCodes = [
   { code: '+48', country: 'PL', name: 'Poland' },
   { code: '+36', country: 'HU', name: 'Hungary' },
   { code: '+421', country: 'SK', name: 'Slovakia' },
+  { code: '+86', country: 'CN', name: 'China' },
+  { code: '+91', country: 'IN', name: 'India' },
+  { code: '+7', country: 'RU', name: 'Russia' },
 ];
 
-// Purpose of stay options
+// Purpose of stay options (Czech Police official codes)
 const purposeOfStayOptions = [
-  { value: 'tourism', label: 'Tourism' },
-  { value: 'business', label: 'Business' },
-  { value: 'education', label: 'Education' },
-  { value: 'medical', label: 'Medical' },
-  { value: 'family_visit', label: 'Family Visit' },
-  { value: 'transit', label: 'Transit' },
-  { value: 'other', label: 'Other' }
+  { value: '00', label: '00 - ZDRAVOTNÍ (Medical)' },
+  { value: '01', label: '01 - TURISTICKÝ (Tourism)' },
+  { value: '02', label: '02 - OBCHODNÍ (Business)' },
+  { value: '03', label: '03 - SLUŽEBNÍ (Official business)' },
+  { value: '04', label: '04 - STUDIJNÍ (Study/Education)' },
+  { value: '05', label: '05 - PRACOVNÍ (Work)' },
+  { value: '06', label: '06 - KULTURNÍ (Cultural)' },
+  { value: '07', label: '07 - SPORTOVNÍ (Sports)' },
+  { value: '08', label: '08 - NÁVŠTĚVA PŘÍBUZNÝCH (Family visit)' },
+  { value: '09', label: '09 - TRANZITNÍ (Transit)' },
+  { value: '10', label: '10 - JINÝ (Other)' },
+  { value: '99', label: '99 - OSTATNÍ / JINÉ (Other/Unknown)' }
 ];
 
 // Helper function to get document types for a nationality
@@ -371,7 +383,9 @@ export default function CheckInPage() {
                 residenceAddress: guest?.residenceAddress || '',
                 purposeOfStay: guest?.purposeOfStay || '',
                 documentType: guest?.documentType || '',
-                documentNumber: guest?.documentNumber || ''
+                documentNumber: guest?.documentNumber || '',
+                visaNumber: guest?.visaNumber || '',
+                notes: guest?.notes || ''
               })));
             } else {
               // Fallback guest creation with safe defaults
@@ -392,7 +406,9 @@ export default function CheckInPage() {
                 residenceAddress: '',
                 purposeOfStay: '',
                 documentType: '',
-                documentNumber: ''
+                documentNumber: '',
+                visaNumber: '',
+                notes: ''
               }]);
             }
           } catch (guestProcessingError) {
@@ -992,10 +1008,33 @@ export default function CheckInPage() {
                               id={`documentNumber-${guest.id}`}
                               value={guest.documentNumber}
                               onChange={(e) => updateGuest(guest.id, 'documentNumber', e.target.value)}
-                              placeholder="Enter document number"
+                              placeholder="Min 4, max 30 characters"
+                              minLength={4}
+                              maxLength={30}
                               required
                             />
                           </div>
+                          <div>
+                            <Label htmlFor={`visaNumber-${guest.id}`}>Visa Number</Label>
+                            <Input
+                              id={`visaNumber-${guest.id}`}
+                              value={guest.visaNumber}
+                              onChange={(e) => updateGuest(guest.id, 'visaNumber', e.target.value)}
+                              placeholder="If applicable (max 15 chars)"
+                              maxLength={15}
+                            />
+                          </div>
+                        </div>
+                        
+                        <div>
+                          <Label htmlFor={`notes-${guest.id}`}>Notes</Label>
+                          <Input
+                            id={`notes-${guest.id}`}
+                            value={guest.notes}
+                            onChange={(e) => updateGuest(guest.id, 'notes', e.target.value)}
+                            placeholder="Additional information (max 255 chars)"
+                            maxLength={255}
+                          />
                         </div>
                       </div>
 
