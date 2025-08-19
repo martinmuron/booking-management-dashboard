@@ -484,7 +484,9 @@ export default function CheckInPage() {
         residenceAddress: '',
         purposeOfStay: '',
         documentType: '',
-        documentNumber: ''
+        documentNumber: '',
+        visaNumber: '',
+        notes: ''
       }]);
       
       // Set a user-friendly error message
