@@ -429,7 +429,9 @@ export default function CheckInPage() {
               residenceAddress: '',
               purposeOfStay: '',
               documentType: '',
-              documentNumber: ''
+              documentNumber: '',
+              visaNumber: '',
+              notes: ''
             }]);
           }
           
