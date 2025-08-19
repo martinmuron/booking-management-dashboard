@@ -150,7 +150,7 @@ export async function POST(request: NextRequest) {
             eventType,
             status: 'success',
             message: `Unknown event type received: ${eventType} - no reservation ID found`,
-            reservationId: null
+            reservationId: undefined
           });
         }
         // Return 200 for unknown events as per HostAway documentation
