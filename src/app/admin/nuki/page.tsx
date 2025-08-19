@@ -34,7 +34,8 @@ import {
   Info,
   Calendar,
   Clock as ClockIcon,
-  ArrowLeft
+  ArrowLeft,
+  Trash2
 } from 'lucide-react';
 
 interface NukiDevice {
@@ -150,6 +151,8 @@ export default function NukiManagementPage() {
   const [showCreateKey, setShowCreateKey] = useState(false);
   const [showRevokeConfirm, setShowRevokeConfirm] = useState(false);
   const [keyToRevoke, setKeyToRevoke] = useState<KeyEntry | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [keyToDelete, setKeyToDelete] = useState<KeyEntry | null>(null);
 
   const fetchOverviewData = async () => {
     try {
@@ -240,6 +243,26 @@ export default function NukiManagementPage() {
       }
     } catch (error) {
       console.error('Error revoking key:', error);
+    }
+  };
+
+  const handleDeleteKey = async (key: KeyEntry) => {
+    try {
+      const response = await fetch(`/api/nuki/keys/${key.id}?deviceId=${key.deviceId}`, {
+        method: 'DELETE'
+      });
+      
+      if (response.ok) {
+        // Refresh the key data
+        fetchOverviewData();
+        setShowDeleteConfirm(false);
+        setKeyToDelete(null);
+        setShowKeyDetails(false);
+      } else {
+        console.error('Failed to delete key');
+      }
+    } catch (error) {
+      console.error('Error deleting key:', error);
     }
   };
 
@@ -986,6 +1009,27 @@ export default function NukiManagementPage() {
               </div>
             </div>
           )}
+          
+          {selectedKey && (!selectedKey.isActive || selectedKey.isExpired) && (
+            <DialogFooter className="mt-6">
+              <Button 
+                variant="outline" 
+                onClick={() => setShowKeyDetails(false)}
+              >
+                Close
+              </Button>
+              <Button 
+                variant="destructive"
+                onClick={() => {
+                  setKeyToDelete(selectedKey);
+                  setShowDeleteConfirm(true);
+                }}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete Key
+              </Button>
+            </DialogFooter>
+          )}
         </DialogContent>
       </Dialog>
 
@@ -1111,6 +1155,59 @@ export default function NukiManagementPage() {
               onClick={() => keyToRevoke && handleRevokeKey(keyToRevoke)}
             >
               Revoke Key
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Access Key</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to permanently delete this access key? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {keyToDelete && (
+            <div className="py-4">
+              <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
+                <div className="flex items-center justify-center w-10 h-10 rounded-full bg-background">
+                  {keyToDelete.type === 0 && <Smartphone className="h-5 w-5 text-blue-500" />}
+                  {(keyToDelete.type === 3 || keyToDelete.type === 13) && <Key className="h-5 w-5 text-amber-500" />}
+                  {keyToDelete.type !== 0 && keyToDelete.type !== 3 && keyToDelete.type !== 13 && <Shield className="h-5 w-5 text-gray-500" />}
+                </div>
+                <div>
+                  <p className="font-medium">{keyToDelete.name}</p>
+                  <p className="text-sm text-muted-foreground">{keyToDelete.typeName || 'Authorization'}</p>
+                  {keyToDelete.isExpired && (
+                    <Badge variant="destructive" className="text-xs mt-1">
+                      <XCircle className="h-3 w-3 mr-1" />
+                      Expired
+                    </Badge>
+                  )}
+                  {!keyToDelete.isActive && !keyToDelete.isExpired && (
+                    <Badge variant="secondary" className="text-xs mt-1">
+                      <Clock className="h-3 w-3 mr-1" />
+                      Inactive
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDeleteConfirm(false)}>
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={() => keyToDelete && handleDeleteKey(keyToDelete)}
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete Permanently
             </Button>
           </DialogFooter>
         </DialogContent>
