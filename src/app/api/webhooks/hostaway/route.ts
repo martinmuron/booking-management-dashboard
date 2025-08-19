@@ -56,11 +56,20 @@ export async function POST(request: NextRequest) {
     const payload = await request.json();
     console.log('📋 Webhook payload:', JSON.stringify(payload, null, 2));
     
-    // Extract event information
-    const eventType = payload.event || payload.type || 'unknown';
-    const reservationData = payload.reservation || payload.data || payload;
+    // Extract event information - HostAway sends different structures
+    const eventType = payload.event || payload.type || payload.eventType || 'unknown';
+    const reservationData = payload.reservation || payload.data || payload.result || payload;
     
     console.log(`🎯 Event type: ${eventType}`);
+    console.log(`📋 Payload structure:`, {
+      hasEvent: !!payload.event,
+      hasType: !!payload.type,
+      hasEventType: !!payload.eventType,
+      hasReservation: !!payload.reservation,
+      hasData: !!payload.data,
+      hasResult: !!payload.result,
+      topLevelKeys: Object.keys(payload)
+    });
     
     // Log webhook received
     await logWebhookActivity({
@@ -70,10 +79,18 @@ export async function POST(request: NextRequest) {
       reservationId: reservationData?.id?.toString() || reservationData?.reservationId?.toString()
     });
     
-    // Handle different webhook events
-    switch (eventType) {
+    // Handle different webhook events - check multiple formats HostAway might use
+    const normalizedEventType = eventType.toLowerCase().trim();
+    console.log(`🔍 Normalized event type: "${normalizedEventType}"`);
+    
+    switch (normalizedEventType) {
       case 'reservation created':
       case 'reservation_created':
+      case 'reservation.created':  // HostAway uses dot notation!
+      case 'reservationcreated':
+      case 'create':
+      case 'created':
+        console.log('📌 Matched: reservation created event');
         await handleReservationCreated(reservationData);
         await logWebhookActivity({
           eventType,
@@ -85,6 +102,12 @@ export async function POST(request: NextRequest) {
         
       case 'reservation updated':
       case 'reservation_updated':
+      case 'reservation.updated':  // HostAway uses dot notation!
+      case 'reservationupdated':
+      case 'update':
+      case 'updated':
+      case 'modified':
+        console.log('📌 Matched: reservation updated event');
         await handleReservationUpdated(reservationData);
         await logWebhookActivity({
           eventType,
@@ -96,6 +119,8 @@ export async function POST(request: NextRequest) {
         
       case 'new message received':
       case 'message_received':
+      case 'message.received':  // HostAway uses dot notation!
+      case 'message':
         console.log('📨 New message received - logging only');
         await logWebhookActivity({
           eventType,
@@ -107,13 +132,27 @@ export async function POST(request: NextRequest) {
         break;
         
       default:
-        console.log(`⚠️  Unknown event type: ${eventType} - logging and continuing`);
-        await logWebhookActivity({
-          eventType,
-          status: 'success',
-          message: `Unknown event type received: ${eventType}`,
-          reservationId: reservationData?.id?.toString() || reservationData?.reservationId?.toString()
-        });
+        console.log(`⚠️  Unknown event type: "${eventType}" (normalized: "${normalizedEventType}")`);
+        console.log('🔍 Attempting to process as reservation update anyway...');
+        
+        // Try to process it as a reservation update if it has an ID
+        if (reservationData?.id || reservationData?.reservationId) {
+          console.log('🔄 Found reservation ID, processing as update');
+          await handleReservationUpdated(reservationData);
+          await logWebhookActivity({
+            eventType,
+            status: 'success',
+            message: `Processed unknown event type "${eventType}" as reservation update`,
+            reservationId: reservationData?.id?.toString() || reservationData?.reservationId?.toString()
+          });
+        } else {
+          await logWebhookActivity({
+            eventType,
+            status: 'success',
+            message: `Unknown event type received: ${eventType} - no reservation ID found`,
+            reservationId: null
+          });
+        }
         // Return 200 for unknown events as per HostAway documentation
         break;
     }
@@ -150,6 +189,7 @@ export async function POST(request: NextRequest) {
 
 async function handleReservationCreated(reservationData: Record<string, unknown>) {
   console.log('➕ Processing new reservation created');
+  console.log('📦 Webhook payload data:', JSON.stringify(reservationData, null, 2));
   
   try {
     // Extract reservation ID
@@ -157,6 +197,7 @@ async function handleReservationCreated(reservationData: Record<string, unknown>
     
     if (!reservationId || isNaN(reservationId)) {
       console.log('⚠️  No valid reservation ID found in payload');
+      console.log('🔍 Available keys in payload:', Object.keys(reservationData));
       return;
     }
     
@@ -170,8 +211,17 @@ async function handleReservationCreated(reservationData: Record<string, unknown>
       return;
     }
     
+    console.log(`✅ Successfully fetched reservation ${reservationId} from HostAway:`, {
+      id: fullReservation.id,
+      guestName: fullReservation.guestName,
+      arrivalDate: fullReservation.arrivalDate,
+      departureDate: fullReservation.departureDate,
+      listingName: fullReservation.listingName
+    });
+    
     // Sync this specific reservation to our database using the main booking service
-    await syncSingleReservation(fullReservation, 'created');
+    const result = await syncSingleReservation(fullReservation, 'created');
+    console.log(`📊 Sync result for reservation ${reservationId}:`, result);
     
   } catch (error) {
     console.error('❌ Error handling reservation created:', error);
@@ -180,6 +230,7 @@ async function handleReservationCreated(reservationData: Record<string, unknown>
 
 async function handleReservationUpdated(reservationData: Record<string, unknown>) {
   console.log('✏️  Processing reservation updated');
+  console.log('📦 Webhook payload data:', JSON.stringify(reservationData, null, 2));
   
   try {
     // Extract reservation ID
@@ -187,6 +238,7 @@ async function handleReservationUpdated(reservationData: Record<string, unknown>
     
     if (!reservationId || isNaN(reservationId)) {
       console.log('⚠️  No valid reservation ID found in payload');
+      console.log('🔍 Available keys in payload:', Object.keys(reservationData));
       return;
     }
     
@@ -200,8 +252,17 @@ async function handleReservationUpdated(reservationData: Record<string, unknown>
       return;
     }
     
+    console.log(`✅ Successfully fetched reservation ${reservationId} from HostAway:`, {
+      id: fullReservation.id,
+      guestName: fullReservation.guestName,
+      arrivalDate: fullReservation.arrivalDate,
+      departureDate: fullReservation.departureDate,
+      listingName: fullReservation.listingName
+    });
+    
     // Sync this specific reservation to our database using the main booking service
-    await syncSingleReservation(fullReservation, 'updated');
+    const result = await syncSingleReservation(fullReservation, 'updated');
+    console.log(`📊 Sync result for reservation ${reservationId}:`, result);
     
   } catch (error) {
     console.error('❌ Error handling reservation updated:', error);
