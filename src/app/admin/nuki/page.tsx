@@ -102,6 +102,7 @@ interface KeyEntry {
   typeName?: string;
   deviceId: number;
   deviceName?: string;
+  isExpired?: boolean;
 }
 
 export default function NukiManagementPage() {
@@ -429,7 +430,7 @@ export default function NukiManagementPage() {
                     {(() => {
                       const deviceAuths = (keys || []).filter((k: KeyEntry) => k.deviceId === device.smartlockId);
                       const activeCount = deviceAuths.filter((a: KeyEntry) => a.isActive).length;
-                      const expiredCount = deviceAuths.filter((a: KeyEntry) => (a as any).isExpired).length;
+                      const expiredCount = deviceAuths.filter((a: KeyEntry) => a.isExpired).length;
                       
                       return (
                         <div className="space-y-3">
@@ -452,7 +453,7 @@ export default function NukiManagementPage() {
                           
                           {deviceAuths.length > 0 ? (
                             <div className="space-y-2 max-h-32 overflow-y-auto">
-                              {deviceAuths.slice(0, 8).map((auth: any) => (
+                              {deviceAuths.slice(0, 8).map((auth: KeyEntry) => (
                                 <div key={auth.id} className="flex items-center justify-between p-2 rounded bg-muted/50">
                                   <div className="flex items-center gap-2">
                                     <div className="flex items-center gap-1">

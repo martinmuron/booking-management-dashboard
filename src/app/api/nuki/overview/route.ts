@@ -70,7 +70,7 @@ export async function GET() {
     // Handle nested state object - Nuki API returns state as {state: 1, mode: 2, ...}
     const getActualState = (stateData: unknown): number => {
       if (typeof stateData === 'object' && stateData !== null && 'state' in stateData) {
-        return (stateData as any).state ?? 0;
+        return (stateData as Record<string, unknown>).state as number ?? 0;
       }
       return typeof stateData === 'number' ? stateData : 0;
     };
@@ -108,13 +108,13 @@ export async function GET() {
       // Parse battery info from nested state object
       const getBatteryInfo = (stateData: unknown) => {
         if (typeof stateData === 'object' && stateData !== null) {
-          const state = stateData as any;
+          const state = stateData as Record<string, unknown>;
           return {
-            batteryCharge: state.batteryCharge ?? d.batteryChargeState ?? 0,
-            batteryCritical: state.batteryCritical ?? d.batteryCritical ?? false,
-            batteryCharging: state.batteryCharging ?? d.batteryCharging ?? false,
-            keypadBatteryCritical: state.keypadBatteryCritical ?? d.keypadBatteryCritical ?? false,
-            doorState: state.doorState ?? 0,
+            batteryCharge: (state.batteryCharge as number) ?? d.batteryChargeState ?? 0,
+            batteryCritical: (state.batteryCritical as boolean) ?? d.batteryCritical ?? false,
+            batteryCharging: (state.batteryCharging as boolean) ?? d.batteryCharging ?? false,
+            keypadBatteryCritical: (state.keypadBatteryCritical as boolean) ?? d.keypadBatteryCritical ?? false,
+            doorState: (state.doorState as number) ?? 0,
           };
         }
         return {
