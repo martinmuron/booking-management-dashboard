@@ -234,8 +234,16 @@ export default function NukiManagementPage() {
       });
       
       if (response.ok) {
-        // Refresh the key data
+        // Immediately update the key in local state for instant UI feedback
+        setKeys(prevKeys => prevKeys.map(k => 
+          k.id === key.id 
+            ? { ...k, isActive: false, enabled: false }
+            : k
+        ));
+        
+        // Also refresh all data to ensure consistency
         fetchOverviewData();
+        
         setShowRevokeConfirm(false);
         setKeyToRevoke(null);
       } else {
@@ -253,8 +261,13 @@ export default function NukiManagementPage() {
       });
       
       if (response.ok) {
-        // Refresh the key data
+        // Immediately remove the key from the local state for instant UI update
+        setKeys(prevKeys => prevKeys.filter(k => k.id !== key.id));
+        
+        // Also refresh all data to ensure consistency
         fetchOverviewData();
+        
+        // Close dialogs
         setShowDeleteConfirm(false);
         setKeyToDelete(null);
         setShowKeyDetails(false);
