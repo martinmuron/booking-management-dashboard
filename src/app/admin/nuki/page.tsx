@@ -124,6 +124,7 @@ export default function NukiManagementPage() {
     deviceName?: string;
     deviceId?: number;
   }>>([]);
+  const [selectedDevice, setSelectedDevice] = useState<number | null>(null);
 
   const fetchOverviewData = async () => {
     try {
@@ -343,9 +344,11 @@ export default function NukiManagementPage() {
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-green-600">{stats.activeAuthorizations}</div>
+              <div className="text-2xl font-bold text-green-600">
+                {keys.filter(k => k.isActive).length}
+              </div>
               <p className="text-xs text-muted-foreground">
-                {stats.totalAuthorizations - stats.activeAuthorizations} expired/inactive
+                {keys.filter(k => (k as KeyEntry & { isExpired?: boolean }).isExpired).length} expired/inactive
               </p>
             </CardContent>
           </Card>
@@ -360,150 +363,230 @@ export default function NukiManagementPage() {
         </TabsList>
 
         <TabsContent value="devices" className="space-y-4">
-          <div className="flex justify-between items-center">
-            <h2 className="text-xl font-semibold">Smart Lock Devices</h2>
-            <Button onClick={fetchAllDevices} variant="outline" size="sm">
-              <Eye className="h-4 w-4 mr-2" />
-              Load All Devices
-            </Button>
-          </div>
+          {selectedDevice ? (
+            <div className="space-y-4">
+              <div className="flex items-center gap-4">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setSelectedDevice(null)}
+                  className="flex items-center gap-2"
+                >
+                  ← Back to Devices
+                </Button>
+                <div>
+                  <h2 className="text-xl font-semibold">
+                    {devices.find(d => d.smartlockId === selectedDevice)?.name || 'Device'} - Access Keys
+                  </h2>
+                  <p className="text-muted-foreground">Manage access keys for this smart lock</p>
+                </div>
+              </div>
 
-          <div className="grid gap-6">
-            {devices && devices.length > 0 ? devices.map((device) => (
-              <Card key={device.smartlockId}>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      {getDeviceIcon(device)}
-                      <div>
-                        <CardTitle className="text-lg">{device.name}</CardTitle>
-                        <CardDescription>{device.deviceTypeName}</CardDescription>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Badge variant={getStatusColor(device.state, device.serverState)}>
-                        {device.stateName}
-                      </Badge>
-                      {device.serverState === 0 ? (
-                        <Badge variant="outline" className="text-green-600">
-                          <Wifi className="h-3 w-3 mr-1" />
-                          Online
-                        </Badge>
-                      ) : (
-                        <Badge variant="destructive">
-                          <WifiOff className="h-3 w-3 mr-1" />
-                          Offline
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                    <div>
-                      <p className="text-muted-foreground">Device ID</p>
-                      <p className="font-medium">{device.smartlockId}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">Battery</p>
-                      <p className="font-medium flex items-center gap-1">
-                        {device.batteryChargeState || 0}%
-                        {device.batteryCharging && <span className="text-green-600 text-xs">⚡</span>}
-                        {device.batteryCritical && <span className="text-red-600 text-xs">⚠️</span>}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">Door Sensor</p>
-                      <p className="font-medium">{device.doorsensorStateName}</p>
-                      {device.doorsensorStateName === 'Unavailable' && (
-                        <p className="text-xs text-muted-foreground">No sensor installed</p>
-                      )}
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">Last Updated</p>
-                      <p className="font-medium">{formatDate(device.dateUpdated)}</p>
-                    </div>
-                  </div>
-
-                  {/* Keys (Authorizations) for this device */}
-                  <div className="mt-4 pt-4 border-t">
-                    {(() => {
-                      const deviceAuths = (keys || []).filter((k: KeyEntry) => k.deviceId === device.smartlockId);
-                      const activeCount = deviceAuths.filter((a: KeyEntry) => a.isActive).length;
-                      const expiredCount = deviceAuths.filter((a: KeyEntry) => a.isExpired).length;
-                      
-                      return (
-                        <div className="space-y-3">
-                          <div className="flex items-center justify-between text-sm">
-                            <span className="font-medium text-muted-foreground flex items-center gap-2">
-                              <Key className="h-4 w-4" />
-                              Access Keys ({deviceAuths.length})
-                            </span>
-                            <div className="flex gap-2 text-xs">
-                              <Badge variant="default" className="h-5">
-                                {activeCount} active
-                              </Badge>
-                              {expiredCount > 0 && (
-                                <Badge variant="destructive" className="h-5">
-                                  {expiredCount} expired
-                                </Badge>
-                              )}
+              {(() => {
+                const deviceAuths = (keys || []).filter((k: KeyEntry) => k.deviceId === selectedDevice);
+                const activeCount = deviceAuths.filter((a: KeyEntry) => a.isActive).length;
+                const expiredCount = deviceAuths.filter((a: KeyEntry) => a.isExpired).length;
+                
+                return (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <Card>
+                        <CardContent className="pt-6">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm font-medium text-muted-foreground">Total Keys</p>
+                              <p className="text-2xl font-bold">{deviceAuths.length}</p>
                             </div>
+                            <Key className="h-8 w-8 text-muted-foreground" />
                           </div>
-                          
-                          {deviceAuths.length > 0 ? (
-                            <div className="space-y-2 max-h-32 overflow-y-auto">
-                              {deviceAuths.slice(0, 8).map((auth: KeyEntry) => (
-                                <div key={auth.id} className="flex items-center justify-between p-2 rounded bg-muted/50">
-                                  <div className="flex items-center gap-2">
-                                    <div className="flex items-center gap-1">
-                                      {auth.type === 0 && <Smartphone className="h-3 w-3 text-blue-500" />}
-                                      {(auth.type === 3 || auth.type === 13) && <Key className="h-3 w-3 text-amber-500" />}
-                                      {auth.type !== 0 && auth.type !== 3 && auth.type !== 13 && <Shield className="h-3 w-3 text-gray-500" />}
+                        </CardContent>
+                      </Card>
+                      
+                      <Card>
+                        <CardContent className="pt-6">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm font-medium text-muted-foreground">Active Keys</p>
+                              <p className="text-2xl font-bold text-green-600">{activeCount}</p>
+                            </div>
+                            <CheckCircle className="h-8 w-8 text-green-600" />
+                          </div>
+                        </CardContent>
+                      </Card>
+                      
+                      <Card>
+                        <CardContent className="pt-6">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm font-medium text-muted-foreground">Expired Keys</p>
+                              <p className="text-2xl font-bold text-red-600">{expiredCount}</p>
+                            </div>
+                            <XCircle className="h-8 w-8 text-red-600" />
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Access Keys</CardTitle>
+                        <CardDescription>
+                          All access keys for this device. You can manage, revoke, or create new keys here.
+                          <br />
+                          <strong>Note:</strong> Key management (create/revoke) is available via Nuki API but not implemented in this dashboard yet.
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        {deviceAuths.length > 0 ? (
+                          <div className="space-y-3">
+                            {deviceAuths.map((auth: KeyEntry) => (
+                              <Card key={auth.id} className="p-4">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-3">
+                                    <div className="flex items-center justify-center w-10 h-10 rounded-full bg-muted">
+                                      {auth.type === 0 && <Smartphone className="h-5 w-5 text-blue-500" />}
+                                      {(auth.type === 3 || auth.type === 13) && <Key className="h-5 w-5 text-amber-500" />}
+                                      {auth.type !== 0 && auth.type !== 3 && auth.type !== 13 && <Shield className="h-5 w-5 text-gray-500" />}
                                     </div>
-                                    <div className="min-w-0">
-                                      <p className="text-xs font-medium truncate">{auth.name}</p>
-                                      <p className="text-xs text-muted-foreground">{auth.typeName || 'Authorization'}</p>
+                                    <div>
+                                      <p className="font-medium">{auth.name}</p>
+                                      <p className="text-sm text-muted-foreground">{auth.typeName || 'Authorization'}</p>
+                                      {(auth as KeyEntry & { allowedUntilDate?: string }).allowedUntilDate && (
+                                        <p className="text-xs text-muted-foreground">
+                                          Expires: {new Date((auth as KeyEntry & { allowedUntilDate: string }).allowedUntilDate).toLocaleDateString()}
+                                        </p>
+                                      )}
                                     </div>
                                   </div>
-                                  <div className="flex items-center gap-1">
+                                  <div className="flex items-center gap-2">
                                     {auth.isActive ? (
-                                      <CheckCircle className="h-3 w-3 text-green-500" />
+                                      <Badge variant="default" className="flex items-center gap-1">
+                                        <CheckCircle className="h-3 w-3" />
+                                        Active
+                                      </Badge>
                                     ) : auth.isExpired ? (
-                                      <XCircle className="h-3 w-3 text-red-500" />
+                                      <Badge variant="destructive" className="flex items-center gap-1">
+                                        <XCircle className="h-3 w-3" />
+                                        Expired
+                                      </Badge>
                                     ) : (
-                                      <Clock className="h-3 w-3 text-amber-500" />
+                                      <Badge variant="secondary" className="flex items-center gap-1">
+                                        <Clock className="h-3 w-3" />
+                                        Inactive
+                                      </Badge>
                                     )}
                                   </div>
                                 </div>
-                              ))}
-                              {deviceAuths.length > 8 && (
-                                <p className="text-xs text-muted-foreground text-center py-1">
-                                  ... and {deviceAuths.length - 8} more keys
-                                </p>
-                              )}
-                            </div>
-                          ) : (
-                            <div className="text-center py-4 text-muted-foreground">
-                              <Key className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                              <p className="text-sm">No keys found for this device</p>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })()}
+                              </Card>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-center py-8 text-muted-foreground">
+                            <Key className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                            <p className="text-lg font-medium mb-2">No access keys found</p>
+                            <p>This device doesn't have any access keys configured.</p>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
                   </div>
-                </CardContent>
-              </Card>
-            )) : (
-              <Card>
-                <CardContent className="pt-8 pb-8 text-center">
-                  <Shield className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                  <p className="text-muted-foreground">No devices found or failed to load devices</p>
-                </CardContent>
-              </Card>
-            )}
-          </div>
+                );
+              })()}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <h2 className="text-xl font-semibold">Smart Lock Devices</h2>
+                <Button onClick={fetchAllDevices} variant="outline" size="sm">
+                  <Eye className="h-4 w-4 mr-2" />
+                  Load All Devices
+                </Button>
+              </div>
+
+              <div className="grid gap-4">
+                {devices && devices.length > 0 ? devices.map((device) => {
+                  const deviceAuths = (keys || []).filter((k: KeyEntry) => k.deviceId === device.smartlockId);
+                  const activeCount = deviceAuths.filter((a: KeyEntry) => a.isActive).length;
+                  const expiredCount = deviceAuths.filter((a: KeyEntry) => a.isExpired).length;
+                  
+                  return (
+                    <Card key={device.smartlockId} className="cursor-pointer hover:shadow-md transition-shadow">
+                      <CardContent className="p-6">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-4">
+                            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-muted">
+                              {getDeviceIcon(device)}
+                            </div>
+                            <div>
+                              <h3 className="text-lg font-semibold">{device.name}</h3>
+                              <p className="text-sm text-muted-foreground">{device.deviceTypeName}</p>
+                              <div className="flex items-center gap-2 mt-1">
+                                <Badge variant={getStatusColor(device.state, device.serverState)} className="text-xs">
+                                  {device.stateName}
+                                </Badge>
+                                {device.serverState === 0 ? (
+                                  <Badge variant="outline" className="text-green-600 text-xs">
+                                    <Wifi className="h-3 w-3 mr-1" />
+                                    Online
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="destructive" className="text-xs">
+                                    <WifiOff className="h-3 w-3 mr-1" />
+                                    Offline
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <div className="text-right">
+                            <div className="flex items-center gap-4 mb-2">
+                              <div className="text-center">
+                                <p className="text-sm text-muted-foreground">Battery</p>
+                                <p className="font-medium flex items-center gap-1">
+                                  {device.batteryChargeState || 0}%
+                                  {device.batteryCharging && <span className="text-green-600 text-xs">⚡</span>}
+                                  {device.batteryCritical && <span className="text-red-600 text-xs">⚠️</span>}
+                                </p>
+                              </div>
+                              <div className="text-center">
+                                <p className="text-sm text-muted-foreground">Keys</p>
+                                <p className="font-medium">
+                                  <span className="text-green-600">{activeCount}</span> / {deviceAuths.length}
+                                </p>
+                                {expiredCount > 0 && (
+                                  <p className="text-xs text-red-600">{expiredCount} expired</p>
+                                )}
+                              </div>
+                            </div>
+                            
+                            <Button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedDevice(device.smartlockId);
+                              }}
+                              variant="outline"
+                              size="sm"
+                              className="w-full"
+                            >
+                              Access Keys
+                              <Key className="h-4 w-4 ml-2" />
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                }) : (
+                  <Card>
+                    <CardContent className="pt-8 pb-8 text-center">
+                      <Shield className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                      <p className="text-muted-foreground">No devices found or failed to load devices</p>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="authorizations" className="space-y-4">
