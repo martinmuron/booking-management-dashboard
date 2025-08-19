@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import React from 'react';
-import { Search, Calendar, Users, Home, RefreshCw, Loader2, AlertCircle, ExternalLink, Copy, Check, ArrowUpDown, ArrowUp, ArrowDown, Clock, CreditCard, KeyRound, CheckCircle2, AlertTriangle, Shield, Settings } from "lucide-react";
+import { Search, Calendar, Users, Home, RefreshCw, Loader2, AlertCircle, ExternalLink, Copy, Check, ArrowUpDown, ArrowUp, ArrowDown, Clock, CreditCard, KeyRound, CheckCircle2, AlertTriangle, Shield, Settings, X } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Label } from "@/components/ui/label";
@@ -119,6 +119,7 @@ export default function AdminDashboard() {
   const [dateFrom, setDateFrom] = useState<string>('');
   const [dateTo, setDateTo] = useState<string>('');
   const [timeFilter, setTimeFilter] = useState<'all' | 'past' | 'upcoming' | 'upcoming30'>('upcoming');
+  const [searchQuery, setSearchQuery] = useState<string>('');
 
   const fetchBookings = async () => {
     try {
@@ -247,6 +248,33 @@ export default function AdminDashboard() {
     return sortDirection === 'asc' ? ArrowUp : ArrowDown;
   };
 
+  // Search function that checks multiple fields
+  const searchBookings = (bookings: BookingData[], query: string): BookingData[] => {
+    if (!query.trim()) return bookings;
+    
+    const lowerQuery = query.toLowerCase().trim();
+    
+    return bookings.filter(booking => {
+      // Search in basic booking fields
+      const searchFields = [
+        booking.guestLeaderName,
+        booking.guestLeaderEmail,
+        booking.propertyName,
+        booking.hostAwayId,
+        booking.id,
+        booking.status,
+        booking.checkInToken,
+        booking.universalKeypadCode || '',
+        booking.roomNumber || ''
+      ];
+      
+      // Check if any field contains the search query
+      return searchFields.some(field => 
+        field && field.toString().toLowerCase().includes(lowerQuery)
+      );
+    });
+  };
+
   const sortedBookings = [...bookings].sort((a, b) => {
     let aVal: string | Date;
     let bVal: string | Date;
@@ -278,8 +306,10 @@ export default function AdminDashboard() {
     return 0;
   });
 
-  // Apply filters
-  const filteredBookings = sortedBookings.filter(booking => {
+  // Apply search and filters
+  const searchFilteredBookings = searchBookings(sortedBookings, searchQuery);
+  
+  const filteredBookings = searchFilteredBookings.filter(booking => {
     const checkInDate = new Date(booking.checkInDate);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -425,8 +455,29 @@ export default function AdminDashboard() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-                             <div className="mb-4">
-                 <div className="flex flex-col md:flex-row gap-3 md:gap-4 flex-wrap md:items-center">
+              <div className="mb-4">
+                {/* Search Bar */}
+                <div className="flex items-center gap-2 mb-4">
+                  <Search className="h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search reservations (name, email, property, booking ID...)"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="max-w-md"
+                  />
+                  {searchQuery && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setSearchQuery('')}
+                      className="h-8 px-2"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+                
+                <div className="flex flex-col md:flex-row gap-3 md:gap-4 flex-wrap md:items-center">
                    <div className="flex items-center gap-2 flex-wrap">
                      <Button
                        variant={timeFilter === 'all' ? 'default' : 'outline'}
