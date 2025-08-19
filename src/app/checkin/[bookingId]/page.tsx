@@ -43,8 +43,16 @@ interface Guest {
   lastName: string;
   email: string;
   phone: string;
+  phoneCountryCode: string;
   dateOfBirth: string;
   nationality: string;
+  citizenship: string;
+  residenceCountry: string;
+  residenceCity: string;
+  residenceAddress: string;
+  purposeOfStay: string;
+  documentType: string;
+  documentNumber: string;
 }
 
 interface VirtualKey {
@@ -70,6 +78,115 @@ interface BookingData {
   universalKeypadCode?: string;
   virtualKeys?: VirtualKey[];
 }
+
+// Country and nationality data
+const countries = [
+  { code: 'CZ', name: 'Czech Republic' },
+  { code: 'US', name: 'United States' },
+  { code: 'UK', name: 'United Kingdom' },
+  { code: 'DE', name: 'Germany' },
+  { code: 'FR', name: 'France' },
+  { code: 'IT', name: 'Italy' },
+  { code: 'ES', name: 'Spain' },
+  { code: 'NL', name: 'Netherlands' },
+  { code: 'AT', name: 'Austria' },
+  { code: 'BE', name: 'Belgium' },
+  { code: 'CH', name: 'Switzerland' },
+  { code: 'PL', name: 'Poland' },
+  { code: 'HU', name: 'Hungary' },
+  { code: 'SK', name: 'Slovakia' },
+  { code: 'CA', name: 'Canada' },
+  { code: 'AU', name: 'Australia' },
+  { code: 'JP', name: 'Japan' },
+  { code: 'KR', name: 'South Korea' },
+  { code: 'CN', name: 'China' },
+  { code: 'BR', name: 'Brazil' },
+  { code: 'MX', name: 'Mexico' },
+  { code: 'IN', name: 'India' },
+  { code: 'RU', name: 'Russia' },
+  { code: 'TR', name: 'Turkey' },
+  { code: 'SA', name: 'Saudi Arabia' },
+  { code: 'AE', name: 'United Arab Emirates' },
+];
+
+// Document types by nationality
+const documentTypesByNationality: Record<string, Array<{ code: string; name: string }>> = {
+  'CZ': [
+    { code: 'ID_CARD', name: 'ID Card' },
+    { code: 'PASSPORT', name: 'Passport' },
+    { code: 'DRIVERS_LICENSE', name: 'Driver\'s License' }
+  ],
+  'US': [
+    { code: 'PASSPORT', name: 'Passport' },
+    { code: 'DRIVERS_LICENSE', name: 'Driver\'s License' },
+    { code: 'STATE_ID', name: 'State ID' }
+  ],
+  'UK': [
+    { code: 'PASSPORT', name: 'Passport' },
+    { code: 'DRIVERS_LICENSE', name: 'Driving Licence' },
+    { code: 'ID_CARD', name: 'ID Card' }
+  ],
+  'DE': [
+    { code: 'ID_CARD', name: 'Personalausweis' },
+    { code: 'PASSPORT', name: 'Reisepass' },
+    { code: 'DRIVERS_LICENSE', name: 'Führerschein' }
+  ],
+  'FR': [
+    { code: 'ID_CARD', name: 'Carte d\'identité' },
+    { code: 'PASSPORT', name: 'Passeport' },
+    { code: 'DRIVERS_LICENSE', name: 'Permis de conduire' }
+  ],
+  'IT': [
+    { code: 'ID_CARD', name: 'Carta d\'identità' },
+    { code: 'PASSPORT', name: 'Passaporto' },
+    { code: 'DRIVERS_LICENSE', name: 'Patente' }
+  ],
+  // Default for other countries
+  'DEFAULT': [
+    { code: 'PASSPORT', name: 'Passport' },
+    { code: 'ID_CARD', name: 'National ID Card' },
+    { code: 'DRIVERS_LICENSE', name: 'Driver\'s License' }
+  ]
+};
+
+// Country codes for phone numbers
+const phoneCodes = [
+  { code: '+420', country: 'CZ', name: 'Czech Republic' },
+  { code: '+1', country: 'US', name: 'United States' },
+  { code: '+44', country: 'UK', name: 'United Kingdom' },
+  { code: '+49', country: 'DE', name: 'Germany' },
+  { code: '+33', country: 'FR', name: 'France' },
+  { code: '+39', country: 'IT', name: 'Italy' },
+  { code: '+34', country: 'ES', name: 'Spain' },
+  { code: '+31', country: 'NL', name: 'Netherlands' },
+  { code: '+43', country: 'AT', name: 'Austria' },
+  { code: '+32', country: 'BE', name: 'Belgium' },
+  { code: '+41', country: 'CH', name: 'Switzerland' },
+  { code: '+48', country: 'PL', name: 'Poland' },
+  { code: '+36', country: 'HU', name: 'Hungary' },
+  { code: '+421', country: 'SK', name: 'Slovakia' },
+];
+
+// Purpose of stay options
+const purposeOfStayOptions = [
+  { value: 'tourism', label: 'Tourism' },
+  { value: 'business', label: 'Business' },
+  { value: 'education', label: 'Education' },
+  { value: 'medical', label: 'Medical' },
+  { value: 'family_visit', label: 'Family Visit' },
+  { value: 'transit', label: 'Transit' },
+  { value: 'other', label: 'Other' }
+];
+
+// Helper function to get document types for a nationality
+const getDocumentTypesForNationality = (nationality: string) => {
+  return documentTypesByNationality[nationality] || documentTypesByNationality['DEFAULT'];
+};
+
+// Helper function to check if Prague city tax exemption applies
+const isPragueCityTaxExempt = (residenceCity: string): boolean => {
+  return residenceCity.toLowerCase().includes('prague') || residenceCity.toLowerCase().includes('praha');
+};
 
 const formatDate = (dateString: string) => {
   return new Date(dateString).toLocaleDateString('en-US', {
@@ -105,7 +222,9 @@ const calculateCityTax = (guests: Guest[], nights: number): number => {
   
   const eligibleGuests = guests.filter(guest => {
     const age = calculateAge(guest.dateOfBirth);
-    return age >= MIN_AGE_FOR_TAX;
+    const isOfAge = age >= MIN_AGE_FOR_TAX;
+    const isNotPragueResident = !isPragueCityTaxExempt(guest.residenceCity);
+    return isOfAge && isNotPragueResident;
   });
   
   return eligibleGuests.length * nights * TAX_PER_PERSON_PER_NIGHT;
@@ -243,8 +362,16 @@ export default function CheckInPage() {
                 lastName: guest?.lastName || '',
                 email: guest?.email || '',
                 phone: guest?.phone || '',
+                phoneCountryCode: guest?.phoneCountryCode || '+420',
                 dateOfBirth: guest?.dateOfBirth ? (typeof guest.dateOfBirth === 'string' && guest.dateOfBirth.includes('T') ? guest.dateOfBirth.split('T')[0] : String(guest.dateOfBirth)) : '',
-                nationality: guest?.nationality || ''
+                nationality: guest?.nationality || '',
+                citizenship: guest?.citizenship || '',
+                residenceCountry: guest?.residenceCountry || '',
+                residenceCity: guest?.residenceCity || '',
+                residenceAddress: guest?.residenceAddress || '',
+                purposeOfStay: guest?.purposeOfStay || '',
+                documentType: guest?.documentType || '',
+                documentNumber: guest?.documentNumber || ''
               })));
             } else {
               // Fallback guest creation with safe defaults
@@ -256,8 +383,16 @@ export default function CheckInPage() {
                 lastName: nameParts.length > 1 ? nameParts.slice(1).join(' ') : '',
                 email: bookingData?.guestLeaderEmail || bookingData?.email || '',
                 phone: bookingData?.guestLeaderPhone || bookingData?.phone || '',
+                phoneCountryCode: '+420',
                 dateOfBirth: '',
-                nationality: ''
+                nationality: '',
+                citizenship: '',
+                residenceCountry: '',
+                residenceCity: '',
+                residenceAddress: '',
+                purposeOfStay: '',
+                documentType: '',
+                documentNumber: ''
               }]);
             }
           } catch (guestProcessingError) {
@@ -269,8 +404,16 @@ export default function CheckInPage() {
               lastName: '',
               email: '',
               phone: '',
+              phoneCountryCode: '+420',
               dateOfBirth: '',
-              nationality: ''
+              nationality: '',
+              citizenship: '',
+              residenceCountry: '',
+              residenceCity: '',
+              residenceAddress: '',
+              purposeOfStay: '',
+              documentType: '',
+              documentNumber: ''
             }]);
           }
           
@@ -314,8 +457,16 @@ export default function CheckInPage() {
         lastName: '',
         email: '',
         phone: '',
+        phoneCountryCode: '+420',
         dateOfBirth: '',
-        nationality: ''
+        nationality: '',
+        citizenship: '',
+        residenceCountry: '',
+        residenceCity: '',
+        residenceAddress: '',
+        purposeOfStay: '',
+        documentType: '',
+        documentNumber: ''
       }]);
       
       // Set a user-friendly error message
@@ -332,8 +483,16 @@ export default function CheckInPage() {
       lastName: '',
       email: '',
       phone: '',
+      phoneCountryCode: '+420',
       dateOfBirth: '',
-      nationality: ''
+      nationality: '',
+      citizenship: '',
+      residenceCountry: '',
+      residenceCity: '',
+      residenceAddress: '',
+      purposeOfStay: '',
+      documentType: '',
+      documentNumber: ''
     };
     setGuests([...guests, newGuest]);
   };
@@ -345,10 +504,21 @@ export default function CheckInPage() {
   };
 
   const updateGuest = (guestId: string, field: keyof Guest, value: string) => {
-    setGuests(guests.map(guest => 
-      guest.id === guestId ? { ...guest, [field]: value } : guest
-    ));
+    setGuests(guests.map(guest => {
+      if (guest.id === guestId) {
+        const updatedGuest = { ...guest, [field]: value };
+        
+        // If nationality changes, reset document type
+        if (field === 'nationality') {
+          updatedGuest.documentType = '';
+        }
+        
+        return updatedGuest;
+      }
+      return guest;
+    }));
   };
+
 
   const handlePaymentSuccess = (intentId: string) => {
     setPaymentIntentId(intentId);
@@ -655,72 +825,222 @@ export default function CheckInPage() {
                       )}
                     </div>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-6">
+                      {/* Personal Information Section */}
                       <div>
-                        <Label htmlFor={`firstName-${guest.id}`}>First Name *</Label>
-                        <Input
-                          id={`firstName-${guest.id}`}
-                          value={guest.firstName}
-                          onChange={(e) => updateGuest(guest.id, 'firstName', e.target.value)}
-                          required
-                        />
+                        <h5 className="font-medium mb-3 text-sm text-muted-foreground uppercase tracking-wide">Personal Information</h5>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor={`firstName-${guest.id}`}>First Name *</Label>
+                            <Input
+                              id={`firstName-${guest.id}`}
+                              value={guest.firstName}
+                              onChange={(e) => updateGuest(guest.id, 'firstName', e.target.value)}
+                              required
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor={`lastName-${guest.id}`}>Last Name *</Label>
+                            <Input
+                              id={`lastName-${guest.id}`}
+                              value={guest.lastName}
+                              onChange={(e) => updateGuest(guest.id, 'lastName', e.target.value)}
+                              required
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor={`dob-${guest.id}`}>Date of Birth *</Label>
+                            <Input
+                              id={`dob-${guest.id}`}
+                              type="date"
+                              value={guest.dateOfBirth}
+                              onChange={(e) => updateGuest(guest.id, 'dateOfBirth', e.target.value)}
+                              required
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor={`nationality-${guest.id}`}>Nationality *</Label>
+                            <Select
+                              value={guest.nationality}
+                              onValueChange={(value) => updateGuest(guest.id, 'nationality', value)}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select nationality" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {countries.map((country) => (
+                                  <SelectItem key={country.code} value={country.code}>
+                                    {country.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div>
+                            <Label htmlFor={`citizenship-${guest.id}`}>Citizenship *</Label>
+                            <Select
+                              value={guest.citizenship}
+                              onValueChange={(value) => updateGuest(guest.id, 'citizenship', value)}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select citizenship" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {countries.map((country) => (
+                                  <SelectItem key={country.code} value={country.code}>
+                                    {country.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div>
+                            <Label htmlFor={`purposeOfStay-${guest.id}`}>Purpose of Stay *</Label>
+                            <Select
+                              value={guest.purposeOfStay}
+                              onValueChange={(value) => updateGuest(guest.id, 'purposeOfStay', value)}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select purpose" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {purposeOfStayOptions.map((option) => (
+                                  <SelectItem key={option.value} value={option.value}>
+                                    {option.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
                       </div>
+
+                      {/* Residence Information Section */}
                       <div>
-                        <Label htmlFor={`lastName-${guest.id}`}>Last Name *</Label>
-                        <Input
-                          id={`lastName-${guest.id}`}
-                          value={guest.lastName}
-                          onChange={(e) => updateGuest(guest.id, 'lastName', e.target.value)}
-                          required
-                        />
+                        <h5 className="font-medium mb-3 text-sm text-muted-foreground uppercase tracking-wide">Residence Information</h5>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor={`residenceCountry-${guest.id}`}>Residence Country *</Label>
+                            <Select
+                              value={guest.residenceCountry}
+                              onValueChange={(value) => updateGuest(guest.id, 'residenceCountry', value)}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select country" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {countries.map((country) => (
+                                  <SelectItem key={country.code} value={country.code}>
+                                    {country.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div>
+                            <Label htmlFor={`residenceCity-${guest.id}`}>Residence City *</Label>
+                            <Input
+                              id={`residenceCity-${guest.id}`}
+                              value={guest.residenceCity}
+                              onChange={(e) => updateGuest(guest.id, 'residenceCity', e.target.value)}
+                              placeholder={guest.residenceCountry === 'CZ' ? "e.g., Praha (Prague residents exempt from city tax)" : "Enter city"}
+                              required
+                            />
+                            {isPragueCityTaxExempt(guest.residenceCity) && (
+                              <p className="text-sm text-green-600 mt-1">✓ Prague resident - City tax exempt</p>
+                            )}
+                          </div>
+                          <div className="md:col-span-2">
+                            <Label htmlFor={`residenceAddress-${guest.id}`}>Residence Address *</Label>
+                            <Input
+                              id={`residenceAddress-${guest.id}`}
+                              value={guest.residenceAddress}
+                              onChange={(e) => updateGuest(guest.id, 'residenceAddress', e.target.value)}
+                              placeholder="Enter full address"
+                              required
+                            />
+                          </div>
+                        </div>
                       </div>
+
+                      {/* Document Information Section */}
                       <div>
-                        <Label htmlFor={`email-${guest.id}`}>Email</Label>
-                        <Input
-                          id={`email-${guest.id}`}
-                          type="email"
-                          value={guest.email}
-                          onChange={(e) => updateGuest(guest.id, 'email', e.target.value)}
-                        />
+                        <h5 className="font-medium mb-3 text-sm text-muted-foreground uppercase tracking-wide">Document Information</h5>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor={`documentType-${guest.id}`}>Document Type *</Label>
+                            <Select
+                              value={guest.documentType}
+                              onValueChange={(value) => updateGuest(guest.id, 'documentType', value)}
+                              disabled={!guest.nationality}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder={guest.nationality ? "Select document type" : "Select nationality first"} />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {getDocumentTypesForNationality(guest.nationality).map((docType) => (
+                                  <SelectItem key={docType.code} value={docType.code}>
+                                    {docType.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div>
+                            <Label htmlFor={`documentNumber-${guest.id}`}>Document Number *</Label>
+                            <Input
+                              id={`documentNumber-${guest.id}`}
+                              value={guest.documentNumber}
+                              onChange={(e) => updateGuest(guest.id, 'documentNumber', e.target.value)}
+                              placeholder="Enter document number"
+                              required
+                            />
+                          </div>
+                        </div>
                       </div>
+
+                      {/* Contact Information Section */}
                       <div>
-                        <Label htmlFor={`phone-${guest.id}`}>Phone</Label>
-                        <Input
-                          id={`phone-${guest.id}`}
-                          value={guest.phone}
-                          onChange={(e) => updateGuest(guest.id, 'phone', e.target.value)}
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor={`dob-${guest.id}`}>Date of Birth *</Label>
-                        <Input
-                          id={`dob-${guest.id}`}
-                          type="date"
-                          value={guest.dateOfBirth}
-                          onChange={(e) => updateGuest(guest.id, 'dateOfBirth', e.target.value)}
-                          required
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor={`nationality-${guest.id}`}>Nationality *</Label>
-                        <Select
-                          value={guest.nationality}
-                          onValueChange={(value) => updateGuest(guest.id, 'nationality', value)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select nationality" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="US">United States</SelectItem>
-                            <SelectItem value="UK">United Kingdom</SelectItem>
-                            <SelectItem value="DE">Germany</SelectItem>
-                            <SelectItem value="FR">France</SelectItem>
-                            <SelectItem value="IT">Italy</SelectItem>
-                            <SelectItem value="ES">Spain</SelectItem>
-                            <SelectItem value="NL">Netherlands</SelectItem>
-                            <SelectItem value="other">Other</SelectItem>
-                          </SelectContent>
-                        </Select>
+                        <h5 className="font-medium mb-3 text-sm text-muted-foreground uppercase tracking-wide">Contact Information (Optional)</h5>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor={`email-${guest.id}`}>Email</Label>
+                            <Input
+                              id={`email-${guest.id}`}
+                              type="email"
+                              value={guest.email}
+                              onChange={(e) => updateGuest(guest.id, 'email', e.target.value)}
+                              placeholder="Enter email address"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor={`phone-${guest.id}`}>Phone Number</Label>
+                            <div className="flex gap-2">
+                              <Select
+                                value={guest.phoneCountryCode}
+                                onValueChange={(value) => updateGuest(guest.id, 'phoneCountryCode', value)}
+                              >
+                                <SelectTrigger className="w-32">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {phoneCodes.map((code) => (
+                                    <SelectItem key={code.code} value={code.code}>
+                                      {code.code}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <Input
+                                id={`phone-${guest.id}`}
+                                value={guest.phone}
+                                onChange={(e) => updateGuest(guest.id, 'phone', e.target.value)}
+                                placeholder="Enter phone number"
+                                className="flex-1"
+                              />
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -758,12 +1078,21 @@ export default function CheckInPage() {
                 <div className="bg-muted p-4 rounded-lg">
                   <div className="space-y-2">
                     <div className="flex justify-between items-center">
-                      <span>City Tax (50 CZK per person per night for guests 18+)</span>
+                      <span>City Tax (50 CZK per person per night for guests 18+, Prague residents exempt)</span>
                       <span className="font-semibold">{calculateCityTax(guests, nights)} CZK</span>
                     </div>
                     <div className="text-sm text-muted-foreground">
-                      {guests.filter(g => calculateAge(g.dateOfBirth) >= 18).length} eligible guests × {nights} nights × 50 CZK
+                      {guests.filter(g => {
+                        const isOfAge = calculateAge(g.dateOfBirth) >= 18;
+                        const isNotPragueResident = !isPragueCityTaxExempt(g.residenceCity);
+                        return isOfAge && isNotPragueResident;
+                      }).length} eligible guests × {nights} nights × 50 CZK
                     </div>
+                    {guests.some(g => isPragueCityTaxExempt(g.residenceCity)) && (
+                      <div className="text-sm text-green-600">
+                        ✓ {guests.filter(g => isPragueCityTaxExempt(g.residenceCity)).length} Prague resident{guests.filter(g => isPragueCityTaxExempt(g.residenceCity)).length !== 1 ? 's' : ''} exempt from city tax
+                      </div>
+                    )}
                   </div>
                 </div>
                 

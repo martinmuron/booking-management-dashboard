@@ -31,17 +31,25 @@ model Booking {
 }
 
 model Guest {
-  id          String    @id @default(cuid())
-  bookingId   String
-  firstName   String
-  lastName    String
-  dateOfBirth DateTime?
-  nationality String?
-  email       String?
-  phone       String?
-  createdAt   DateTime  @default(now())
-  isLeadGuest Boolean?  @default(false)
-  booking     Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  id               String    @id @default(cuid())
+  bookingId        String
+  firstName        String
+  lastName         String
+  dateOfBirth      DateTime?
+  nationality      String?
+  citizenship      String?
+  residenceCountry String?
+  residenceCity    String?
+  residenceAddress String?
+  purposeOfStay    String?
+  documentType     String?
+  documentNumber   String?
+  email            String?
+  phone            String?
+  phoneCountryCode String?   @default("+420")
+  createdAt        DateTime  @default(now())
+  isLeadGuest      Boolean?  @default(false)
+  booking          Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
 
   @@map("guests")
 }
