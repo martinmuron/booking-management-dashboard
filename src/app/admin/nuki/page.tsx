@@ -483,7 +483,7 @@ export default function NukiManagementPage() {
                           <div className="text-center py-8 text-muted-foreground">
                             <Key className="h-12 w-12 mx-auto mb-4 opacity-50" />
                             <p className="text-lg font-medium mb-2">No access keys found</p>
-                            <p>This device doesn't have any access keys configured.</p>
+                            <p>This device doesn&apos;t have any access keys configured.</p>
                           </div>
                         )}
                       </CardContent>
