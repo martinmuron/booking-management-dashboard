@@ -31,10 +31,10 @@ async function nukiFetch<T>(path: string, options: RequestInit = {}): Promise<T 
 // PUT to create new key
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { deviceId: string } }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { deviceId } = params;
+    const { id: deviceId } = params;
     const body = await request.json();
     
     // Validate required fields
