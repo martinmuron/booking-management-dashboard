@@ -31,9 +31,10 @@ async function nukiFetch<T>(path: string, options: RequestInit = {}): Promise<T 
 // PUT to create new key
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> | { id: string } }
 ) {
   try {
+    const params = await (context.params instanceof Promise ? context.params : context.params);
     const { id: deviceId } = params;
     const body = await request.json();
     

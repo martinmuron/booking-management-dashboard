@@ -31,9 +31,10 @@ async function nukiFetch<T>(path: string, options: RequestInit = {}): Promise<T 
 // GET key details
 export async function GET(
   request: NextRequest,
-  { params }: { params: { keyId: string } }
+  context: { params: Promise<{ keyId: string }> | { keyId: string } }
 ) {
   try {
+    const params = await (context.params instanceof Promise ? context.params : context.params);
     const { keyId } = params;
     const { searchParams } = new URL(request.url);
     const deviceId = searchParams.get('deviceId');
@@ -72,9 +73,10 @@ export async function GET(
 // POST to update key (including revoke/enable)
 export async function POST(
   request: NextRequest,
-  { params }: { params: { keyId: string } }
+  context: { params: Promise<{ keyId: string }> | { keyId: string } }
 ) {
   try {
+    const params = await (context.params instanceof Promise ? context.params : context.params);
     const { keyId } = params;
     const body = await request.json();
     const { deviceId, ...updateData } = body;
@@ -117,9 +119,10 @@ export async function POST(
 // DELETE key permanently
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { keyId: string } }
+  context: { params: Promise<{ keyId: string }> | { keyId: string } }
 ) {
   try {
+    const params = await (context.params instanceof Promise ? context.params : context.params);
     const { keyId } = params;
     const { searchParams } = new URL(request.url);
     const deviceId = searchParams.get('deviceId');
