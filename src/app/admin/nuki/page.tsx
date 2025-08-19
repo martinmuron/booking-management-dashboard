@@ -7,6 +7,11 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   Lock, 
   Unlock, 
@@ -23,7 +28,14 @@ import {
   Key,
   Smartphone,
   DoorOpen,
-  RefreshCw
+  RefreshCw,
+  Plus,
+  MoreHorizontal,
+  Trash,
+  UserX,
+  Info,
+  Calendar,
+  Clock as ClockIcon
 } from 'lucide-react';
 
 interface NukiDevice {
@@ -103,6 +115,15 @@ interface KeyEntry {
   deviceId: number;
   deviceName?: string;
   isExpired?: boolean;
+  enabled?: boolean;
+  creationDate?: string;
+  lastActiveDate?: string;
+  allowedFromDate?: string;
+  allowedUntilDate?: string;
+  allowedWeekDays?: number;
+  allowedWeekDaysDecoded?: string[];
+  allowedFromTime?: number;
+  allowedUntilTime?: number;
 }
 
 export default function NukiManagementPage() {
@@ -125,6 +146,11 @@ export default function NukiManagementPage() {
     deviceId?: number;
   }>>([]);
   const [selectedDevice, setSelectedDevice] = useState<number | null>(null);
+  const [selectedKey, setSelectedKey] = useState<KeyEntry | null>(null);
+  const [showKeyDetails, setShowKeyDetails] = useState(false);
+  const [showCreateKey, setShowCreateKey] = useState(false);
+  const [showRevokeConfirm, setShowRevokeConfirm] = useState(false);
+  const [keyToRevoke, setKeyToRevoke] = useState<KeyEntry | null>(null);
 
   const fetchOverviewData = async () => {
     try {
@@ -192,6 +218,73 @@ export default function NukiManagementPage() {
   const handleRefresh = () => {
     setRefreshing(true);
     fetchOverviewData();
+  };
+
+  const handleRevokeKey = async (key: KeyEntry) => {
+    try {
+      const response = await fetch(`/api/nuki/keys/${key.id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          deviceId: key.deviceId,
+          enabled: false 
+        })
+      });
+      
+      if (response.ok) {
+        // Refresh the key data
+        fetchOverviewData();
+        setShowRevokeConfirm(false);
+        setKeyToRevoke(null);
+      } else {
+        console.error('Failed to revoke key');
+      }
+    } catch (error) {
+      console.error('Error revoking key:', error);
+    }
+  };
+
+  const handleCreateKey = async (formData: {
+    name: string;
+    accountUserId: string;
+    type?: number;
+    remoteAllowed?: boolean;
+    code?: string;
+  }) => {
+    try {
+      const response = await fetch(`/api/nuki/devices/${selectedDevice}/keys`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      });
+      
+      if (response.ok) {
+        // Refresh the key data
+        fetchOverviewData();
+        setShowCreateKey(false);
+      } else {
+        console.error('Failed to create key');
+      }
+    } catch (error) {
+      console.error('Error creating key:', error);
+    }
+  };
+
+  const openKeyDetails = (key: KeyEntry) => {
+    setSelectedKey(key);
+    setShowKeyDetails(true);
+  };
+
+  const formatTimeRestriction = (fromTime?: number, untilTime?: number) => {
+    if (!fromTime || !untilTime) return null;
+    
+    const formatTime = (minutes: number) => {
+      const hours = Math.floor(minutes / 60);
+      const mins = minutes % 60;
+      return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+    };
+    
+    return `${formatTime(fromTime)} - ${formatTime(untilTime)}`;
   };
 
   useEffect(() => {
@@ -428,18 +521,28 @@ export default function NukiManagementPage() {
 
                     <Card>
                       <CardHeader>
-                        <CardTitle>Access Keys</CardTitle>
-                        <CardDescription>
-                          All access keys for this device. You can manage, revoke, or create new keys here.
-                          <br />
-                          <strong>Note:</strong> Key management (create/revoke) is available via Nuki API but not implemented in this dashboard yet.
-                        </CardDescription>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <CardTitle>Access Keys</CardTitle>
+                            <CardDescription>
+                              All access keys for this device. Click any key to view details, or use the actions to manage keys.
+                            </CardDescription>
+                          </div>
+                          <Button 
+                            onClick={() => setShowCreateKey(true)}
+                            className="flex items-center gap-2"
+                          >
+                            <Plus className="h-4 w-4" />
+                            Create Key
+                          </Button>
+                        </div>
                       </CardHeader>
                       <CardContent>
                         {deviceAuths.length > 0 ? (
                           <div className="space-y-3">
                             {deviceAuths.map((auth: KeyEntry) => (
-                              <Card key={auth.id} className="p-4">
+                              <Card key={auth.id} className="p-4 cursor-pointer hover:shadow-md transition-shadow"
+                                    onClick={() => openKeyDetails(auth)}>
                                 <div className="flex items-center justify-between">
                                   <div className="flex items-center gap-3">
                                     <div className="flex items-center justify-center w-10 h-10 rounded-full bg-muted">
@@ -447,12 +550,22 @@ export default function NukiManagementPage() {
                                       {(auth.type === 3 || auth.type === 13) && <Key className="h-5 w-5 text-amber-500" />}
                                       {auth.type !== 0 && auth.type !== 3 && auth.type !== 13 && <Shield className="h-5 w-5 text-gray-500" />}
                                     </div>
-                                    <div>
+                                    <div className="flex-1">
                                       <p className="font-medium">{auth.name}</p>
                                       <p className="text-sm text-muted-foreground">{auth.typeName || 'Authorization'}</p>
-                                      {(auth as KeyEntry & { allowedUntilDate?: string }).allowedUntilDate && (
+                                      {auth.allowedUntilDate && (
                                         <p className="text-xs text-muted-foreground">
-                                          Expires: {new Date((auth as KeyEntry & { allowedUntilDate: string }).allowedUntilDate).toLocaleDateString()}
+                                          Expires: {new Date(auth.allowedUntilDate).toLocaleDateString()}
+                                        </p>
+                                      )}
+                                      {auth.allowedWeekDaysDecoded && auth.allowedWeekDaysDecoded.length > 0 && (
+                                        <p className="text-xs text-muted-foreground">
+                                          Days: {auth.allowedWeekDaysDecoded.join(', ')}
+                                        </p>
+                                      )}
+                                      {formatTimeRestriction(auth.allowedFromTime, auth.allowedUntilTime) && (
+                                        <p className="text-xs text-muted-foreground">
+                                          Time: {formatTimeRestriction(auth.allowedFromTime, auth.allowedUntilTime)}
                                         </p>
                                       )}
                                     </div>
@@ -474,6 +587,32 @@ export default function NukiManagementPage() {
                                         Inactive
                                       </Badge>
                                     )}
+                                    
+                                    {auth.isActive && (
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setKeyToRevoke(auth);
+                                          setShowRevokeConfirm(true);
+                                        }}
+                                        className="text-red-600 hover:text-red-700"
+                                      >
+                                        <UserX className="h-4 w-4" />
+                                      </Button>
+                                    )}
+                                    
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        openKeyDetails(auth);
+                                      }}
+                                    >
+                                      <Info className="h-4 w-4" />
+                                    </Button>
                                   </div>
                                 </div>
                               </Card>
@@ -726,6 +865,249 @@ export default function NukiManagementPage() {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Key Details Dialog */}
+      <Dialog open={showKeyDetails} onOpenChange={setShowKeyDetails}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Access Key Details</DialogTitle>
+            <DialogDescription>
+              Complete information about this access key
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedKey && (
+            <div className="space-y-6">
+              {/* Basic Information */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-sm font-medium text-muted-foreground">Name</Label>
+                  <p className="text-base font-medium">{selectedKey.name}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-muted-foreground">Type</Label>
+                  <div className="flex items-center gap-2">
+                    {selectedKey.type === 0 && <Smartphone className="h-4 w-4 text-blue-500" />}
+                    {(selectedKey.type === 3 || selectedKey.type === 13) && <Key className="h-4 w-4 text-amber-500" />}
+                    {selectedKey.type !== 0 && selectedKey.type !== 3 && selectedKey.type !== 13 && <Shield className="h-4 w-4 text-gray-500" />}
+                    <span>{selectedKey.typeName || 'Authorization'}</span>
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-muted-foreground">Status</Label>
+                  <div className="flex items-center gap-2">
+                    {selectedKey.isActive ? (
+                      <Badge variant="default" className="flex items-center gap-1">
+                        <CheckCircle className="h-3 w-3" />
+                        Active
+                      </Badge>
+                    ) : selectedKey.isExpired ? (
+                      <Badge variant="destructive" className="flex items-center gap-1">
+                        <XCircle className="h-3 w-3" />
+                        Expired
+                      </Badge>
+                    ) : (
+                      <Badge variant="secondary" className="flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        Inactive
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-muted-foreground">Key ID</Label>
+                  <p className="text-base font-mono">{selectedKey.id}</p>
+                </div>
+              </div>
+
+              {/* Time Restrictions */}
+              {(selectedKey.allowedFromDate || selectedKey.allowedUntilDate || selectedKey.allowedWeekDaysDecoded?.length || formatTimeRestriction(selectedKey.allowedFromTime, selectedKey.allowedUntilTime)) && (
+                <div className="space-y-3">
+                  <h4 className="text-sm font-medium flex items-center gap-2">
+                    <Calendar className="h-4 w-4" />
+                    Time Restrictions
+                  </h4>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    {selectedKey.allowedFromDate && (
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Valid From</Label>
+                        <p>{new Date(selectedKey.allowedFromDate).toLocaleString()}</p>
+                      </div>
+                    )}
+                    {selectedKey.allowedUntilDate && (
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Valid Until</Label>
+                        <p>{new Date(selectedKey.allowedUntilDate).toLocaleString()}</p>
+                      </div>
+                    )}
+                    {selectedKey.allowedWeekDaysDecoded && selectedKey.allowedWeekDaysDecoded.length > 0 && (
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Allowed Days</Label>
+                        <p>{selectedKey.allowedWeekDaysDecoded.join(', ')}</p>
+                      </div>
+                    )}
+                    {formatTimeRestriction(selectedKey.allowedFromTime, selectedKey.allowedUntilTime) && (
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Allowed Hours</Label>
+                        <p>{formatTimeRestriction(selectedKey.allowedFromTime, selectedKey.allowedUntilTime)}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Activity Information */}
+              <div className="space-y-3">
+                <h4 className="text-sm font-medium flex items-center gap-2">
+                  <ClockIcon className="h-4 w-4" />
+                  Activity Information
+                </h4>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  {selectedKey.creationDate && (
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Created</Label>
+                      <p>{new Date(selectedKey.creationDate).toLocaleString()}</p>
+                    </div>
+                  )}
+                  {selectedKey.lastActiveDate && (
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Last Active</Label>
+                      <p>{new Date(selectedKey.lastActiveDate).toLocaleString()}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Key Dialog */}
+      <Dialog open={showCreateKey} onOpenChange={setShowCreateKey}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create New Access Key</DialogTitle>
+            <DialogDescription>
+              Create a new access key for this smart lock device
+            </DialogDescription>
+          </DialogHeader>
+          
+          <form onSubmit={(e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target as HTMLFormElement);
+            handleCreateKey({
+              name: formData.get('name') as string,
+              accountUserId: formData.get('accountUserId') as string,
+              type: parseInt(formData.get('type') as string) || 0,
+              remoteAllowed: formData.get('remoteAllowed') === 'true',
+              code: formData.get('code') as string || undefined,
+            });
+          }}>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="name">Key Name *</Label>
+                <Input 
+                  id="name" 
+                  name="name" 
+                  placeholder="Enter key name" 
+                  required 
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="accountUserId">Account User ID *</Label>
+                <Input 
+                  id="accountUserId" 
+                  name="accountUserId" 
+                  placeholder="Enter user account ID" 
+                  required 
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="type">Key Type</Label>
+                <Select name="type" defaultValue="0">
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="0">App User</SelectItem>
+                    <SelectItem value="3">Keypad Code</SelectItem>
+                    <SelectItem value="13">Card</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div>
+                <Label htmlFor="code">Keypad Code (optional)</Label>
+                <Input 
+                  id="code" 
+                  name="code" 
+                  placeholder="Enter 6-digit code for keypad" 
+                  maxLength={6}
+                />
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <input 
+                  type="checkbox" 
+                  id="remoteAllowed" 
+                  name="remoteAllowed" 
+                  value="true"
+                />
+                <Label htmlFor="remoteAllowed">Allow remote access</Label>
+              </div>
+            </div>
+            
+            <DialogFooter className="mt-6">
+              <Button type="button" variant="outline" onClick={() => setShowCreateKey(false)}>
+                Cancel
+              </Button>
+              <Button type="submit">Create Key</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Revoke Confirmation Dialog */}
+      <Dialog open={showRevokeConfirm} onOpenChange={setShowRevokeConfirm}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Revoke Access Key</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to revoke this access key? This action will disable the key but not delete it permanently.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {keyToRevoke && (
+            <div className="py-4">
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-muted">
+                <div className="flex items-center justify-center w-10 h-10 rounded-full bg-background">
+                  {keyToRevoke.type === 0 && <Smartphone className="h-5 w-5 text-blue-500" />}
+                  {(keyToRevoke.type === 3 || keyToRevoke.type === 13) && <Key className="h-5 w-5 text-amber-500" />}
+                  {keyToRevoke.type !== 0 && keyToRevoke.type !== 3 && keyToRevoke.type !== 13 && <Shield className="h-5 w-5 text-gray-500" />}
+                </div>
+                <div>
+                  <p className="font-medium">{keyToRevoke.name}</p>
+                  <p className="text-sm text-muted-foreground">{keyToRevoke.typeName || 'Authorization'}</p>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowRevokeConfirm(false)}>
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={() => keyToRevoke && handleRevokeKey(keyToRevoke)}
+            >
+              Revoke Key
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
