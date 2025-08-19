@@ -248,8 +248,8 @@ export default function NukiManagementPage() {
           <Skeleton className="h-10 w-24" />
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {[1, 2, 3, 4].map((i) => (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          {[1, 2, 3, 4, 5].map((i) => (
             <Card key={i}>
               <CardHeader className="pb-2">
                 <Skeleton className="h-4 w-24" />
@@ -296,7 +296,7 @@ export default function NukiManagementPage() {
       </div>
 
       {stats && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Devices</CardTitle>
@@ -325,13 +325,26 @@ export default function NukiManagementPage() {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Authorizations</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium">Total Keys</CardTitle>
+              <Key className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats.totalAuthorizations}</div>
               <p className="text-xs text-muted-foreground">
-                {stats.activeAuthorizations} active
+                All access keys
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Key Status</CardTitle>
+              <Users className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-green-600">{stats.activeAuthorizations}</div>
+              <p className="text-xs text-muted-foreground">
+                {stats.totalAuthorizations - stats.activeAuthorizations} expired/inactive
               </p>
             </CardContent>
           </Card>
@@ -391,8 +404,19 @@ export default function NukiManagementPage() {
                       <p className="font-medium">{device.smartlockId}</p>
                     </div>
                     <div>
+                      <p className="text-muted-foreground">Battery</p>
+                      <p className="font-medium flex items-center gap-1">
+                        {device.batteryChargeState || 0}%
+                        {device.batteryCharging && <span className="text-green-600 text-xs">⚡</span>}
+                        {device.batteryCritical && <span className="text-red-600 text-xs">⚠️</span>}
+                      </p>
+                    </div>
+                    <div>
                       <p className="text-muted-foreground">Door Sensor</p>
                       <p className="font-medium">{device.doorsensorStateName}</p>
+                      {device.doorsensorStateName === 'Unavailable' && (
+                        <p className="text-xs text-muted-foreground">No sensor installed</p>
+                      )}
                     </div>
                     <div>
                       <p className="text-muted-foreground">Last Updated</p>
@@ -405,23 +429,64 @@ export default function NukiManagementPage() {
                     {(() => {
                       const deviceAuths = (keys || []).filter((k: KeyEntry) => k.deviceId === device.smartlockId);
                       const activeCount = deviceAuths.filter((a: KeyEntry) => a.isActive).length;
+                      const expiredCount = deviceAuths.filter((a: KeyEntry) => (a as any).isExpired).length;
+                      
                       return (
-                        <div className="space-y-2">
+                        <div className="space-y-3">
                           <div className="flex items-center justify-between text-sm">
-                            <span className="text-muted-foreground">
-                              {deviceAuths.length} total keys, {activeCount} active
+                            <span className="font-medium text-muted-foreground flex items-center gap-2">
+                              <Key className="h-4 w-4" />
+                              Access Keys ({deviceAuths.length})
                             </span>
-                          </div>
-                          {deviceAuths.length > 0 ? (
-                            <div className="flex flex-wrap gap-2">
-                              {deviceAuths.map((a: KeyEntry) => (
-                                <Badge key={a.id} variant={a.isActive ? 'default' : 'secondary'} className="text-xs">
-                                  {a.name} • {a.typeName || 'Key'}
+                            <div className="flex gap-2 text-xs">
+                              <Badge variant="default" className="h-5">
+                                {activeCount} active
+                              </Badge>
+                              {expiredCount > 0 && (
+                                <Badge variant="destructive" className="h-5">
+                                  {expiredCount} expired
                                 </Badge>
+                              )}
+                            </div>
+                          </div>
+                          
+                          {deviceAuths.length > 0 ? (
+                            <div className="space-y-2 max-h-32 overflow-y-auto">
+                              {deviceAuths.slice(0, 8).map((auth: any) => (
+                                <div key={auth.id} className="flex items-center justify-between p-2 rounded bg-muted/50">
+                                  <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-1">
+                                      {auth.type === 0 && <Smartphone className="h-3 w-3 text-blue-500" />}
+                                      {(auth.type === 3 || auth.type === 13) && <Key className="h-3 w-3 text-amber-500" />}
+                                      {auth.type !== 0 && auth.type !== 3 && auth.type !== 13 && <Shield className="h-3 w-3 text-gray-500" />}
+                                    </div>
+                                    <div className="min-w-0">
+                                      <p className="text-xs font-medium truncate">{auth.name}</p>
+                                      <p className="text-xs text-muted-foreground">{auth.typeName || 'Authorization'}</p>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    {auth.isActive ? (
+                                      <CheckCircle className="h-3 w-3 text-green-500" />
+                                    ) : auth.isExpired ? (
+                                      <XCircle className="h-3 w-3 text-red-500" />
+                                    ) : (
+                                      <Clock className="h-3 w-3 text-amber-500" />
+                                    )}
+                                  </div>
+                                </div>
                               ))}
+                              {deviceAuths.length > 8 && (
+                                <p className="text-xs text-muted-foreground text-center py-1">
+                                  ... and {deviceAuths.length - 8} more keys
+                                </p>
+                              )}
                             </div>
                           ) : (
-                            <p className="text-sm text-muted-foreground">No keys found for this device</p>
+                            <div className="text-center py-4 text-muted-foreground">
+                              <Key className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                              <p className="text-sm">No keys found for this device</p>
+                            </div>
                           )}
                         </div>
                       );

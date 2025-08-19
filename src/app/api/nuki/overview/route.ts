@@ -66,8 +66,17 @@ export async function GET() {
 
     const onlineDevices = safeDevices.filter(d => (d.serverState ?? 4) === 0).length;
     const offlineDevices = safeDevices.filter(d => (d.serverState ?? 4) !== 0).length;
-    const lockedDevices = safeDevices.filter(d => (d.state ?? 0) === 1).length;
-    const unlockedDevices = safeDevices.filter(d => (d.state ?? 0) === 3).length;
+    
+    // Handle nested state object - Nuki API returns state as {state: 1, mode: 2, ...}
+    const getActualState = (stateData: unknown): number => {
+      if (typeof stateData === 'object' && stateData !== null && 'state' in stateData) {
+        return (stateData as any).state ?? 0;
+      }
+      return typeof stateData === 'number' ? stateData : 0;
+    };
+    
+    const lockedDevices = safeDevices.filter(d => getActualState(d.state) === 1).length;
+    const unlockedDevices = safeDevices.filter(d => getActualState(d.state) === 3).length;
 
     const stats = {
       totalDevices: safeDevices.length,
@@ -81,29 +90,79 @@ export async function GET() {
     };
 
     // Transform devices minimally to what UI expects, with safe defaults
-    const devicesOut = safeDevices.map(d => ({
-      smartlockId: d.smartlockId ?? d.id ?? 0,
-      name: d.name ?? 'Unknown',
-      type: d.type ?? 0,
-      deviceTypeName: d.deviceTypeName ?? 'Smart Lock',
-      state: d.state ?? 0,
-      stateName: d.stateName ?? 'Unknown',
-      serverState: d.serverState ?? 4,
-      serverStateName: d.serverStateName ?? 'offline',
-      batteryCritical: !!d.batteryCritical,
-      batteryCharging: !!d.batteryCharging,
-      batteryChargeState: d.batteryChargeState ?? 0,
-      keypadBatteryCritical: !!d.keypadBatteryCritical,
-      doorsensorState: d.doorsensorState ?? 255,
-      doorsensorStateName: d.doorsensorStateName ?? 'Undefined',
-      dateCreated: d.dateCreated ?? new Date().toISOString(),
-      dateUpdated: d.dateUpdated ?? new Date().toISOString(),
-      virtualDevice: !!d.virtualDevice,
-      recentLogs: [] as unknown[],
-      authorizations: [] as unknown[],
-      authCount: 0,
-      activeAuthCount: 0,
-    }));
+    const devicesOut = safeDevices.map(d => {
+      const actualState = getActualState(d.state);
+      const stateNames: Record<number, string> = {
+        0: 'Uncalibrated',
+        1: 'Locked', 
+        2: 'Unlocking',
+        3: 'Unlocked',
+        4: 'Locking',
+        5: 'Unlatched',
+        6: "Unlocked (Lock 'n' Go)",
+        7: 'Unlatching',
+        254: 'Motor blocked',
+        255: 'Undefined'
+      };
+      
+      // Parse battery info from nested state object
+      const getBatteryInfo = (stateData: unknown) => {
+        if (typeof stateData === 'object' && stateData !== null) {
+          const state = stateData as any;
+          return {
+            batteryCharge: state.batteryCharge ?? d.batteryChargeState ?? 0,
+            batteryCritical: state.batteryCritical ?? d.batteryCritical ?? false,
+            batteryCharging: state.batteryCharging ?? d.batteryCharging ?? false,
+            keypadBatteryCritical: state.keypadBatteryCritical ?? d.keypadBatteryCritical ?? false,
+            doorState: state.doorState ?? 0,
+          };
+        }
+        return {
+          batteryCharge: d.batteryChargeState ?? 0,
+          batteryCritical: d.batteryCritical ?? false,
+          batteryCharging: d.batteryCharging ?? false,
+          keypadBatteryCritical: d.keypadBatteryCritical ?? false,
+          doorState: 0,
+        };
+      };
+      
+      const batteryInfo = getBatteryInfo(d.state);
+      
+      // Improve door sensor state names
+      const doorSensorNames: Record<number, string> = {
+        0: 'Deactivated',
+        1: 'Closed',
+        2: 'Open', 
+        3: 'Unknown',
+        4: 'Calibrating',
+        255: 'Unavailable'
+      };
+      
+      return {
+        smartlockId: d.smartlockId ?? d.id ?? 0,
+        name: d.name ?? 'Unknown',
+        type: d.type ?? 0,
+        deviceTypeName: d.deviceTypeName ?? 'Smart Lock',
+        state: actualState,
+        stateName: stateNames[actualState] || 'Unknown',
+        serverState: d.serverState ?? 4,
+        serverStateName: (d.serverState ?? 4) === 0 ? 'Online' : 'Offline',
+        batteryCritical: batteryInfo.batteryCritical,
+        batteryCharging: batteryInfo.batteryCharging,
+        batteryChargeState: batteryInfo.batteryCharge,
+        keypadBatteryCritical: batteryInfo.keypadBatteryCritical,
+        doorsensorState: d.doorsensorState ?? 255,
+        doorsensorStateName: doorSensorNames[d.doorsensorState ?? 255] || 'Unavailable',
+        doorState: batteryInfo.doorState,
+        dateCreated: d.dateCreated ?? new Date().toISOString(),
+        dateUpdated: d.dateUpdated ?? new Date().toISOString(),
+        virtualDevice: !!d.virtualDevice,
+        recentLogs: [] as unknown[],
+        authorizations: [] as unknown[],
+        authCount: 0,
+        activeAuthCount: 0,
+      };
+    });
 
     // We won’t load activity in overview for now
     const recentActivity: unknown[] = [];
