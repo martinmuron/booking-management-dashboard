@@ -23,6 +23,8 @@ interface BookingData {
   numberOfGuests: number;
   status: string; // Our platform status
   checkInToken: string;
+  universalKeypadCode?: string;
+  roomNumber?: string;
   createdAt: string;
   updatedAt: string;
 }
