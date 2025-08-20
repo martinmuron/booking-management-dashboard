@@ -244,6 +244,90 @@ export default function AdminSettingsPage() {
     }
   };
 
+  // Recent 1000 bookings update function
+  const runRecentUpdate = async () => {
+    if (!confirm('This will update only the most recent 1000 bookings in HostAway with check-in links. This is faster than updating all bookings. Continue?')) {
+      return;
+    }
+    
+    setBulkUpdateLoading(true);
+    setBulkUpdateStatus('Starting recent 1000 bookings update...');
+    setBulkUpdateResult(null);
+    setChunkUpdateProgress({
+      current: 0,
+      total: Math.min(1000, bulkUpdateCount || 1000),
+      successful: 0,
+      failed: 0,
+      isRunning: true
+    });
+    
+    let offset = 0;
+    const limit = 50;
+    let totalProcessed = 0;
+    let totalSuccessful = 0;
+    let totalFailed = 0;
+    let hasMore = true;
+    
+    try {
+      while (hasMore) {
+        const response = await fetch('/api/bookings/bulk-update-links-recent', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ offset, limit })
+        });
+        
+        const data = await response.json();
+        
+        if (!data.success) {
+          throw new Error(data.error || 'Chunk update failed');
+        }
+        
+        totalProcessed += data.processed;
+        totalSuccessful += data.successful;
+        totalFailed += data.failed;
+        hasMore = data.hasMore;
+        
+        setChunkUpdateProgress({
+          current: totalProcessed,
+          total: data.totalCount,
+          successful: totalSuccessful,
+          failed: totalFailed,
+          isRunning: hasMore
+        });
+        
+        setBulkUpdateStatus(`Processing recent bookings: ${totalProcessed}/${data.totalCount} (${data.progress}%)`);
+        
+        if (hasMore) {
+          offset = data.nextOffset;
+          // Small delay between chunks to prevent overwhelming the server
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      }
+      
+      setBulkUpdateResult({
+        updated: totalSuccessful,
+        failed: totalFailed,
+        total: totalProcessed
+      });
+      setBulkUpdateStatus(`✅ Recent 1000 bookings update completed! Updated ${totalSuccessful} bookings successfully, ${totalFailed} failed.`);
+      
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      setBulkUpdateStatus(`❌ Recent update failed: ${errorMessage}`);
+      setChunkUpdateProgress({
+        current: totalProcessed,
+        total: Math.min(1000, bulkUpdateCount || 1000),
+        successful: totalSuccessful,
+        failed: totalFailed,
+        isRunning: false
+      });
+    } finally {
+      setBulkUpdateLoading(false);
+    }
+  };
+
   // Smart chunked update function (recommended for large datasets)
   const runChunkedUpdate = async () => {
     if (!confirm(`This will update ${bulkUpdateCount || 'all existing'} reservations in HostAway with check-in links. The process will run in small chunks to avoid timeouts. This is the recommended approach for large numbers of bookings. Continue?`)) {
@@ -610,6 +694,14 @@ export default function AdminSettingsPage() {
                       className="w-full"
                     >
                       {bulkUpdateLoading ? 'Updating... Please wait' : `Smart Update ${bulkUpdateCount} Reservations (Recommended)`}
+                    </Button>
+                    <Button 
+                      onClick={runRecentUpdate} 
+                      disabled={bulkUpdateLoading}
+                      variant="secondary"
+                      className="w-full"
+                    >
+                      {bulkUpdateLoading ? 'Updating... Please wait' : 'Quick Update - Recent 1000 Only'}
                     </Button>
                     <Button 
                       onClick={runBulkUpdate} 
