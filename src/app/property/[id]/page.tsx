@@ -251,11 +251,9 @@ export default function PropertyDetailPage() {
             <div className="lg:col-span-1">
               <Card className="sticky top-4">
                 <CardHeader>
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-2xl font-bold text-black">
-                      {property.price} {property.currencyCode}
-                    </span>
-                    <span className="text-gray-500">/ night</span>
+                  <div className="text-center">
+                    <h3 className="text-lg font-semibold text-black">Book Your Stay</h3>
+                    <p className="text-sm text-gray-600">Choose your preferred platform</p>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -290,17 +288,6 @@ export default function PropertyDetailPage() {
                   </div>
                   <div className="text-center text-sm text-gray-500">
                     You won&apos;t be charged yet
-                  </div>
-                  <Separator />
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Base rate</span>
-                      <span>{property.price} {property.currencyCode}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">City tax</span>
-                      <span>50 CZK / person / night</span>
-                    </div>
                   </div>
                 </CardContent>
               </Card>

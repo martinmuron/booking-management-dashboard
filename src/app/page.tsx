@@ -184,15 +184,6 @@ export default function Home() {
                           </div>
                         </div>
                         
-                        {/* Price */}
-                        {property.price && (
-                          <div className="flex items-baseline gap-1">
-                            <span className="text-2xl font-bold text-black">
-                              {property.price} {property.currencyCode || 'EUR'}
-                            </span>
-                            <span className="text-gray-500 text-sm">/ night</span>
-                          </div>
-                        )}
                       </div>
                       
                       <Link href={`/property/${property.id}`}>
