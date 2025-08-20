@@ -13,8 +13,8 @@ export default function Home() {
 
   useEffect(() => {
     const initializeWidget = () => {
-      if (typeof window !== 'undefined' && (window as any).searchBar) {
-        (window as any).searchBar({
+      if (typeof window !== 'undefined' && (window as unknown as { searchBar?: unknown }).searchBar) {
+        ((window as unknown as { searchBar: (config: unknown) => void }).searchBar)({
           baseUrl: 'https://www.mywebsite.com/',
           showLocation: true,
           color: '#cc2dcf',
@@ -25,11 +25,11 @@ export default function Home() {
       }
     };
 
-    if (typeof window !== 'undefined' && (window as any).searchBar) {
+    if (typeof window !== 'undefined' && (window as unknown as { searchBar?: unknown }).searchBar) {
       initializeWidget();
     } else {
       const checkForScript = setInterval(() => {
-        if (typeof window !== 'undefined' && (window as any).searchBar) {
+        if (typeof window !== 'undefined' && (window as unknown as { searchBar?: unknown }).searchBar) {
           initializeWidget();
           clearInterval(checkForScript);
         }
@@ -55,7 +55,7 @@ export default function Home() {
         return;
       }
       window.location.href = "/admin";
-    } catch (err) {
+    } catch {
       setError("Login failed");
     } finally {
       setLoading(false);
