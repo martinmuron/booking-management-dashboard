@@ -123,9 +123,11 @@ export default function Home() {
                 <p className="text-sm text-gray-600">Premium Accommodations</p>
               </div>
             </div>
-            <Button variant="outline" className="border-black text-black hover:bg-black hover:text-white">
-              Contact Us
-            </Button>
+            <a href="mailto:hello@nickandjenny.com?subject=Property Inquiry">
+              <Button variant="outline" className="border-black text-black hover:bg-black hover:text-white">
+                Contact Us
+              </Button>
+            </a>
           </div>
         </div>
       </header>
@@ -343,7 +345,7 @@ export default function Home() {
             <div>
               <h5 className="font-semibold mb-4">Contact</h5>
               <div className="text-gray-400 space-y-2">
-                <p>Email: hello@nickandjenny.com</p>
+                <p>Email: <a href="mailto:hello@nickandjenny.com" className="text-gray-300 hover:text-white transition-colors">hello@nickandjenny.com</a></p>
                 <p>Phone: +420 xxx xxx xxx</p>
               </div>
             </div>
