@@ -117,21 +117,20 @@ export async function POST(request: NextRequest) {
         });
         break;
         
-      case 'new message received':
-      case 'message_received':
-      case 'message.received':  // HostAway uses dot notation!
-      case 'message':
-        console.log('📨 New message received - logging only');
-        await logWebhookActivity({
-          eventType,
-          status: 'success',
-          message: `Message received (not processed)`,
-          reservationId: reservationData?.id?.toString() || reservationData?.reservationId?.toString()
-        });
-        // Future: Handle guest messages
-        break;
         
       default:
+        // Check if this is a message event that we want to ignore
+        if (normalizedEventType.includes('message')) {
+          console.log(`📨 Ignoring message event: "${eventType}"`);
+          await logWebhookActivity({
+            eventType,
+            status: 'success',
+            message: `Message event ignored: ${eventType}`,
+            reservationId: reservationData?.id?.toString() || reservationData?.reservationId?.toString()
+          });
+          break;
+        }
+        
         console.log(`⚠️  Unknown event type: "${eventType}" (normalized: "${normalizedEventType}")`);
         console.log('🔍 Attempting to process as reservation update anyway...');
         
