@@ -42,6 +42,21 @@ export default function AdminSettingsPage() {
     total: number;
     failures?: Array<{bookingId: string; error: string}>;
   } | null>(null);
+  
+  // Chunked update state
+  const [chunkUpdateProgress, setChunkUpdateProgress] = useState<{
+    current: number;
+    total: number;
+    successful: number;
+    failed: number;
+    isRunning: boolean;
+  }>({
+    current: 0,
+    total: 0,
+    successful: 0,
+    failed: 0,
+    isRunning: false
+  });
 
   const save = async () => {
     setLoading(true);
@@ -227,6 +242,79 @@ export default function AdminSettingsPage() {
     } finally {
       setBulkUpdateLoading(false);
     }
+  };
+
+  // Smart chunked update function (recommended for large datasets)
+  const runChunkedUpdate = async () => {
+    if (!confirm(`This will update ${bulkUpdateCount || 'all existing'} reservations in HostAway with check-in links. The process will run in small chunks to avoid timeouts. This is the recommended approach for large numbers of bookings. Continue?`)) {
+      return;
+    }
+
+    setChunkUpdateProgress({
+      current: 0,
+      total: bulkUpdateCount || 0,
+      successful: 0,
+      failed: 0,
+      isRunning: true
+    });
+
+    setBulkUpdateLoading(true);
+    setBulkUpdateResult(null);
+
+    let offset = 0;
+    const chunkSize = 50;
+    let totalSuccessful = 0;
+    let totalFailed = 0;
+    let hasMore = true;
+
+    while (hasMore) {
+      try {
+        setBulkUpdateStatus(`Processing bookings ${offset + 1} to ${offset + chunkSize}...`);
+        
+        const response = await fetch('/api/bookings/bulk-update-links-chunked', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ offset, limit: chunkSize })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          totalSuccessful += data.successful;
+          totalFailed += data.failed;
+          
+          setChunkUpdateProgress({
+            current: offset + data.processed,
+            total: data.totalCount,
+            successful: totalSuccessful,
+            failed: totalFailed,
+            isRunning: true
+          });
+          
+          hasMore = data.hasMore;
+          offset = data.nextOffset;
+          
+          setBulkUpdateStatus(`Processed ${offset} / ${data.totalCount} bookings (${data.progress}% complete)`);
+          
+          // Small delay between chunks
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        } else {
+          throw new Error(data.error || 'Chunk processing failed');
+        }
+      } catch (error) {
+        setBulkUpdateStatus(`❌ Error during chunked update: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        hasMore = false;
+      }
+    }
+
+    setChunkUpdateProgress(prev => ({ ...prev, isRunning: false }));
+    setBulkUpdateLoading(false);
+    setBulkUpdateResult({
+      updated: totalSuccessful,
+      failed: totalFailed,
+      total: totalSuccessful + totalFailed
+    });
+    setBulkUpdateStatus(`✅ Chunked update completed! Updated ${totalSuccessful} bookings successfully, ${totalFailed} failed out of ${totalSuccessful + totalFailed} processed.`);
   };
 
   useEffect(() => {
@@ -484,6 +572,26 @@ export default function AdminSettingsPage() {
                 </div>
               )}
 
+              {/* Progress Bar for Chunked Updates */}
+              {chunkUpdateProgress.isRunning && chunkUpdateProgress.total > 0 && (
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span>Progress: {chunkUpdateProgress.current} / {chunkUpdateProgress.total}</span>
+                    <span>{Math.round((chunkUpdateProgress.current / chunkUpdateProgress.total) * 100)}%</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div 
+                      className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+                      style={{ width: `${(chunkUpdateProgress.current / chunkUpdateProgress.total) * 100}%` }}
+                    ></div>
+                  </div>
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>✅ Successful: {chunkUpdateProgress.successful}</span>
+                    <span>❌ Failed: {chunkUpdateProgress.failed}</span>
+                  </div>
+                </div>
+              )}
+
               {/* Run Update Button */}
               {bulkUpdateCount !== null && bulkUpdateCount > 0 && (
                 <div className="bg-yellow-50 p-4 rounded-lg">
@@ -495,13 +603,23 @@ export default function AdminSettingsPage() {
                     <li>• Your booking system will continue working during the update</li>
                     <li>• Failed updates are logged but won&apos;t break the process</li>
                   </ul>
-                  <Button 
-                    onClick={runBulkUpdate} 
-                    disabled={bulkUpdateLoading}
-                    className="w-full"
-                  >
-                    {bulkUpdateLoading ? 'Updating... Please wait' : `Update ${bulkUpdateCount} Reservations`}
-                  </Button>
+                  <div className="space-y-2">
+                    <Button 
+                      onClick={runChunkedUpdate} 
+                      disabled={bulkUpdateLoading}
+                      className="w-full"
+                    >
+                      {bulkUpdateLoading ? 'Updating... Please wait' : `Smart Update ${bulkUpdateCount} Reservations (Recommended)`}
+                    </Button>
+                    <Button 
+                      onClick={runBulkUpdate} 
+                      disabled={bulkUpdateLoading}
+                      variant="outline"
+                      className="w-full"
+                    >
+                      {bulkUpdateLoading ? 'Updating... Please wait' : `Legacy Update ${bulkUpdateCount} Reservations (May Timeout)`}
+                    </Button>
+                  </div>
                 </div>
               )}
 
