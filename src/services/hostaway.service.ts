@@ -75,6 +75,20 @@ interface HostAwayListingsResponse {
   result: HostAwayListing[];
 }
 
+interface HostAwayCalendarDay {
+  date: string;
+  available: boolean;
+  price: number;
+  minimumStay: number;
+  reservationId?: number;
+  note?: string;
+}
+
+interface HostAwayCalendarResponse {
+  status: string;
+  result: HostAwayCalendarDay[];
+}
+
 interface HostAwayCustomField {
   id?: number;
   customFieldId?: number;
@@ -245,6 +259,70 @@ class HostAwayService {
     } catch (error) {
       console.error('Failed to fetch listings:', error);
       return [];
+    }
+  }
+
+  async getListingCalendar(
+    listingId: number, 
+    startDate: string, 
+    endDate: string
+  ): Promise<HostAwayCalendarDay[]> {
+    try {
+      const response = await this.makeRequest<HostAwayCalendarResponse>(
+        `/listings/${listingId}/calendar`,
+        {
+          startDate,
+          endDate,
+          includeResources: '1'
+        }
+      );
+      return response.result || [];
+    } catch (error) {
+      console.error(`Failed to fetch calendar for listing ${listingId}:`, error);
+      return [];
+    }
+  }
+
+  async checkAvailability(
+    listingId: number,
+    checkInDate: string,
+    checkOutDate: string
+  ): Promise<{
+    available: boolean;
+    unavailableDates: string[];
+    minimumStay?: number;
+    averagePrice?: number;
+  }> {
+    try {
+      const calendar = await this.getListingCalendar(listingId, checkInDate, checkOutDate);
+      
+      const unavailableDates = calendar
+        .filter(day => !day.available)
+        .map(day => day.date);
+        
+      const available = unavailableDates.length === 0;
+      
+      const availableDays = calendar.filter(day => day.available);
+      const averagePrice = availableDays.length > 0 
+        ? availableDays.reduce((sum, day) => sum + day.price, 0) / availableDays.length
+        : undefined;
+        
+      const minimumStay = availableDays.length > 0
+        ? Math.max(...availableDays.map(day => day.minimumStay))
+        : undefined;
+
+      return {
+        available,
+        unavailableDates,
+        minimumStay,
+        averagePrice
+      };
+    } catch (error) {
+      console.error(`Failed to check availability for listing ${listingId}:`, error);
+      return {
+        available: false,
+        unavailableDates: []
+      };
     }
   }
 
@@ -473,4 +551,8 @@ class HostAwayService {
 }
 
 export const hostAwayService = new HostAwayService();
-export type { HostAwayReservation, HostAwayListing };
+export type { 
+  HostAwayReservation, 
+  HostAwayListing, 
+  HostAwayCalendarDay 
+};
