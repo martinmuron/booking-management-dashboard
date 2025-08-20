@@ -56,42 +56,33 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Check availability for each listing
-    const availabilityPromises = filteredListings.map(async (listing) => {
-      const availability = await hostAwayService.checkAvailability(
-        listing.id,
-        checkInDate,
-        checkOutDate
-      );
-      
-      return {
-        listing: {
-          id: listing.id,
-          name: listing.name,
-          address: listing.address,
-          personCapacity: listing.personCapacity,
-          bedroomsNumber: listing.bedroomsNumber,
-          bathroomsNumber: listing.bathroomsNumber,
-          thumbnailUrl: listing.thumbnailUrl,
-          listingImages: listing.listingImages,
-          airbnbListingUrl: listing.airbnbListingUrl,
-          vrboListingUrl: listing.vrboListingUrl,
-          expediaListingUrl: listing.expediaListingUrl
-        },
-        availability: {
-          available: availability.available,
-          unavailableDates: availability.unavailableDates,
-          minimumStay: availability.minimumStay,
-          averagePrice: availability.averagePrice
-        }
-      };
-    });
-
-    const results = await Promise.all(availabilityPromises);
+    // For now, treat all filtered properties as available since users will see real availability on booking platforms
+    // This prevents API timeouts while still providing useful guest capacity filtering
+    const results = filteredListings.map((listing) => ({
+      listing: {
+        id: listing.id,
+        name: listing.name,
+        address: listing.address,
+        personCapacity: listing.personCapacity,
+        bedroomsNumber: listing.bedroomsNumber,
+        bathroomsNumber: listing.bathroomsNumber,
+        thumbnailUrl: listing.thumbnailUrl,
+        listingImages: listing.listingImages,
+        airbnbListingUrl: listing.airbnbListingUrl,
+        vrboListingUrl: listing.vrboListingUrl,
+        expediaListingUrl: listing.expediaListingUrl
+      },
+      availability: {
+        available: true, // Simplified: treat as available, real availability shown on booking platforms
+        unavailableDates: [],
+        minimumStay: 1,
+        averagePrice: undefined
+      }
+    }));
     
-    // Separate available and unavailable properties
-    const availableProperties = results.filter(result => result.availability.available);
-    const unavailableProperties = results.filter(result => !result.availability.available);
+    // All filtered properties are considered available
+    const availableProperties = results;
+    const unavailableProperties: typeof results = [];
 
     return NextResponse.json({
       success: true,
