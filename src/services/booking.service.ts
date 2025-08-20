@@ -26,6 +26,33 @@ class BookingService {
   }
 
   /**
+   * Update HostAway reservation with check-in link
+   */
+  private async updateHostAwayCheckInLink(reservationId: number, checkInToken: string): Promise<void> {
+    try {
+      // Get the base URL from environment or use a default
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL || 'https://localhost:3000';
+      const checkInLink = `${baseUrl}/checkin/${checkInToken}`;
+      
+      console.log(`🔗 Updating HostAway reservation ${reservationId} with check-in link: ${checkInLink}`);
+      
+      const result = await hostAwayService.updateReservationCustomField(
+        reservationId,
+        'reservation_check_in_link_nick_jenny',
+        checkInLink
+      );
+      
+      if (result.success) {
+        console.log(`✅ Successfully updated HostAway reservation ${reservationId} with check-in link`);
+      } else {
+        console.error(`❌ Failed to update HostAway reservation ${reservationId}: ${result.error}`);
+      }
+    } catch (error) {
+      console.error(`❌ Error updating HostAway reservation ${reservationId} with check-in link:`, error);
+    }
+  }
+
+  /**
    * Clear all existing bookings from database (use with caution!)
    */
   async clearAllBookings(): Promise<{
@@ -325,6 +352,11 @@ class BookingService {
               });
               updatedBookings++;
               console.log(`📝 [SYNC DEBUG] Updated booking: ${updatedBooking.id} - ${bookingData.guestLeaderName}`);
+              
+              // Also update HostAway with check-in link (in case it wasn't set before)
+              this.updateHostAwayCheckInLink(reservation.id, existingBooking.checkInToken).catch((error) => {
+                console.error(`Failed to update HostAway check-in link for updated booking ${updatedBooking.id}:`, error);
+              });
             } else {
               console.log(`🔍 [SYNC DEBUG] No changes for booking ${existingBooking.id}, skipping update`);
             }
@@ -339,6 +371,11 @@ class BookingService {
             });
             newBookings++;
             console.log(`➕ [SYNC DEBUG] Created new booking: ${newBooking.id} - ${bookingData.guestLeaderName}`);
+            
+            // Update HostAway with check-in link (don't wait for this to complete)
+            this.updateHostAwayCheckInLink(reservation.id, newBooking.checkInToken).catch((error) => {
+              console.error(`Failed to update HostAway check-in link for booking ${newBooking.id}:`, error);
+            });
             
             // Verify the booking was created
             const verifyBooking = await prisma.booking.findUnique({
@@ -596,6 +633,12 @@ class BookingService {
           });
           
           console.log(`✅ [SINGLE SYNC] Updated booking: ${updatedBooking.id} - ${bookingData.guestLeaderName}`);
+          
+          // Also update HostAway with check-in link (in case it wasn't set before)
+          this.updateHostAwayCheckInLink(reservation.id, existingBooking.checkInToken).catch((error) => {
+            console.error(`Failed to update HostAway check-in link for updated booking ${updatedBooking.id}:`, error);
+          });
+          
           return {
             success: true,
             message: `Updated booking ${updatedBooking.id}`,
@@ -623,6 +666,12 @@ class BookingService {
         });
         
         console.log(`✅ [SINGLE SYNC] Created new booking: ${newBooking.id} - ${bookingData.guestLeaderName}`);
+        
+        // Update HostAway with check-in link (don't wait for this to complete)
+        this.updateHostAwayCheckInLink(reservation.id, newBooking.checkInToken).catch((error) => {
+          console.error(`Failed to update HostAway check-in link for booking ${newBooking.id}:`, error);
+        });
+        
         return {
           success: true,
           message: `Created new booking ${newBooking.id}`,

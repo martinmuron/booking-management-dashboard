@@ -160,6 +160,48 @@ class HostAwayService {
     }
   }
 
+  private async makeUpdateRequest<T>(endpoint: string, data: Record<string, unknown>): Promise<T> {
+    const token = await this.getAccessToken();
+    
+    const url = `${this.baseUrl}${endpoint}`;
+
+    console.log('🌐 Making HostAway API PUT request:', url);
+    console.log('📦 Request data:', JSON.stringify(data, null, 2));
+
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
+      const response = await fetch(url, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Cache-control': 'no-cache',
+        },
+        body: JSON.stringify(data),
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ HostAway PUT request failed:', {
+          status: response.status,
+          statusText: response.statusText,
+          errorBody: errorText
+        });
+        throw new Error(`HostAway API PUT request failed: ${response.status} ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error(`Failed to PUT to HostAway endpoint ${endpoint}:`, error);
+      throw error;
+    }
+  }
+
   async getListings(): Promise<HostAwayListing[]> {
     try {
       const response = await this.makeRequest<HostAwayListingsResponse>('/listings');
@@ -239,6 +281,36 @@ class HostAwayService {
     } catch (error) {
       console.error(`Failed to fetch reservation ${id}:`, error);
       return null;
+    }
+  }
+
+  async updateReservationCustomField(
+    reservationId: number, 
+    fieldName: string, 
+    fieldValue: string
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      console.log(`🔄 Updating HostAway reservation ${reservationId} custom field:`, {
+        fieldName,
+        fieldValue
+      });
+
+      // HostAway API expects custom fields in this format
+      const updateData = {
+        [fieldName]: fieldValue
+      };
+
+      await this.makeUpdateRequest(`/reservations/${reservationId}`, updateData);
+      
+      console.log(`✅ Successfully updated HostAway reservation ${reservationId} with check-in link`);
+      return { success: true };
+      
+    } catch (error) {
+      console.error(`❌ Failed to update HostAway reservation ${reservationId}:`, error);
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      };
     }
   }
 
