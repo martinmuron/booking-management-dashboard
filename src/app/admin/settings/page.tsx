@@ -31,6 +31,17 @@ export default function AdminSettingsPage() {
     error?: string;
   }>>([]);
   const [logsLoading, setLogsLoading] = useState(false);
+  
+  // Bulk update state
+  const [bulkUpdateCount, setBulkUpdateCount] = useState<number | null>(null);
+  const [bulkUpdateLoading, setBulkUpdateLoading] = useState(false);
+  const [bulkUpdateStatus, setBulkUpdateStatus] = useState<string | null>(null);
+  const [bulkUpdateResult, setBulkUpdateResult] = useState<{
+    updated: number;
+    failed: number;
+    total: number;
+    failures?: Array<{bookingId: string; error: string}>;
+  } | null>(null);
 
   const save = async () => {
     setLoading(true);
@@ -166,6 +177,55 @@ export default function AdminSettingsPage() {
       }
     } catch (error) {
       console.error('Failed to clear webhook logs:', error);
+    }
+  };
+
+  // Bulk update functions
+  const checkBulkUpdateCount = async () => {
+    setBulkUpdateLoading(true);
+    setBulkUpdateStatus(null);
+    try {
+      const response = await fetch('/api/bookings/bulk-update-links');
+      const data = await response.json();
+      
+      if (data.success) {
+        setBulkUpdateCount(data.count);
+        setBulkUpdateStatus(`Found ${data.count} existing bookings that can be updated with HostAway check-in links`);
+      } else {
+        setBulkUpdateStatus(`Error: ${data.error}`);
+      }
+    } catch {
+      setBulkUpdateStatus('Failed to check booking count');
+    } finally {
+      setBulkUpdateLoading(false);
+    }
+  };
+
+  const runBulkUpdate = async () => {
+    if (!confirm(`This will update ${bulkUpdateCount || 'all existing'} reservations in HostAway with check-in links. This action may take several minutes. Continue?`)) {
+      return;
+    }
+    
+    setBulkUpdateLoading(true);
+    setBulkUpdateStatus('Starting bulk update... This may take a few minutes.');
+    setBulkUpdateResult(null);
+    
+    try {
+      const response = await fetch('/api/bookings/bulk-update-links', {
+        method: 'POST'
+      });
+      const data = await response.json();
+      
+      if (data.success) {
+        setBulkUpdateResult(data);
+        setBulkUpdateStatus(`✅ Bulk update completed! Updated ${data.updated} bookings successfully, ${data.failed} failed.`);
+      } else {
+        setBulkUpdateStatus(`❌ Bulk update failed: ${data.error}`);
+      }
+    } catch {
+      setBulkUpdateStatus('❌ Failed to run bulk update');
+    } finally {
+      setBulkUpdateLoading(false);
     }
   };
 
@@ -386,6 +446,112 @@ export default function AdminSettingsPage() {
                 ))}
               </div>
             )}
+          </CardContent>
+        </Card>
+
+        {/* Bulk Update HostAway Check-in Links */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Bulk Update Check-in Links</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Update all existing reservations in HostAway with personalized check-in links.
+            </p>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              
+              {/* Check Count */}
+              <div>
+                <Button 
+                  onClick={checkBulkUpdateCount} 
+                  disabled={bulkUpdateLoading}
+                  variant="outline"
+                >
+                  {bulkUpdateLoading ? 'Checking...' : 'Check How Many Bookings Can Be Updated'}
+                </Button>
+              </div>
+
+              {/* Status */}
+              {bulkUpdateStatus && (
+                <div className={`p-3 rounded border-l-4 ${
+                  bulkUpdateStatus.includes('✅') 
+                    ? 'border-l-green-500 bg-green-50' 
+                    : bulkUpdateStatus.includes('❌')
+                    ? 'border-l-red-500 bg-red-50'
+                    : 'border-l-blue-500 bg-blue-50'
+                }`}>
+                  <p className="text-sm">{bulkUpdateStatus}</p>
+                </div>
+              )}
+
+              {/* Run Update Button */}
+              {bulkUpdateCount !== null && bulkUpdateCount > 0 && (
+                <div className="bg-yellow-50 p-4 rounded-lg">
+                  <h4 className="text-sm font-medium mb-2">⚠️ Important:</h4>
+                  <ul className="text-xs text-muted-foreground space-y-1 mb-3">
+                    <li>• This will update {bulkUpdateCount} existing reservations in HostAway</li>
+                    <li>• The process may take several minutes to complete</li>
+                    <li>• Updates are done in batches to respect API rate limits</li>
+                    <li>• Your booking system will continue working during the update</li>
+                    <li>• Failed updates are logged but won&apos;t break the process</li>
+                  </ul>
+                  <Button 
+                    onClick={runBulkUpdate} 
+                    disabled={bulkUpdateLoading}
+                    className="w-full"
+                  >
+                    {bulkUpdateLoading ? 'Updating... Please wait' : `Update ${bulkUpdateCount} Reservations`}
+                  </Button>
+                </div>
+              )}
+
+              {/* Results */}
+              {bulkUpdateResult && (
+                <div className="space-y-2">
+                  <h4 className="text-sm font-medium">Update Results:</h4>
+                  <div className="grid grid-cols-3 gap-4 text-center">
+                    <div className="p-3 bg-green-50 rounded">
+                      <div className="text-lg font-bold text-green-600">{bulkUpdateResult.updated}</div>
+                      <div className="text-xs text-green-600">Updated</div>
+                    </div>
+                    <div className="p-3 bg-red-50 rounded">
+                      <div className="text-lg font-bold text-red-600">{bulkUpdateResult.failed}</div>
+                      <div className="text-xs text-red-600">Failed</div>
+                    </div>
+                    <div className="p-3 bg-blue-50 rounded">
+                      <div className="text-lg font-bold text-blue-600">{bulkUpdateResult.total}</div>
+                      <div className="text-xs text-blue-600">Total</div>
+                    </div>
+                  </div>
+                  
+                  {bulkUpdateResult.failures && bulkUpdateResult.failures.length > 0 && (
+                    <div>
+                      <h5 className="text-sm font-medium text-red-600">First Few Failures:</h5>
+                      <div className="space-y-1 max-h-32 overflow-y-auto">
+                        {bulkUpdateResult.failures.slice(0, 5).map((failure, index) => (
+                          <div key={index} className="text-xs bg-red-100 p-2 rounded">
+                            <span className="font-medium">{failure.bookingId}:</span> {failure.error}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Instructions */}
+              <div className="bg-blue-50 p-4 rounded-lg">
+                <h4 className="text-sm font-medium mb-2">How it works:</h4>
+                <ul className="text-xs text-muted-foreground space-y-1">
+                  <li>• Finds all existing bookings with check-in tokens and HostAway IDs</li>
+                  <li>• Updates each reservation&apos;s custom field in HostAway with the check-in link</li>
+                  <li>• HostAway email templates can then use {`{{reservation_check_in_link_nick_jenny}}`}</li>
+                  <li>• Failed updates are logged but don&apos;t stop the process</li>
+                  <li>• Only run this once after setting up the integration</li>
+                </ul>
+              </div>
+
+            </div>
           </CardContent>
         </Card>
 
