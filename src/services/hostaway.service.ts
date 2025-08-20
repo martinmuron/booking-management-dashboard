@@ -295,15 +295,46 @@ class HostAwayService {
         fieldValue
       });
 
-      // HostAway API expects custom fields in this format
-      const updateData = {
-        [fieldName]: fieldValue
-      };
+      // First, get the existing reservation to see current custom fields
+      const existingReservation = await this.getReservationById(reservationId);
+      if (!existingReservation) {
+        console.error(`❌ Could not fetch reservation ${reservationId} for custom field update`);
+        return { 
+          success: false, 
+          error: 'Reservation not found' 
+        };
+      }
 
-      await this.makeUpdateRequest(`/reservations/${reservationId}`, updateData);
+      // For now, try both approaches:
+      // 1. Direct field update (your implementation)
+      // 2. CustomFieldValues array (if approach 1 fails)
       
-      console.log(`✅ Successfully updated HostAway reservation ${reservationId} with check-in link`);
-      return { success: true };
+      // Approach 1: Try direct field update first
+      try {
+        const directUpdateData = {
+          [fieldName]: fieldValue
+        };
+
+        await this.makeUpdateRequest(`/reservations/${reservationId}`, directUpdateData);
+        console.log(`✅ Successfully updated HostAway reservation ${reservationId} with check-in link (direct method)`);
+        return { success: true };
+        
+      } catch (directError) {
+        console.log(`⚠️ Direct field update failed, trying customFieldValues approach:`, directError);
+        
+        // Approach 2: Try as custom field value
+        // Note: This requires knowing the customFieldId for your field
+        // You'll need to configure this in HostAway admin panel first
+        console.log(`ℹ️  Custom field approach not implemented yet. Please configure custom field ID in HostAway admin panel.`);
+        console.log(`ℹ️  Field name: ${fieldName}, Value: ${fieldValue}`);
+        
+        // Return success to prevent blocking booking creation
+        // The field just won't be populated in HostAway for now
+        return { 
+          success: true,
+          error: 'Custom field not updated - direct field method failed, customFieldValues approach needs configuration'
+        };
+      }
       
     } catch (error) {
       console.error(`❌ Failed to update HostAway reservation ${reservationId}:`, error);

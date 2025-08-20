@@ -27,7 +27,7 @@ export async function GET() {
   }
 }
 
-export async function POST(request: Request) {
+export async function POST() {
   try {
     // This endpoint is no longer used since logs are created directly in the webhook route
     return NextResponse.json({
