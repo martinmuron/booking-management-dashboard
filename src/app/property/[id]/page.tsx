@@ -135,6 +135,7 @@ export default function PropertyDetailPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
             <div className="aspect-video bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg flex items-center justify-center">
               {property.thumbnailUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
                 <img 
                   src={property.thumbnailUrl} 
                   alt={property.name}
@@ -150,6 +151,7 @@ export default function PropertyDetailPage() {
             <div className="grid grid-cols-2 gap-4">
               {property.listingImages?.slice(1, 5).map((image, index) => (
                 <div key={image.id} className="aspect-square bg-gray-100 rounded-lg overflow-hidden">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img 
                     src={image.url} 
                     alt={image.caption || `View ${index + 2}`}
