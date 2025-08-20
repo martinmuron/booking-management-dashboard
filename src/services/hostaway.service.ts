@@ -49,6 +49,25 @@ interface HostAwayListing {
   id: number;
   name: string;
   address: string;
+  description?: string;
+  personCapacity?: number;
+  bedroomsNumber?: number;
+  bathroomsNumber?: number;
+  price?: number;
+  currencyCode?: string;
+  thumbnailUrl?: string;
+  listingImages?: Array<{
+    id: number;
+    url: string;
+    caption: string;
+  }>;
+  listingAmenities?: Array<{
+    id: number;
+    amenityName: string;
+  }>;
+  airbnbListingUrl?: string;
+  vrboListingUrl?: string;
+  expediaListingUrl?: string;
 }
 
 interface HostAwayListingsResponse {
@@ -219,7 +238,9 @@ class HostAwayService {
 
   async getListings(): Promise<HostAwayListing[]> {
     try {
-      const response = await this.makeRequest<HostAwayListingsResponse>('/listings');
+      const response = await this.makeRequest<HostAwayListingsResponse>('/listings', {
+        includeResources: '1'
+      });
       return response.result || [];
     } catch (error) {
       console.error('Failed to fetch listings:', error);

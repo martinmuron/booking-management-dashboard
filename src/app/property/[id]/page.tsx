@@ -29,6 +29,9 @@ interface PropertyDetail {
     id: number;
     amenityName: string;
   }>;
+  airbnbListingUrl?: string;
+  vrboListingUrl?: string;
+  expediaListingUrl?: string;
 }
 
 export default function PropertyDetailPage() {
@@ -122,9 +125,30 @@ export default function PropertyDetailPage() {
               <Logo size={40} />
               <h1 className="text-xl font-bold text-black">Nick & Jenny</h1>
             </div>
-            <Button className="bg-black hover:bg-gray-800 text-white">
-              Book Now
-            </Button>
+            {/* Header booking button - prioritize Airbnb, then VRBO, then Expedia */}
+            {property.airbnbListingUrl ? (
+              <a href={property.airbnbListingUrl} target="_blank" rel="noopener noreferrer">
+                <Button className="bg-black hover:bg-gray-800 text-white">
+                  Book Now
+                </Button>
+              </a>
+            ) : property.vrboListingUrl ? (
+              <a href={property.vrboListingUrl} target="_blank" rel="noopener noreferrer">
+                <Button className="bg-black hover:bg-gray-800 text-white">
+                  Book Now
+                </Button>
+              </a>
+            ) : property.expediaListingUrl ? (
+              <a href={property.expediaListingUrl} target="_blank" rel="noopener noreferrer">
+                <Button className="bg-black hover:bg-gray-800 text-white">
+                  Book Now
+                </Button>
+              </a>
+            ) : (
+              <Button className="bg-black hover:bg-gray-800 text-white" disabled>
+                Book Now
+              </Button>
+            )}
           </div>
         </div>
       </header>
@@ -133,13 +157,13 @@ export default function PropertyDetailPage() {
       <section className="py-8">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-            <div className="aspect-video bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg flex items-center justify-center">
-              {property.thumbnailUrl ? (
+            <div className="aspect-video bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg flex items-center justify-center overflow-hidden">
+              {property.listingImages?.[0]?.url || property.thumbnailUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img 
-                  src={property.thumbnailUrl} 
+                  src={property.listingImages?.[0]?.url || property.thumbnailUrl} 
                   alt={property.name}
-                  className="w-full h-full object-cover rounded-lg"
+                  className="w-full h-full object-cover"
                 />
               ) : (
                 <div className="text-center">
@@ -158,7 +182,14 @@ export default function PropertyDetailPage() {
                     className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
                   />
                 </div>
-              ))}
+              )) || (
+                // Show placeholder if no additional images
+                Array.from({ length: 4 }).map((_, index) => (
+                  <div key={index} className="aspect-square bg-gray-100 rounded-lg flex items-center justify-center">
+                    <MapPin className="w-6 h-6 text-gray-400" />
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>
@@ -228,9 +259,35 @@ export default function PropertyDetailPage() {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <Button className="w-full bg-black hover:bg-gray-800 text-white">
-                    Check availability
-                  </Button>
+                  {/* Booking platform buttons */}
+                  <div className="space-y-2">
+                    {property.airbnbListingUrl && (
+                      <a href={property.airbnbListingUrl} target="_blank" rel="noopener noreferrer" className="block">
+                        <Button className="w-full bg-[#ff5a5f] hover:bg-[#e7484d] text-white">
+                          Book on Airbnb
+                        </Button>
+                      </a>
+                    )}
+                    {property.vrboListingUrl && (
+                      <a href={property.vrboListingUrl} target="_blank" rel="noopener noreferrer" className="block">
+                        <Button className="w-full bg-[#0073e6] hover:bg-[#005bb5] text-white">
+                          Book on VRBO
+                        </Button>
+                      </a>
+                    )}
+                    {property.expediaListingUrl && (
+                      <a href={property.expediaListingUrl} target="_blank" rel="noopener noreferrer" className="block">
+                        <Button className="w-full bg-[#ffc72c] hover:bg-[#e6b329] text-black">
+                          Book on Expedia
+                        </Button>
+                      </a>
+                    )}
+                    {!property.airbnbListingUrl && !property.vrboListingUrl && !property.expediaListingUrl && (
+                      <Button className="w-full bg-black hover:bg-gray-800 text-white" disabled>
+                        Check availability
+                      </Button>
+                    )}
+                  </div>
                   <div className="text-center text-sm text-gray-500">
                     You won&apos;t be charged yet
                   </div>

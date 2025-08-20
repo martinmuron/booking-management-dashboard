@@ -13,6 +13,15 @@ interface Property {
   id: number;
   name: string;
   address: string;
+  thumbnailUrl?: string;
+  listingImages?: Array<{ url: string; caption?: string }>;
+  price?: number;
+  currencyCode?: string;
+  bedroomsNumber?: number;
+  bathroomsNumber?: number;
+  personCapacity?: number;
+  airbnbListingUrl?: string;
+  vrboListingUrl?: string;
 }
 
 export default function Home() {
@@ -123,42 +132,79 @@ export default function Home() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {properties.map((property) => (
-                <Card key={property.id} className="group hover:shadow-lg transition-all duration-300 border-gray-200">
-                  <CardHeader className="pb-4">
-                    <div className="aspect-video bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg mb-4 flex items-center justify-center">
-                      <div className="text-center">
-                        <MapPin className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                        <p className="text-sm text-gray-500">Photo coming soon</p>
+              {properties.map((property) => {
+                // Get the first image from listingImages or use thumbnail
+                const imageUrl = property.listingImages?.[0]?.url || property.thumbnailUrl;
+                
+                return (
+                  <Card key={property.id} className="group hover:shadow-lg transition-all duration-300 border-gray-200 flex flex-col h-full">
+                    <CardHeader className="pb-4">
+                      <div className="aspect-video bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg mb-4 overflow-hidden">
+                        {imageUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img 
+                            src={imageUrl}
+                            alt={property.name}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          />
+                        ) : (
+                          <div className="flex items-center justify-center h-full">
+                            <div className="text-center">
+                              <MapPin className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                              <p className="text-sm text-gray-500">Photo coming soon</p>
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    </div>
-                    <CardTitle className="text-xl font-bold text-black group-hover:text-gray-700 transition-colors">
-                      {property.name}
-                    </CardTitle>
-                    <CardDescription className="flex items-center gap-2 text-gray-600">
-                      <MapPin className="w-4 h-4" />
-                      {property.address}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center justify-between mb-4">
-                      <Badge variant="secondary" className="bg-gray-100 text-gray-800">
-                        Available Now
-                      </Badge>
-                      <div className="flex items-center gap-1">
-                        <Star className="w-4 h-4 fill-black text-black" />
-                        <span className="text-sm font-medium">Premium</span>
+                      <CardTitle className="text-xl font-bold text-black group-hover:text-gray-700 transition-colors line-clamp-2">
+                        {property.name}
+                      </CardTitle>
+                      <CardDescription className="flex items-center gap-2 text-gray-600">
+                        <MapPin className="w-4 h-4 flex-shrink-0" />
+                        <span className="truncate">{property.address}</span>
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex-grow flex flex-col justify-between">
+                      <div className="space-y-3 mb-4">
+                        {/* Property details */}
+                        <div className="flex items-center justify-between text-sm">
+                          <div className="flex items-center gap-4 text-gray-600">
+                            {property.bedroomsNumber && (
+                              <span>{property.bedroomsNumber} bed{property.bedroomsNumber !== 1 ? 's' : ''}</span>
+                            )}
+                            {property.bathroomsNumber && (
+                              <span>{property.bathroomsNumber} bath{property.bathroomsNumber !== 1 ? 's' : ''}</span>
+                            )}
+                            {property.personCapacity && (
+                              <span className="flex items-center gap-1">
+                                <Users className="w-3 h-3" />
+                                {property.personCapacity}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        
+                        {/* Price */}
+                        {property.price && (
+                          <div className="flex items-baseline gap-1">
+                            <span className="text-2xl font-bold text-black">
+                              {property.price} {property.currencyCode || 'EUR'}
+                            </span>
+                            <span className="text-gray-500 text-sm">/ night</span>
+                          </div>
+                        )}
                       </div>
-                    </div>
-                    <Link href={`/property/${property.id}`}>
-                      <Button className="w-full bg-black hover:bg-gray-800 text-white group">
-                        View Details
-                        <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
-                      </Button>
-                    </Link>
-                  </CardContent>
-                </Card>
-              ))}
+                      
+                      <Link href={`/property/${property.id}`}>
+                        <Button className="w-full bg-black hover:bg-gray-800 text-white group">
+                          View Details
+                          <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+                        </Button>
+                      </Link>
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           )}
         </div>
