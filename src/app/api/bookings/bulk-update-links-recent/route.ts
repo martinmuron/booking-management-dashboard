@@ -8,7 +8,30 @@ export async function POST(request: NextRequest) {
     
     console.log(`🔄 Starting recent bulk update: offset=${offset}, limit=${limit}`);
     
-    // Get the most recent 1000 bookings, then chunk them
+    // First, get the IDs of the 1000 most recent bookings
+    const recentBookingIds = await prisma.booking.findMany({
+      take: 1000,
+      orderBy: { createdAt: 'desc' },
+      select: { id: true }
+    });
+    
+    console.log(`📋 Found ${recentBookingIds.length} recent booking IDs`);
+    
+    if (recentBookingIds.length === 0) {
+      return NextResponse.json({
+        success: true,
+        message: 'No bookings found',
+        processed: 0,
+        successful: 0,
+        failed: 0,
+        hasMore: false,
+        nextOffset: offset,
+        totalCount: 0,
+        progress: 100
+      });
+    }
+    
+    // Now get a chunk of those recent bookings for processing
     const recentBookings = await prisma.booking.findMany({
       skip: offset,
       take: limit,
@@ -16,13 +39,8 @@ export async function POST(request: NextRequest) {
         createdAt: 'desc' // Most recent first
       },
       where: {
-        // Only process the first 1000 most recent bookings total
         id: {
-          in: (await prisma.booking.findMany({
-            take: 1000,
-            orderBy: { createdAt: 'desc' },
-            select: { id: true }
-          })).map(b => b.id)
+          in: recentBookingIds.map(b => b.id)
         }
       }
     });
@@ -95,7 +113,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if there are more recent bookings to process (within the 1000 limit)
-    const recentBookingsTotal = Math.min(1000, await prisma.booking.count());
+    const recentBookingsTotal = recentBookingIds.length;
     const nextOffset = offset + limit;
     const hasMore = nextOffset < recentBookingsTotal;
 

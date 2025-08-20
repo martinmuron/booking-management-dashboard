@@ -35,6 +35,8 @@ export default function AdminSettingsPage() {
   // Bulk update state
   const [bulkUpdateCount, setBulkUpdateCount] = useState<number | null>(null);
   const [bulkUpdateLoading, setBulkUpdateLoading] = useState(false);
+  const [recentUpdateLoading, setRecentUpdateLoading] = useState(false);
+  const [chunkedUpdateLoading, setChunkedUpdateLoading] = useState(false);
   const [bulkUpdateStatus, setBulkUpdateStatus] = useState<string | null>(null);
   const [bulkUpdateResult, setBulkUpdateResult] = useState<{
     updated: number;
@@ -250,7 +252,7 @@ export default function AdminSettingsPage() {
       return;
     }
     
-    setBulkUpdateLoading(true);
+    setRecentUpdateLoading(true);
     setBulkUpdateStatus('Starting recent 1000 bookings update...');
     setBulkUpdateResult(null);
     setChunkUpdateProgress({
@@ -324,7 +326,7 @@ export default function AdminSettingsPage() {
         isRunning: false
       });
     } finally {
-      setBulkUpdateLoading(false);
+      setRecentUpdateLoading(false);
     }
   };
 
@@ -342,7 +344,7 @@ export default function AdminSettingsPage() {
       isRunning: true
     });
 
-    setBulkUpdateLoading(true);
+    setChunkedUpdateLoading(true);
     setBulkUpdateResult(null);
 
     let offset = 0;
@@ -392,7 +394,7 @@ export default function AdminSettingsPage() {
     }
 
     setChunkUpdateProgress(prev => ({ ...prev, isRunning: false }));
-    setBulkUpdateLoading(false);
+    setChunkedUpdateLoading(false);
     setBulkUpdateResult({
       updated: totalSuccessful,
       failed: totalFailed,
@@ -690,22 +692,22 @@ export default function AdminSettingsPage() {
                   <div className="space-y-2">
                     <Button 
                       onClick={runChunkedUpdate} 
-                      disabled={bulkUpdateLoading}
+                      disabled={chunkedUpdateLoading || recentUpdateLoading || bulkUpdateLoading}
                       className="w-full"
                     >
-                      {bulkUpdateLoading ? 'Updating... Please wait' : `Smart Update ${bulkUpdateCount} Reservations (Recommended)`}
+                      {chunkedUpdateLoading ? 'Updating... Please wait' : `Smart Update ${bulkUpdateCount} Reservations (Recommended)`}
                     </Button>
                     <Button 
                       onClick={runRecentUpdate} 
-                      disabled={bulkUpdateLoading}
+                      disabled={chunkedUpdateLoading || recentUpdateLoading || bulkUpdateLoading}
                       variant="secondary"
                       className="w-full"
                     >
-                      {bulkUpdateLoading ? 'Updating... Please wait' : 'Quick Update - Recent 1000 Only'}
+                      {recentUpdateLoading ? 'Updating... Please wait' : 'Quick Update - Recent 1000 Only'}
                     </Button>
                     <Button 
                       onClick={runBulkUpdate} 
-                      disabled={bulkUpdateLoading}
+                      disabled={chunkedUpdateLoading || recentUpdateLoading || bulkUpdateLoading}
                       variant="outline"
                       className="w-full"
                     >
