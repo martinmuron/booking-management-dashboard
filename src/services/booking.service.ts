@@ -25,6 +25,29 @@ class BookingService {
     return Math.random().toString(36).substring(2, 12).toUpperCase();
   }
 
+  /**
+   * Update HostAway with check-in link for NEW reservations only
+   */
+  private async updateHostAwayCheckInLinkForNewBooking(reservationId: number, checkInToken: string): Promise<void> {
+    try {
+      // Get the base URL from environment or use current deployment URL  
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL || 'https://localhost:3000';
+      const checkInLink = `${baseUrl}/checkin/${checkInToken}`;
+      
+      console.log(`🔗 Updating HostAway NEW reservation ${reservationId} with Nick Jenny check-in link: ${checkInLink}`);
+      
+      const result = await hostAwayService.updateNickJennyCheckInLink(reservationId, checkInLink);
+      
+      if (result.success) {
+        console.log(`✅ Successfully updated Nick Jenny check-in link for NEW HostAway reservation ${reservationId}`);
+      } else {
+        console.error(`❌ Failed to update Nick Jenny check-in link for NEW HostAway reservation ${reservationId}:`, result.error);
+      }
+    } catch (error) {
+      console.error(`❌ Error updating Nick Jenny check-in link for NEW HostAway reservation ${reservationId}:`, error);
+    }
+  }
+
 
   /**
    * Clear all existing bookings from database (use with caution!)
@@ -343,7 +366,10 @@ class BookingService {
             newBookings++;
             console.log(`➕ [SYNC DEBUG] Created new booking: ${newBooking.id} - ${bookingData.guestLeaderName}`);
             
-            // Skip HostAway check-in link update to prevent email flooding
+            // Update HostAway check-in link for NEW bookings only (preserves other custom fields)
+            this.updateHostAwayCheckInLinkForNewBooking(reservation.id, newBooking.checkInToken).catch((error) => {
+              console.error(`Failed to update HostAway check-in link for NEW booking ${newBooking.id}:`, error);
+            });
             
             // Verify the booking was created
             const verifyBooking = await prisma.booking.findUnique({
@@ -632,7 +658,10 @@ class BookingService {
         
         console.log(`✅ [SINGLE SYNC] Created new booking: ${newBooking.id} - ${bookingData.guestLeaderName}`);
         
-        // Skip HostAway check-in link update to prevent email flooding
+        // Update HostAway check-in link for NEW bookings only (from webhook)
+        this.updateHostAwayCheckInLinkForNewBooking(reservation.id, newBooking.checkInToken).catch((error) => {
+          console.error(`Failed to update HostAway check-in link for NEW booking ${newBooking.id}:`, error);
+        });
         
         return {
           success: true,

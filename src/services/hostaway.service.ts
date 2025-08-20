@@ -56,6 +56,21 @@ interface HostAwayListingsResponse {
   result: HostAwayListing[];
 }
 
+interface HostAwayCustomField {
+  id?: number;
+  customFieldId?: number;
+  name?: string;
+  fieldName?: string;
+  identifier?: string;
+  value?: string;
+  customFieldName?: string;
+}
+
+interface HostAwayCustomFieldsResponse {
+  status: string;
+  result: HostAwayCustomField[];
+}
+
 let accessToken: string | null = null;
 let tokenExpiry: number = 0;
 
@@ -284,60 +299,132 @@ class HostAwayService {
     }
   }
 
-  async updateReservationCustomField(
-    reservationId: number, 
-    fieldName: string, 
-    fieldValue: string
-  ): Promise<{ success: boolean; error?: string }> {
+  /**
+   * Get all available custom fields to find the Nick Jenny check-in link field ID
+   */
+  async getCustomFields(): Promise<{ success: boolean; fields?: HostAwayCustomField[]; nickJennyFieldId?: number; error?: string }> {
     try {
-      console.log(`🔄 Updating HostAway reservation ${reservationId} custom field:`, {
-        fieldName,
-        fieldValue
-      });
-
-      // First, get the existing reservation to see current custom fields
-      const existingReservation = await this.getReservationById(reservationId);
-      if (!existingReservation) {
-        console.error(`❌ Could not fetch reservation ${reservationId} for custom field update`);
-        return { 
-          success: false, 
-          error: 'Reservation not found' 
-        };
+      console.log('🔍 Fetching HostAway custom fields to find Nick Jenny check-in link field...');
+      
+      // First try the standard custom fields endpoint
+      try {
+        const response = await this.makeRequest<HostAwayCustomFieldsResponse>('/customFields');
+        if (response && response.result) {
+          const nickJennyField = response.result.find((field: HostAwayCustomField) => 
+            field.name === 'reservation_check_in_link_nick_jenny' || 
+            field.fieldName === 'reservation_check_in_link_nick_jenny' ||
+            field.identifier === 'reservation_check_in_link_nick_jenny'
+          );
+          
+          console.log('✅ Retrieved custom fields, Nick Jenny field:', nickJennyField);
+          return { 
+            success: true, 
+            fields: response.result,
+            nickJennyFieldId: nickJennyField?.id || nickJennyField?.customFieldId
+          };
+        }
+      } catch {
+        console.log('⚠️ /customFields endpoint failed, trying reservation sample...');
       }
 
-      // For now, try both approaches:
-      // 1. Direct field update (your implementation)
-      // 2. CustomFieldValues array (if approach 1 fails)
+      // Fallback: Get a sample reservation with includeResources to see customFieldValues format
+      const sampleResponse = await this.makeRequest<{result: (HostAwayReservation & {customFieldValues?: HostAwayCustomField[]})[]}>('/reservations', {
+        includeResources: '1',
+        limit: '1'
+      });
       
-      // Approach 1: Try direct field update first
-      try {
-        const directUpdateData = {
-          [fieldName]: fieldValue
-        };
-
-        await this.makeUpdateRequest(`/reservations/${reservationId}`, directUpdateData);
-        console.log(`✅ Successfully updated HostAway reservation ${reservationId} with check-in link (direct method)`);
-        return { success: true };
-        
-      } catch (directError) {
-        console.log(`⚠️ Direct field update failed, trying customFieldValues approach:`, directError);
-        
-        // Approach 2: Try as custom field value
-        // Note: This requires knowing the customFieldId for your field
-        // You'll need to configure this in HostAway admin panel first
-        console.log(`ℹ️  Custom field approach not implemented yet. Please configure custom field ID in HostAway admin panel.`);
-        console.log(`ℹ️  Field name: ${fieldName}, Value: ${fieldValue}`);
-        
-        // Return success to prevent blocking booking creation
-        // The field just won't be populated in HostAway for now
+      if (sampleResponse?.result?.[0]?.customFieldValues) {
+        console.log('✅ Sample reservation customFieldValues:', sampleResponse.result[0].customFieldValues);
         return { 
-          success: true,
-          error: 'Custom field not updated - direct field method failed, customFieldValues approach needs configuration'
+          success: true, 
+          fields: sampleResponse.result[0].customFieldValues 
         };
+      }
+      
+      return { success: false, error: 'No custom fields found' };
+    } catch (error) {
+      console.error('❌ Failed to fetch custom fields:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  }
+
+  /**
+   * Update ONLY the Nick Jenny check-in link field for NEW reservations
+   * This preserves all other existing custom fields
+   */
+  async updateNickJennyCheckInLink(
+    reservationId: number, 
+    checkInLink: string
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      console.log(`🔗 Updating Nick Jenny check-in link for NEW reservation ${reservationId}`);
+
+      // Get existing reservation to preserve other custom fields
+      const existingReservation = await this.getReservationById(reservationId);
+      if (!existingReservation) {
+        return { success: false, error: 'Reservation not found' };
+      }
+
+      // Get current custom field values to preserve them
+      const currentCustomFields = ((existingReservation as HostAwayReservation & {customFieldValues?: HostAwayCustomField[]}).customFieldValues) || [];
+      console.log('📋 Current custom fields:', currentCustomFields);
+
+      // Find Nick Jenny field ID if it exists
+      let nickJennyFieldId: number | null = null;
+      const existingNickJennyField = currentCustomFields.find((field: HostAwayCustomField) => 
+        field.customFieldId && (
+          // Try to identify by checking if it contains a check-in link
+          field.value?.includes('/checkin/') ||
+          // Or by any other identifier you might have
+          field.customFieldName?.includes('nick_jenny') ||
+          field.name?.includes('nick_jenny')
+        )
+      );
+
+      if (existingNickJennyField && existingNickJennyField.customFieldId) {
+        nickJennyFieldId = existingNickJennyField.customFieldId;
+        console.log(`🎯 Found existing Nick Jenny field ID: ${nickJennyFieldId}`);
+      } else {
+        // Try to get field ID from custom fields endpoint
+        const customFieldsResult = await this.getCustomFields();
+        if (customFieldsResult.nickJennyFieldId) {
+          nickJennyFieldId = customFieldsResult.nickJennyFieldId;
+          console.log(`🎯 Found Nick Jenny field ID from API: ${nickJennyFieldId}`);
+        }
+      }
+
+      if (!nickJennyFieldId) {
+        console.log('⚠️ Nick Jenny custom field ID not found, skipping HostAway update');
+        return { success: true, error: 'Nick Jenny custom field not configured in HostAway' };
+      }
+
+      // Prepare updated custom fields - preserve existing ones, update only Nick Jenny
+      const updatedCustomFields = currentCustomFields.filter((field: HostAwayCustomField) => 
+        field.customFieldId !== nickJennyFieldId
+      );
+      
+      // Add the Nick Jenny field with new value
+      updatedCustomFields.push({
+        customFieldId: nickJennyFieldId,
+        value: checkInLink
+      });
+
+      console.log(`🔄 Updating only Nick Jenny field (ID: ${nickJennyFieldId}) with check-in link`);
+      
+      const response = await this.makeUpdateRequest(`/reservations/${reservationId}`, {
+        customFieldValues: updatedCustomFields
+      }) as { status: string; result?: string };
+
+      if (response.status === 'success') {
+        console.log(`✅ Successfully updated Nick Jenny check-in link for reservation ${reservationId}`);
+        return { success: true };
+      } else {
+        console.error(`❌ HostAway API error:`, response);
+        return { success: false, error: response.result || 'HostAway API error' };
       }
       
     } catch (error) {
-      console.error(`❌ Failed to update HostAway reservation ${reservationId}:`, error);
+      console.error(`❌ Failed to update Nick Jenny check-in link:`, error);
       return { 
         success: false, 
         error: error instanceof Error ? error.message : 'Unknown error' 
