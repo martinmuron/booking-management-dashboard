@@ -42,47 +42,49 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get all listings first
-    const listings = await hostAwayService.getListings();
-    
-    // Filter by guest capacity if specified
-    let filteredListings = listings;
-    if (guests) {
-      const guestCount = parseInt(guests);
-      if (!isNaN(guestCount)) {
-        filteredListings = listings.filter(listing => 
-          (listing.personCapacity || 0) >= guestCount
-        );
-      }
-    }
+    // Try HostAway server-side filtered listings using availability window and optional guest count
+    const guestCount = guests ? parseInt(guests) : undefined;
+    const filteredListings = await hostAwayService.searchListings({
+      availabilityDateStart: checkInDate,
+      availabilityDateEnd: checkOutDate,
+      availabilityGuestNumber: !isNaN(Number(guestCount)) ? guestCount : undefined,
+    });
 
-    // For now, treat all filtered properties as available since users will see real availability on booking platforms
-    // This prevents API timeouts while still providing useful guest capacity filtering
-    const results = filteredListings.map((listing) => ({
-      listing: {
-        id: listing.id,
-        name: listing.name,
-        address: listing.address,
-        personCapacity: listing.personCapacity,
-        bedroomsNumber: listing.bedroomsNumber,
-        bathroomsNumber: listing.bathroomsNumber,
-        thumbnailUrl: listing.thumbnailUrl,
-        listingImages: listing.listingImages,
-        airbnbListingUrl: listing.airbnbListingUrl,
-        vrboListingUrl: listing.vrboListingUrl,
-        expediaListingUrl: listing.expediaListingUrl
-      },
-      availability: {
-        available: true, // Simplified: treat as available, real availability shown on booking platforms
-        unavailableDates: [],
-        minimumStay: 1,
-        averagePrice: undefined
-      }
+    // As a secondary safety, if server-side filtering returns nothing, fall back to client-side capacity filter on all listings
+    const listingsForResult = filteredListings.length > 0
+      ? filteredListings
+      : await hostAwayService.getListings();
+    const capacityFiltered = guestCount
+      ? listingsForResult.filter(l => (l.personCapacity ?? 0) >= (guestCount || 0))
+      : listingsForResult;
+
+    // For each listing, compute availability via calendar to be precise for the date range
+    const detailedResults = await Promise.all(capacityFiltered.map(async (listing) => {
+      const availability = await hostAwayService.checkAvailability(
+        listing.id,
+        checkInDate,
+        checkOutDate
+      );
+      return {
+        listing: {
+          id: listing.id,
+          name: listing.name,
+          address: listing.address,
+          personCapacity: listing.personCapacity,
+          bedroomsNumber: listing.bedroomsNumber,
+          bathroomsNumber: listing.bathroomsNumber,
+          thumbnailUrl: listing.thumbnailUrl,
+          listingImages: listing.listingImages,
+          airbnbListingUrl: listing.airbnbListingUrl,
+          vrboListingUrl: listing.vrboListingUrl,
+          expediaListingUrl: listing.expediaListingUrl
+        },
+        availability
+      };
     }));
-    
-    // All filtered properties are considered available
-    const availableProperties = results;
-    const unavailableProperties: typeof results = [];
+
+    const availableProperties = detailedResults.filter(r => r.availability.available);
+    const unavailableProperties = detailedResults.filter(r => !r.availability.available);
 
     return NextResponse.json({
       success: true,
@@ -93,7 +95,7 @@ export async function GET(request: NextRequest) {
           guests: guests ? parseInt(guests) : undefined
         },
         summary: {
-          total: results.length,
+          total: detailedResults.length,
           available: availableProperties.length,
           unavailable: unavailableProperties.length
         },

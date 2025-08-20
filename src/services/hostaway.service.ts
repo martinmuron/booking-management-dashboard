@@ -262,6 +262,36 @@ class HostAwayService {
     }
   }
 
+  /**
+   * Search listings using HostAway's built-in availability filters.
+   * This leverages server-side filtering for date range and guest count.
+   */
+  async searchListings(params: {
+    availabilityDateStart?: string;
+    availabilityDateEnd?: string;
+    availabilityGuestNumber?: number;
+    limit?: number;
+    offset?: number;
+  }): Promise<HostAwayListing[]> {
+    try {
+      const queryParams: Record<string, string> = { includeResources: '1' };
+
+      if (params.limit !== undefined) queryParams.limit = String(params.limit);
+      if (params.offset !== undefined) queryParams.offset = String(params.offset);
+      if (params.availabilityDateStart) queryParams.availabilityDateStart = params.availabilityDateStart;
+      if (params.availabilityDateEnd) queryParams.availabilityDateEnd = params.availabilityDateEnd;
+      if (params.availabilityGuestNumber !== undefined) {
+        queryParams.availabilityGuestNumber = String(params.availabilityGuestNumber);
+      }
+
+      const response = await this.makeRequest<HostAwayListingsResponse>('/listings', queryParams);
+      return response.result || [];
+    } catch (error) {
+      console.error('Failed to search listings with availability filters:', error);
+      return [];
+    }
+  }
+
   async getListingCalendar(
     listingId: number, 
     startDate: string, 

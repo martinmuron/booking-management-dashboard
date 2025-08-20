@@ -79,8 +79,15 @@ export default function Home() {
     setHasSearched(true);
     
     try {
-      const checkIn = criteria.checkInDate.toISOString().split('T')[0];
-      const checkOut = criteria.checkOutDate.toISOString().split('T')[0];
+      const formatDateLocal = (d: Date) => {
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      };
+
+      const checkIn = formatDateLocal(criteria.checkInDate);
+      const checkOut = formatDateLocal(criteria.checkOutDate);
       
       const response = await fetch(
         `/api/properties/availability?checkIn=${checkIn}&checkOut=${checkOut}&guests=${criteria.guests}`
