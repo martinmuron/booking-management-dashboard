@@ -5,8 +5,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { MapPin, Star, Users, Calendar, ArrowRight, Loader2 } from "lucide-react";
+import { MapPin, Star, Users, Calendar, ArrowRight, Loader2, CheckCircle, XCircle } from "lucide-react";
 import { Logo } from "@/components/Logo";
+import { PropertySearch } from "@/components/PropertySearch";
 import Link from "next/link";
 
 interface Property {
@@ -24,10 +25,29 @@ interface Property {
   vrboListingUrl?: string;
 }
 
+interface PropertyWithAvailability extends Property {
+  availability?: {
+    available: boolean;
+    unavailableDates: string[];
+    minimumStay?: number;
+    averagePrice?: number;
+  };
+}
+
+interface SearchCriteria {
+  checkInDate: Date | null;
+  checkOutDate: Date | null;
+  guests: number;
+}
+
 export default function Home() {
   const [properties, setProperties] = useState<Property[]>([]);
+  const [displayProperties, setDisplayProperties] = useState<PropertyWithAvailability[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searching, setSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [searchCriteria, setSearchCriteria] = useState<SearchCriteria | null>(null);
+  const [hasSearched, setHasSearched] = useState(false);
 
   useEffect(() => {
     const fetchProperties = async () => {
@@ -37,6 +57,7 @@ export default function Home() {
         
         if (data.success) {
           setProperties(data.data);
+          setDisplayProperties(data.data.map((property: Property) => ({ ...property })));
         } else {
           setError(data.error || 'Failed to load properties');
         }
@@ -49,6 +70,45 @@ export default function Home() {
 
     fetchProperties();
   }, []);
+
+  const handleSearch = async (criteria: SearchCriteria) => {
+    if (!criteria.checkInDate || !criteria.checkOutDate) return;
+    
+    setSearching(true);
+    setSearchCriteria(criteria);
+    setHasSearched(true);
+    
+    try {
+      const checkIn = criteria.checkInDate.toISOString().split('T')[0];
+      const checkOut = criteria.checkOutDate.toISOString().split('T')[0];
+      
+      const response = await fetch(
+        `/api/properties/availability?checkIn=${checkIn}&checkOut=${checkOut}&guests=${criteria.guests}`
+      );
+      const data = await response.json();
+      
+      if (data.success) {
+        const propertiesWithAvailability = data.data.availableProperties.map((item: any) => ({
+          ...item.listing,
+          availability: item.availability
+        }));
+        
+        setDisplayProperties(propertiesWithAvailability);
+      } else {
+        setError(data.error || 'Failed to search properties');
+      }
+    } catch {
+      setError('Failed to search properties');
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const resetSearch = () => {
+    setHasSearched(false);
+    setSearchCriteria(null);
+    setDisplayProperties(properties.map((property: Property) => ({ ...property })));
+  };
 
   return (
     <div className="min-h-screen bg-white">
@@ -81,6 +141,12 @@ export default function Home() {
             Discover our carefully curated collection of premium accommodations. 
             Each property offers unique experiences with uncompromising comfort and style.
           </p>
+          
+          {/* Search Bar */}
+          <div className="max-w-4xl mx-auto mb-8">
+            <PropertySearch onSearch={handleSearch} isSearching={searching} />
+          </div>
+
           <div className="flex items-center justify-center gap-6 text-sm text-gray-500">
             <div className="flex items-center gap-2">
               <Star className="w-4 h-4 fill-black text-black" />
@@ -104,10 +170,45 @@ export default function Home() {
       <section className="py-16">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
-            <h3 className="text-3xl font-bold text-black mb-4">Our Properties</h3>
-            <p className="text-gray-600 max-w-xl mx-auto">
-              Each location has been selected for its exceptional character and prime position
-            </p>
+            {hasSearched ? (
+              <div className="space-y-4">
+                <h3 className="text-3xl font-bold text-black mb-4">
+                  Search Results
+                </h3>
+                {searchCriteria && (
+                  <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-gray-600 mb-4">
+                    <span className="flex items-center gap-2">
+                      <Calendar className="w-4 h-4" />
+                      {searchCriteria.checkInDate?.toLocaleDateString()} - {searchCriteria.checkOutDate?.toLocaleDateString()}
+                    </span>
+                    <span className="flex items-center gap-2">
+                      <Users className="w-4 h-4" />
+                      {searchCriteria.guests} {searchCriteria.guests === 1 ? 'guest' : 'guests'}
+                    </span>
+                  </div>
+                )}
+                <p className="text-gray-600">
+                  {displayProperties.length > 0 
+                    ? `Found ${displayProperties.length} available ${displayProperties.length === 1 ? 'property' : 'properties'}`
+                    : 'No properties available for your selected dates'
+                  }
+                </p>
+                <Button 
+                  variant="outline" 
+                  onClick={resetSearch}
+                  className="border-black text-black hover:bg-black hover:text-white"
+                >
+                  Show All Properties
+                </Button>
+              </div>
+            ) : (
+              <div>
+                <h3 className="text-3xl font-bold text-black mb-4">Our Properties</h3>
+                <p className="text-gray-600 max-w-xl mx-auto">
+                  Each location has been selected for its exceptional character and prime position
+                </p>
+              </div>
+            )}
           </div>
 
           {loading ? (
@@ -126,20 +227,22 @@ export default function Home() {
                 Try Again
               </Button>
             </div>
-          ) : properties.length === 0 ? (
+          ) : displayProperties.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-gray-600">No properties available at the moment.</p>
+              <p className="text-gray-600">
+                {hasSearched ? 'No properties available for your selected dates.' : 'No properties available at the moment.'}
+              </p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {properties.map((property) => {
+              {displayProperties.map((property) => {
                 // Get the first image from listingImages or use thumbnail
                 const imageUrl = property.listingImages?.[0]?.url || property.thumbnailUrl;
                 
                 return (
                   <Card key={property.id} className="group hover:shadow-lg transition-all duration-300 border-gray-200 flex flex-col h-full">
                     <CardHeader className="pb-4">
-                      <div className="aspect-video bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg mb-4 overflow-hidden">
+                      <div className="aspect-video bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg mb-4 overflow-hidden relative">
                         {imageUrl ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img 
@@ -153,6 +256,29 @@ export default function Home() {
                               <MapPin className="w-8 h-8 text-gray-400 mx-auto mb-2" />
                               <p className="text-sm text-gray-500">Photo coming soon</p>
                             </div>
+                          </div>
+                        )}
+                        
+                        {/* Availability badge */}
+                        {hasSearched && property.availability && (
+                          <div className="absolute top-3 right-3">
+                            <Badge 
+                              variant="secondary" 
+                              className={`text-xs font-medium ${
+                                property.availability.available 
+                                  ? 'bg-green-100 text-green-800 border-green-200' 
+                                  : 'bg-red-100 text-red-800 border-red-200'
+                              }`}
+                            >
+                              <div className="flex items-center gap-1">
+                                {property.availability.available ? (
+                                  <CheckCircle className="w-3 h-3" />
+                                ) : (
+                                  <XCircle className="w-3 h-3" />
+                                )}
+                                {property.availability.available ? 'Available' : 'Unavailable'}
+                              </div>
+                            </Badge>
                           </div>
                         )}
                       </div>
