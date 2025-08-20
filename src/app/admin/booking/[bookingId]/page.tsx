@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -170,6 +171,7 @@ const calculateTouristTax = (booking: BookingData) => {
 };
 
 export default function BookingAdminPage() {
+  useAuth(); // Protect this page
   const params = useParams();
   const router = useRouter();
   const bookingId = params.bookingId as string;

@@ -6,8 +6,10 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function AdminSettingsPage() {
+  useAuth(); // Protect this page
   const router = useRouter();
   const [email, setEmail] = useState("nick@investmentsolutions.cz");
   const [password, setPassword] = useState("123456");
