@@ -4,10 +4,10 @@ import { ubyPortService } from '@/services/ubyport.service';
 // POST /api/ubyport/exports/[exportId]/submit - Mark export as submitted to Czech police
 export async function POST(
   request: NextRequest,
-  { params }: { params: { exportId: string } }
+  { params }: { params: Promise<{ exportId: string }> }
 ) {
   try {
-    const { exportId } = params;
+    const { exportId } = await params;
 
     console.log(`✅ Marking UbyPort export ${exportId} as submitted...`);
 
@@ -27,7 +27,8 @@ export async function POST(
     }
 
   } catch (error) {
-    console.error(`❌ Error marking export ${params.exportId} as submitted:`, error);
+    const { exportId } = await params;
+    console.error(`❌ Error marking export ${exportId} as submitted:`, error);
     return NextResponse.json({
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
