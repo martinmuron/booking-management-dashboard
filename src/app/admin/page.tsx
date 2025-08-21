@@ -121,7 +121,7 @@ export default function AdminDashboard() {
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [dateFrom, setDateFrom] = useState<string>('');
   const [dateTo, setDateTo] = useState<string>('');
-  const [timeFilter, setTimeFilter] = useState<'all' | 'past' | 'upcoming' | 'upcoming30'>('upcoming');
+  const [timeFilter, setTimeFilter] = useState<'all' | 'past' | 'upcoming' | 'upcoming30'>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
   const fetchBookings = async () => {
@@ -317,10 +317,12 @@ export default function AdminDashboard() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    // Time filter (past/upcoming/upcoming30)
-    if (timeFilter === 'past' && checkInDate >= today) return false;
-    if (timeFilter === 'upcoming' && checkInDate < today) return false;
-    if (timeFilter === 'upcoming30') {
+    // Time filter (past/upcoming/upcoming30). If searching, don't constrain by time.
+    if (!searchQuery) {
+      if (timeFilter === 'past' && checkInDate >= today) return false;
+      if (timeFilter === 'upcoming' && checkInDate < today) return false;
+    }
+    if (!searchQuery && timeFilter === 'upcoming30') {
       // Show only bookings within next 30 days
       const thirtyDaysFromNow = new Date(today);
       thirtyDaysFromNow.setDate(today.getDate() + 30);

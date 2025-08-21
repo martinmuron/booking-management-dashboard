@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/database';
 import { hostAwayService, type HostAwayReservation } from './hostaway.service';
+import { ubyPortService } from './ubyport.service';
 
 interface BookingData {
   id: string;
@@ -93,6 +94,44 @@ class BookingService {
     }
   }
 
+  /**
+   * Prepare UbyPort export data when guest completes check-in (but don't submit yet)
+   */
+  private async prepareUbyPortExportOnCheckIn(bookingId: string, previousStatus?: string): Promise<void> {
+    try {
+      // Check if UbyPort credentials are configured
+      const credentials = {
+        username: process.env.UBYPORT_USERNAME || '',
+        password: process.env.UBYPORT_PASSWORD || ''
+      };
+
+      if (!credentials.username || !credentials.password) {
+        console.log(`⚠️  UbyPort credentials not configured - skipping export preparation for booking ${bookingId}`);
+        return;
+      }
+
+      console.log(`📋 Preparing UbyPort export data for booking ${bookingId} (will submit on check-in night)...`);
+      
+      // Only prepare export data - actual submission happens on check-in night via cron
+      const exportResult = await ubyPortService.createExportData(bookingId);
+      
+      if (exportResult.success && exportResult.data) {
+        // Save as EXPORTED (ready to submit on check-in night)
+        const saveResult = await ubyPortService.saveExportData(bookingId, exportResult.data, 'EXPORTED');
+        
+        if (saveResult.success) {
+          console.log(`✅ UbyPort export data prepared for booking ${bookingId} - will submit to Czech Police on check-in night`);
+        } else {
+          console.error(`❌ Failed to save UbyPort export data for booking ${bookingId}: ${saveResult.error}`);
+        }
+      } else {
+        console.error(`❌ Failed to prepare UbyPort export data for booking ${bookingId}: ${exportResult.error}`);
+      }
+      
+    } catch (error) {
+      console.error(`❌ Error preparing UbyPort export for booking ${bookingId}:`, error);
+    }
+  }
 
   /**
    * Clear all existing bookings from database (use with caution!)
@@ -419,6 +458,11 @@ class BookingService {
               updatedBookings++;
               console.log(`📝 [SYNC DEBUG] Updated booking: ${updatedBooking.id} - ${bookingData.guestLeaderName} - Status: ${updatedBooking.status}`);
               
+              // Prepare UbyPort export data if status changed to CHECKED_IN (submit on check-in night)
+              if (shouldUpdateStatus && updateData.status === 'CHECKED_IN') {
+                await this.prepareUbyPortExportOnCheckIn(updatedBooking.id, existingBooking.status);
+              }
+              
               // Skip HostAway check-in link update to prevent email flooding
             } else {
               console.log(`🔍 [SYNC DEBUG] No changes for booking ${existingBooking.id}, skipping update`);
@@ -723,6 +767,11 @@ class BookingService {
           });
           
           console.log(`✅ [SINGLE SYNC] Updated booking: ${updatedBooking.id} - ${bookingData.guestLeaderName} - Status: ${updatedBooking.status}`);
+          
+          // Prepare UbyPort export data if status changed to CHECKED_IN (submit on check-in night)
+          if (shouldUpdateStatus && updateData.status === 'CHECKED_IN') {
+            await this.prepareUbyPortExportOnCheckIn(updatedBooking.id, existingBooking.status);
+          }
           
           // Skip HostAway check-in link update to prevent email flooding
           
