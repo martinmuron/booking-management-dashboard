@@ -324,21 +324,47 @@ class HostAwayService {
     averagePrice?: number;
   }> {
     try {
-      const calendar = await this.getListingCalendar(listingId, checkInDate, checkOutDate);
+      // Get calendar data - need to extend end date to get proper availability info
+      const checkIn = new Date(checkInDate);
+      const checkOut = new Date(checkOutDate);
       
-      const unavailableDates = calendar
-        .filter(day => !day.available)
-        .map(day => day.date);
-        
-      const available = unavailableDates.length === 0;
+      // Extend the calendar fetch by one day to ensure we get all needed data
+      const extendedEndDate = new Date(checkOut);
+      extendedEndDate.setDate(extendedEndDate.getDate() + 1);
       
-      const availableDays = calendar.filter(day => day.available);
-      const averagePrice = availableDays.length > 0 
-        ? availableDays.reduce((sum, day) => sum + day.price, 0) / availableDays.length
+      const calendar = await this.getListingCalendar(
+        listingId, 
+        checkInDate, 
+        extendedEndDate.toISOString().split('T')[0]
+      );
+      
+      // Generate list of dates that need to be available (excluding checkout date)
+      const requiredDates: string[] = [];
+      const current = new Date(checkIn);
+      while (current < checkOut) {
+        requiredDates.push(current.toISOString().split('T')[0]);
+        current.setDate(current.getDate() + 1);
+      }
+      
+      // Check if all required dates are available
+      const unavailableDates = requiredDates.filter(date => {
+        const calendarDay = calendar.find(day => day.date === date);
+        return !calendarDay || !calendarDay.available;
+      });
+      
+      const available = unavailableDates.length === 0 && requiredDates.length > 0;
+      
+      // Calculate stats from available days in the stay period
+      const relevantDays = calendar.filter(day => 
+        requiredDates.includes(day.date) && day.available
+      );
+      
+      const averagePrice = relevantDays.length > 0 
+        ? relevantDays.reduce((sum, day) => sum + day.price, 0) / relevantDays.length
         : undefined;
         
-      const minimumStay = availableDays.length > 0
-        ? Math.max(...availableDays.map(day => day.minimumStay))
+      const minimumStay = relevantDays.length > 0
+        ? Math.max(...relevantDays.map(day => day.minimumStay))
         : undefined;
 
       return {
@@ -348,7 +374,7 @@ class HostAwayService {
         averagePrice
       };
     } catch (error) {
-      console.error(`Failed to check availability for listing ${listingId}:`, error);
+      console.error(`❌ Failed to check availability for listing ${listingId}:`, error);
       return {
         available: false,
         unavailableDates: []

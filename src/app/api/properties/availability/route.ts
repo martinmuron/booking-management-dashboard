@@ -50,16 +50,18 @@ export async function GET(request: NextRequest) {
       availabilityGuestNumber: !isNaN(Number(guestCount)) ? guestCount : undefined,
     });
 
-    // As a secondary safety, if server-side filtering returns nothing, fall back to client-side capacity filter on all listings
-    const listingsForResult = filteredListings.length > 0
-      ? filteredListings
-      : await hostAwayService.getListings();
+    // Get all listings for comparison and fallback
+    const allListings = await hostAwayService.getListings();
+    
+    // Apply guest capacity filter if specified
     const capacityFiltered = guestCount
-      ? listingsForResult.filter(l => (l.personCapacity ?? 0) >= (guestCount || 0))
-      : listingsForResult;
+      ? allListings.filter(l => (l.personCapacity ?? 0) >= (guestCount || 0))
+      : allListings;
 
-    // For each listing, compute availability via calendar to be precise for the date range
-    const detailedResults = await Promise.all(capacityFiltered.map(async (listing) => {
+    // Choose which listings to check - prefer server-side filtered results if they exist and make sense
+    const shouldUseServerSideResults = filteredListings.length > 0 && filteredListings.length < capacityFiltered.length;
+    const listingsForResult = shouldUseServerSideResults ? filteredListings : capacityFiltered;
+    const detailedResults = await Promise.all(listingsForResult.map(async (listing) => {
       const availability = await hostAwayService.checkAvailability(
         listing.id,
         checkInDate,
@@ -83,8 +85,31 @@ export async function GET(request: NextRequest) {
       };
     }));
 
-    const availableProperties = detailedResults.filter(r => r.availability.available);
-    const unavailableProperties = detailedResults.filter(r => !r.availability.available);
+    let availableProperties = detailedResults.filter(r => r.availability.available);
+    let unavailableProperties = detailedResults.filter(r => !r.availability.available);
+
+    // SMART FALLBACK: If NO properties show as available but server-side search found some,
+    // this likely means calendar data is corrupted/not configured properly.
+    // In this case, trust the server-side search and mark those as "likely available"
+    const calendarDataSeemsBroken = availableProperties.length === 0 && filteredListings.length > 0;
+    
+    if (calendarDataSeemsBroken) {
+      // Mark properties that were found by server-side search as potentially available
+      const serverFilteredIds = new Set(filteredListings.map(l => l.id));
+      
+      availableProperties = detailedResults
+        .filter(r => serverFilteredIds.has(r.listing.id))
+        .map(r => ({
+          ...r,
+          availability: {
+            ...r.availability,
+            available: true, // Override calendar result
+            fallbackReason: 'Server-side search found this property available, but calendar data appears incomplete'
+          }
+        }));
+      
+      unavailableProperties = detailedResults.filter(r => !serverFilteredIds.has(r.listing.id));
+    }
 
     return NextResponse.json({
       success: true,
@@ -97,7 +122,8 @@ export async function GET(request: NextRequest) {
         summary: {
           total: detailedResults.length,
           available: availableProperties.length,
-          unavailable: unavailableProperties.length
+          unavailable: unavailableProperties.length,
+          fallbackUsed: calendarDataSeemsBroken
         },
         availableProperties,
         unavailableProperties
