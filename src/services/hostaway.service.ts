@@ -298,7 +298,7 @@ class HostAwayService {
     endDate: string
   ): Promise<HostAwayCalendarDay[]> {
     try {
-      const response = await this.makeRequest<HostAwayCalendarResponse>(
+      const response = await this.makeRequest<any>(
         `/listings/${listingId}/calendar`,
         {
           startDate,
@@ -306,7 +306,16 @@ class HostAwayService {
           includeResources: '1'
         }
       );
-      return response.result || [];
+      
+      // Transform the raw HostAway response to our expected interface
+      const rawCalendar = response.result || [];
+      return rawCalendar.map((day: any): HostAwayCalendarDay => ({
+        date: day.date,
+        available: day.isAvailable === 1 && day.status === 'available', // Convert HostAway format to boolean
+        price: day.price || 0,
+        minimumStay: day.minimumStay || 1,
+        reservationId: day.reservations?.length > 0 ? day.reservations[0].id : undefined
+      }));
     } catch (error) {
       console.error(`Failed to fetch calendar for listing ${listingId}:`, error);
       return [];
@@ -337,6 +346,7 @@ class HostAwayService {
         checkInDate, 
         extendedEndDate.toISOString().split('T')[0]
       );
+      
       
       // Generate list of dates that need to be available (excluding checkout date)
       const requiredDates: string[] = [];

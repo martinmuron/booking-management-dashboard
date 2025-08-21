@@ -85,31 +85,8 @@ export async function GET(request: NextRequest) {
       };
     }));
 
-    let availableProperties = detailedResults.filter(r => r.availability.available);
-    let unavailableProperties = detailedResults.filter(r => !r.availability.available);
-
-    // SMART FALLBACK: If NO properties show as available but server-side search found some,
-    // this likely means calendar data is corrupted/not configured properly.
-    // In this case, trust the server-side search and mark those as "likely available"
-    const calendarDataSeemsBroken = availableProperties.length === 0 && filteredListings.length > 0;
-    
-    if (calendarDataSeemsBroken) {
-      // Mark properties that were found by server-side search as potentially available
-      const serverFilteredIds = new Set(filteredListings.map(l => l.id));
-      
-      availableProperties = detailedResults
-        .filter(r => serverFilteredIds.has(r.listing.id))
-        .map(r => ({
-          ...r,
-          availability: {
-            ...r.availability,
-            available: true, // Override calendar result
-            fallbackReason: 'Server-side search found this property available, but calendar data appears incomplete'
-          }
-        }));
-      
-      unavailableProperties = detailedResults.filter(r => !serverFilteredIds.has(r.listing.id));
-    }
+    const availableProperties = detailedResults.filter(r => r.availability.available);
+    const unavailableProperties = detailedResults.filter(r => !r.availability.available);
 
     return NextResponse.json({
       success: true,
@@ -122,8 +99,7 @@ export async function GET(request: NextRequest) {
         summary: {
           total: detailedResults.length,
           available: availableProperties.length,
-          unavailable: unavailableProperties.length,
-          fallbackUsed: calendarDataSeemsBroken
+          unavailable: unavailableProperties.length
         },
         availableProperties,
         unavailableProperties
