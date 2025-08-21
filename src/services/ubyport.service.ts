@@ -260,7 +260,7 @@ class UbyPortService {
       const hasErrors = responseText.includes('<ChybyHlavicky>') || responseText.includes('<ChybyZaznamu>');
       
       // Extract confirmation PDF if present
-      const pdfMatch = responseText.match(/<DokumentPotvrzeni>(.*?)<\/DokumentPotvrzeni>/s);
+      const pdfMatch = responseText.match(/<DokumentPotvrzeni>([\s\S]*?)<\/DokumentPotvrzeni>/);
       const confirmationPdf = pdfMatch ? pdfMatch[1] : undefined;
 
       if (hasErrors) {
