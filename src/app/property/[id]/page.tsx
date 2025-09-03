@@ -257,6 +257,28 @@ export default function PropertyDetailPage() {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  {/* Book Directly - Featured Option */}
+                  <div className="relative">
+                    <div className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full animate-pulse">
+                      SAVE 10%
+                    </div>
+                    <a href="https://myprague.holiday" target="_blank" rel="noopener noreferrer" className="block">
+                      <Button className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-bold py-3 shadow-lg border-2 border-green-500 relative overflow-hidden group">
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
+                        <span className="relative flex items-center justify-center gap-2">
+                          🏠 Book Directly & Save 10%
+                        </span>
+                      </Button>
+                    </a>
+                    <p className="text-xs text-center text-green-700 font-semibold mt-1">
+                      Best rates guaranteed!
+                    </p>
+                  </div>
+
+                  <div className="text-center py-2">
+                    <span className="text-sm text-gray-400">or choose a platform:</span>
+                  </div>
+
                   {/* Booking platform buttons */}
                   <div className="space-y-2">
                     {property.airbnbListingUrl && (
