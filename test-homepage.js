@@ -5,19 +5,30 @@ const { chromium } = require('playwright');
   const page = await browser.newPage();
   
   try {
-    console.log('Navigating to homepage...');
-    await page.goto('http://localhost:3007', { waitUntil: 'domcontentloaded', timeout: 10000 });
+    console.log('Navigating to property page...');
+    await page.goto('http://localhost:3007/property/271429', { waitUntil: 'networkidle', timeout: 20000 });
+    
+    // Wait for the content to load
+    console.log('Waiting for content to load...');
+    await page.waitForSelector('h1', { timeout: 10000 });
+    await page.waitForTimeout(3000);
     
     console.log('Taking full page screenshot...');
     await page.screenshot({ 
-      path: 'homepage-full.png', 
+      path: 'property-page-full.png', 
       fullPage: true 
     });
     
     console.log('Taking viewport screenshot...');
     await page.screenshot({ 
-      path: 'homepage-viewport.png'
+      path: 'property-page-viewport.png'
     });
+    
+    console.log('Taking Book Directly section screenshot...');
+    const bookDirectlySection = await page.$('[class*="space-y-4"]');
+    if (bookDirectlySection) {
+      await bookDirectlySection.screenshot({ path: 'book-directly-section.png' });
+    }
     
     // Get page title and basic info
     const title = await page.title();
@@ -80,7 +91,7 @@ const { chromium } = require('playwright');
       console.log(`Link ${i + 1}:`, link.text, '→', link.href);
     });
     
-    console.log('\nScreenshots saved as homepage-full.png and homepage-viewport.png');
+    console.log('\nScreenshots saved as property-page-full.png, property-page-viewport.png, and book-directly-section.png');
     
     // Keep browser open for manual inspection
     console.log('\nBrowser will stay open for manual inspection. Press Ctrl+C to close.');
