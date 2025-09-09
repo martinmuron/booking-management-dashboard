@@ -110,8 +110,11 @@ async function main() {
       return;
     }
     
-    console.log(`\n📝 Will update ${bookings.length} reservations:`);
-    bookings.forEach(b => {
+    // Limit to first 3 bookings
+    const bookingsToUpdate = bookings.slice(0, 3);
+    
+    console.log(`\n📝 Will update ${bookingsToUpdate.length} reservations:`);
+    bookingsToUpdate.forEach(b => {
       console.log(`   - ${b.hostAwayId}: ${b.guestLeaderName} (${b.propertyName})`);
     });
     
@@ -119,7 +122,7 @@ async function main() {
     console.log('\n' + '━'.repeat(60));
     const results = [];
     
-    for (const booking of bookings) {
+    for (const booking of bookingsToUpdate) {
       const checkInLink = `${SITE_URL}/checkin/${booking.checkInToken}`;
       
       const success = await updateHostAwayCustomField(
