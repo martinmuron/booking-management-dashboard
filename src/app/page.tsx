@@ -125,11 +125,7 @@ export default function Home() {
         <div className="container mx-auto px-4 py-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <Logo size={60} />
-              <div>
-                <h1 className="text-2xl font-bold text-black">Nick & Jenny</h1>
-                <p className="text-sm text-gray-600">Premium Accommodations</p>
-              </div>
+              <Logo size="lg" />
             </div>
             <div className="flex items-center gap-4">
               <Link href="/about">
@@ -152,10 +148,10 @@ export default function Home() {
         <div className="container mx-auto px-4 text-center">
           <h2 className="text-5xl font-bold text-black mb-6">
             Exceptional Stays in<br />
-            <span className="text-gray-600">Beautiful Locations</span>
+            <span className="text-gray-600">Beautiful Prague</span>
           </h2>
           <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
-            Discover our carefully curated collection of premium accommodations. 
+            Discover our carefully curated collection of premium accommodations in Prague. 
             Each property offers unique experiences with uncompromising comfort and style.
           </p>
 
@@ -234,7 +230,7 @@ export default function Home() {
               <div>
                 <h3 className="text-3xl font-bold text-black mb-4">Our Properties</h3>
                 <p className="text-gray-600 max-w-xl mx-auto">
-                  Each location has been selected for its exceptional character and prime position
+                  Each Prague location has been selected for its exceptional character and prime position
                 </p>
               </div>
             )}
@@ -362,8 +358,7 @@ export default function Home() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div>
               <div className="flex items-center gap-3 mb-4">
-                <Logo size={40} className="invert" />
-                <h4 className="text-lg font-bold">Nick & Jenny</h4>
+                <Logo size="md" className="text-white [&>span:first-child]:text-white [&>span:last-child]:text-gray-300" />
               </div>
               <p className="text-gray-400">
                 Creating exceptional accommodation experiences with personal attention to detail.

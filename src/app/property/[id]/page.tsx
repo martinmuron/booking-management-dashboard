@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { MapPin, Star, Users, Calendar, ArrowLeft, Loader2 } from "lucide-react";
 import { Logo } from "@/components/Logo";
+import { ImageModal } from "@/components/ImageModal";
 import Link from "next/link";
 
 interface PropertyDetail {
@@ -40,6 +41,8 @@ export default function PropertyDetailPage() {
   const [property, setProperty] = useState<PropertyDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   useEffect(() => {
     const fetchProperty = async () => {
@@ -68,6 +71,24 @@ export default function PropertyDetailPage() {
     fetchProperty();
   }, [propertyId]);
 
+  const handleImageClick = (index: number) => {
+    setCurrentImageIndex(index);
+    setIsModalOpen(true);
+  };
+
+  const handleModalClose = () => {
+    setIsModalOpen(false);
+  };
+
+  const handleModalNavigate = (index: number) => {
+    setCurrentImageIndex(index);
+  };
+
+  // Prepare images for modal
+  const modalImages = property?.listingImages || (property?.thumbnailUrl ? [
+    { id: 0, url: property.thumbnailUrl, caption: property.name }
+  ] : []);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
@@ -91,8 +112,7 @@ export default function PropertyDetailPage() {
                   Back to Properties
                 </Button>
               </Link>
-              <Logo size={40} />
-              <h1 className="text-xl font-bold text-black">Nick & Jenny</h1>
+              <Logo size="md" />
             </div>
           </div>
         </header>
@@ -122,11 +142,7 @@ export default function PropertyDetailPage() {
                   Back to Properties
                 </Button>
               </Link>
-              <Logo size={40} />
-              <div>
-                <h1 className="text-xl font-bold text-black">Nick & Jenny</h1>
-                <p className="text-xs text-gray-600">Premium Accommodations</p>
-              </div>
+              <Logo size="md" />
             </div>
             <div className="flex items-center gap-3">
               <div className="hidden md:flex items-center gap-3">
@@ -174,14 +190,25 @@ export default function PropertyDetailPage() {
       <section className="py-8">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-            <div className="aspect-video bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg flex items-center justify-center overflow-hidden">
+            <div 
+              className="aspect-video bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg flex items-center justify-center overflow-hidden cursor-pointer hover:shadow-lg transition-shadow group"
+              onClick={() => handleImageClick(0)}
+            >
               {property.listingImages?.[0]?.url || property.thumbnailUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img 
-                  src={property.listingImages?.[0]?.url || property.thumbnailUrl} 
-                  alt={property.name}
-                  className="w-full h-full object-cover"
-                />
+                <>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img 
+                    src={property.listingImages?.[0]?.url || property.thumbnailUrl} 
+                    alt={property.name}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                  {/* Overlay indicator */}
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-all duration-300 flex items-center justify-center pointer-events-none">
+                    <div className="text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-black/50 px-3 py-1 rounded-full text-sm font-medium">
+                      Click to enlarge
+                    </div>
+                  </div>
+                </>
               ) : (
                 <div className="text-center">
                   <MapPin className="w-12 h-12 text-gray-400 mx-auto mb-4" />
@@ -191,13 +218,23 @@ export default function PropertyDetailPage() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               {property.listingImages?.slice(1, 5).map((image, index) => (
-                <div key={image.id} className="aspect-square bg-gray-100 rounded-lg overflow-hidden">
+                <div 
+                  key={image.id} 
+                  className="aspect-square bg-gray-100 rounded-lg overflow-hidden cursor-pointer hover:shadow-lg transition-shadow group relative"
+                  onClick={() => handleImageClick(index + 1)}
+                >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img 
                     src={image.url} 
                     alt={image.caption || `View ${index + 2}`}
-                    className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                   />
+                  {/* Overlay indicator */}
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-all duration-300 flex items-center justify-center pointer-events-none">
+                    <div className="text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-black/50 px-2 py-1 rounded-full text-xs font-medium">
+                      Enlarge
+                    </div>
+                  </div>
                 </div>
               )) || (
                 // Show placeholder if no additional images
@@ -276,7 +313,7 @@ export default function PropertyDetailPage() {
                 <CardContent className="space-y-4">
                   {/* Book Directly - Featured Option */}
                   <div className="relative">
-                    <div className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full animate-pulse">
+                    <div className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full animate-pulse z-10">
                       SAVE 10%
                     </div>
                     <a href="https://myprague.holiday" target="_blank" rel="noopener noreferrer" className="block">
@@ -334,6 +371,15 @@ export default function PropertyDetailPage() {
           </div>
         </div>
       </section>
+
+      {/* Image Modal */}
+      <ImageModal
+        images={modalImages}
+        isOpen={isModalOpen}
+        currentIndex={currentImageIndex}
+        onClose={handleModalClose}
+        onNavigate={handleModalNavigate}
+      />
     </div>
   );
 }
