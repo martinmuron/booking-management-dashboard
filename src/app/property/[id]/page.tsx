@@ -165,6 +165,7 @@ export default function PropertyDetailPage() {
                 Book Now
               </Button>
             )}
+            </div>
           </div>
         </div>
       </header>

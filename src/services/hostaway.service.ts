@@ -94,6 +94,7 @@ interface HostAwayCustomField {
   customFieldId?: number;
   name?: string;
   fieldName?: string;
+  varName?: string;
   identifier?: string;
   value?: string;
   customFieldName?: string;
