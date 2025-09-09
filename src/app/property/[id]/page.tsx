@@ -123,8 +123,24 @@ export default function PropertyDetailPage() {
                 </Button>
               </Link>
               <Logo size={40} />
-              <h1 className="text-xl font-bold text-black">Nick & Jenny</h1>
+              <div>
+                <h1 className="text-xl font-bold text-black">Nick & Jenny</h1>
+                <p className="text-xs text-gray-600">Premium Accommodations</p>
+              </div>
             </div>
+            <div className="flex items-center gap-3">
+              <div className="hidden md:flex items-center gap-3">
+                <Link href="/about">
+                  <Button variant="ghost" size="sm" className="text-black hover:bg-gray-100">
+                    About Us
+                  </Button>
+                </Link>
+                <Link href="/contact">
+                  <Button variant="outline" size="sm" className="border-black text-black hover:bg-black hover:text-white">
+                    Contact
+                  </Button>
+                </Link>
+              </div>
             {/* Header booking button - prioritize Airbnb, then VRBO, then Expedia */}
             {property.airbnbListingUrl ? (
               <a href={property.airbnbListingUrl} target="_blank" rel="noopener noreferrer">

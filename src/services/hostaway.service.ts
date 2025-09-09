@@ -477,8 +477,7 @@ class HostAwayService {
         if (response && response.result) {
           const nickJennyField = response.result.find((field: HostAwayCustomField) => 
             field.name === 'Check In Link Nick Jenny' || 
-            field.fieldName === 'reservation_check_in_link_nick_jenny' ||
-            field.identifier === 'reservation_check_in_link_nick_jenny' ||
+            field.varName === 'reservation_check_in_link_nick_jenny' ||
             field.id === 81717
           );
           

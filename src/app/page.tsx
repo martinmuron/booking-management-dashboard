@@ -8,6 +8,7 @@ import { Separator } from "@/components/ui/separator";
 import { MapPin, Star, Users, Calendar, ArrowRight, Loader2, CheckCircle, XCircle } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { PropertySearch } from "@/components/PropertySearch";
+import { CountUpAnimation } from "@/components/CountUpAnimation";
 import Link from "next/link";
 
 interface Property {
@@ -130,11 +131,18 @@ export default function Home() {
                 <p className="text-sm text-gray-600">Premium Accommodations</p>
               </div>
             </div>
-            <a href="mailto:hello@nickandjenny.com?subject=Property Inquiry">
-              <Button variant="outline" className="border-black text-black hover:bg-black hover:text-white">
-                Contact Us
-              </Button>
-            </a>
+            <div className="flex items-center gap-4">
+              <Link href="/about">
+                <Button variant="ghost" className="text-black hover:bg-gray-100">
+                  About Us
+                </Button>
+              </Link>
+              <Link href="/contact">
+                <Button variant="outline" className="border-black text-black hover:bg-black hover:text-white">
+                  Contact Us
+                </Button>
+              </Link>
+            </div>
           </div>
         </div>
       </header>
@@ -150,6 +158,18 @@ export default function Home() {
             Discover our carefully curated collection of premium accommodations. 
             Each property offers unique experiences with uncompromising comfort and style.
           </p>
+
+          {/* Reviews Stats */}
+          <div className="flex items-center justify-center gap-3 mb-8">
+            <div className="flex items-center gap-1">
+              {[...Array(5)].map((_, i) => (
+                <Star key={i} className="w-5 h-5 fill-yellow-400 text-yellow-400" />
+              ))}
+            </div>
+            <div className="text-lg font-semibold text-gray-800">
+              Over <CountUpAnimation end={9000} suffix="+" className="text-2xl font-bold text-black" /> Five-Star Reviews
+            </div>
+          </div>
           
           {/* Search Bar */}
           <div className="max-w-4xl mx-auto mb-8">
