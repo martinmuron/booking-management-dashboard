@@ -155,6 +155,8 @@ export default function NukiManagementPage() {
   const [keyToRevoke, setKeyToRevoke] = useState<KeyEntry | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [keyToDelete, setKeyToDelete] = useState<KeyEntry | null>(null);
+  const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
+  const [bulkDeleteInProgress, setBulkDeleteInProgress] = useState(false);
 
   const fetchOverviewData = async () => {
     try {
@@ -261,14 +263,14 @@ export default function NukiManagementPage() {
       const response = await fetch(`/api/nuki/keys/${key.id}?deviceId=${key.deviceId}`, {
         method: 'DELETE'
       });
-      
+
       if (response.ok) {
         // Immediately remove the key from the local state for instant UI update
         setKeys(prevKeys => prevKeys.filter(k => k.id !== key.id));
-        
+
         // Also refresh all data to ensure consistency
         fetchOverviewData();
-        
+
         // Close dialogs
         setShowDeleteConfirm(false);
         setKeyToDelete(null);
@@ -278,6 +280,54 @@ export default function NukiManagementPage() {
       }
     } catch (error) {
       console.error('Error deleting key:', error);
+    }
+  };
+
+  const handleBulkDeleteExpiredKeys = async () => {
+    setBulkDeleteInProgress(true);
+
+    try {
+      // Get all expired keys
+      const expiredKeys = keys.filter(key => (key as KeyEntry & { isExpired?: boolean }).isExpired);
+
+      let successCount = 0;
+      let errorCount = 0;
+
+      // Delete each expired key
+      for (const key of expiredKeys) {
+        try {
+          const response = await fetch(`/api/nuki/keys/${key.id}?deviceId=${key.deviceId}`, {
+            method: 'DELETE'
+          });
+
+          if (response.ok) {
+            successCount++;
+          } else {
+            errorCount++;
+            console.error(`Failed to delete key ${key.name} (ID: ${key.id})`);
+          }
+        } catch (error) {
+          errorCount++;
+          console.error(`Error deleting key ${key.name}:`, error);
+        }
+      }
+
+      // Update local state to remove all expired keys immediately
+      setKeys(prevKeys => prevKeys.filter(k => !(k as KeyEntry & { isExpired?: boolean }).isExpired));
+
+      // Refresh all data to ensure consistency
+      fetchOverviewData();
+
+      // Show result (you could add a toast notification here)
+      console.log(`Bulk delete completed: ${successCount} deleted, ${errorCount} failed`);
+
+      // Close dialog
+      setShowBulkDeleteConfirm(false);
+
+    } catch (error) {
+      console.error('Error during bulk delete:', error);
+    } finally {
+      setBulkDeleteInProgress(false);
     }
   };
 
@@ -429,66 +479,76 @@ export default function NukiManagementPage() {
             <p className="text-gray-600">Manage your Nuki smart locks and access control</p>
           </div>
         </div>
-        <Button onClick={handleRefresh} disabled={refreshing}>
-          <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-          Refresh
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={handleRefresh} disabled={refreshing}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+          {keys.filter(k => (k as KeyEntry & { isExpired?: boolean }).isExpired).length > 0 && (
+            <Button
+              onClick={() => setShowBulkDeleteConfirm(true)}
+              variant="destructive"
+              disabled={bulkDeleteInProgress}
+            >
+              <Trash2 className={`h-4 w-4 mr-2 ${bulkDeleteInProgress ? 'animate-pulse' : ''}`} />
+              {bulkDeleteInProgress ? 'Deleting...' : `Delete All Expired (${keys.filter(k => (k as KeyEntry & { isExpired?: boolean }).isExpired).length})`}
+            </Button>
+          )}
+        </div>
       </div>
 
       {stats && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Devices</CardTitle>
-              <Shield className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.totalDevices}</div>
-              <p className="text-xs text-muted-foreground">
-                {stats.onlineDevices} online, {stats.offlineDevices} offline
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Device Status</CardTitle>
-              <Lock className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.lockedDevices}</div>
-              <p className="text-xs text-muted-foreground">
-                {stats.lockedDevices} locked, {stats.unlockedDevices} unlocked
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Keys</CardTitle>
-              <Key className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.totalAuthorizations}</div>
-              <p className="text-xs text-muted-foreground">
-                All access keys
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Key Status</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">
-                {keys.filter(k => k.isActive).length}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+          <Card className="p-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-muted-foreground">Total Devices</p>
+                <p className="text-xl font-bold">{stats.totalDevices}</p>
+                <p className="text-xs text-muted-foreground">
+                  {stats.onlineDevices} online, {stats.offlineDevices} offline
+                </p>
               </div>
-              <p className="text-xs text-muted-foreground">
-                {keys.filter(k => (k as KeyEntry & { isExpired?: boolean }).isExpired).length} expired/inactive
-              </p>
-            </CardContent>
+              <Shield className="h-4 w-4 text-muted-foreground" />
+            </div>
+          </Card>
+
+          <Card className="p-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-muted-foreground">Device Status</p>
+                <p className="text-xl font-bold">{stats.lockedDevices}</p>
+                <p className="text-xs text-muted-foreground">
+                  {stats.lockedDevices} locked, {stats.unlockedDevices} unlocked
+                </p>
+              </div>
+              <Lock className="h-4 w-4 text-muted-foreground" />
+            </div>
+          </Card>
+
+          <Card className="p-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-muted-foreground">Total Keys</p>
+                <p className="text-xl font-bold">{stats.totalAuthorizations}</p>
+                <p className="text-xs text-muted-foreground">All access keys</p>
+              </div>
+              <Key className="h-4 w-4 text-muted-foreground" />
+            </div>
+          </Card>
+
+          <Card className="p-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-muted-foreground">Key Status</p>
+                <p className="text-xl font-bold text-green-600">
+                  {keys.filter(k => k.isActive).length}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {keys.filter(k => (k as KeyEntry & { isExpired?: boolean }).isExpired).length} expired/inactive
+                </p>
+              </div>
+              <Users className="h-4 w-4 text-muted-foreground" />
+            </div>
           </Card>
         </div>
       )}
@@ -526,41 +586,35 @@ export default function NukiManagementPage() {
                 
                 return (
                   <div className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <Card>
-                        <CardContent className="pt-6">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-sm font-medium text-muted-foreground">Total Keys</p>
-                              <p className="text-2xl font-bold">{deviceAuths.length}</p>
-                            </div>
-                            <Key className="h-8 w-8 text-muted-foreground" />
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <Card className="p-3">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-xs font-medium text-muted-foreground">Total Keys</p>
+                            <p className="text-xl font-bold">{deviceAuths.length}</p>
                           </div>
-                        </CardContent>
+                          <Key className="h-4 w-4 text-muted-foreground" />
+                        </div>
                       </Card>
-                      
-                      <Card>
-                        <CardContent className="pt-6">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-sm font-medium text-muted-foreground">Active Keys</p>
-                              <p className="text-2xl font-bold text-green-600">{activeCount}</p>
-                            </div>
-                            <CheckCircle className="h-8 w-8 text-green-600" />
+
+                      <Card className="p-3">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-xs font-medium text-muted-foreground">Active Keys</p>
+                            <p className="text-xl font-bold text-green-600">{activeCount}</p>
                           </div>
-                        </CardContent>
+                          <CheckCircle className="h-4 w-4 text-green-600" />
+                        </div>
                       </Card>
-                      
-                      <Card>
-                        <CardContent className="pt-6">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-sm font-medium text-muted-foreground">Expired Keys</p>
-                              <p className="text-2xl font-bold text-red-600">{expiredCount}</p>
-                            </div>
-                            <XCircle className="h-8 w-8 text-red-600" />
+
+                      <Card className="p-3">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-xs font-medium text-muted-foreground">Expired Keys</p>
+                            <p className="text-xl font-bold text-red-600">{expiredCount}</p>
                           </div>
-                        </CardContent>
+                          <XCircle className="h-4 w-4 text-red-600" />
+                        </div>
                       </Card>
                     </div>
 
@@ -1223,6 +1277,76 @@ export default function NukiManagementPage() {
             >
               <Trash2 className="h-4 w-4 mr-2" />
               Delete Permanently
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Delete Confirmation Dialog */}
+      <Dialog open={showBulkDeleteConfirm} onOpenChange={setShowBulkDeleteConfirm}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete All Expired Keys</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to permanently delete all expired access keys across all devices?
+              This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-4">
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="h-5 w-5 text-red-600 mt-0.5" />
+                <div>
+                  <h4 className="font-medium text-red-800 mb-2">
+                    {keys.filter(k => (k as KeyEntry & { isExpired?: boolean }).isExpired).length} expired keys will be deleted
+                  </h4>
+                  <p className="text-sm text-red-700 mb-3">
+                    This will permanently remove all expired access keys from all connected devices.
+                  </p>
+
+                  {/* Show affected devices */}
+                  {(() => {
+                    const expiredKeys = keys.filter(k => (k as KeyEntry & { isExpired?: boolean }).isExpired);
+                    const affectedDevices = [...new Set(expiredKeys.map(k => k.deviceId))];
+
+                    return affectedDevices.length > 0 && (
+                      <div>
+                        <p className="text-xs font-medium text-red-800 mb-1">Affected devices:</p>
+                        <div className="flex flex-wrap gap-1">
+                          {affectedDevices.map(deviceId => {
+                            const device = devices?.find(d => d.smartlockId === deviceId);
+                            const deviceExpiredCount = expiredKeys.filter(k => k.deviceId === deviceId).length;
+                            return (
+                              <Badge key={deviceId} variant="outline" className="text-xs text-red-700 border-red-300">
+                                {device?.name || `Device ${deviceId}`} ({deviceExpiredCount})
+                              </Badge>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowBulkDeleteConfirm(false)}
+              disabled={bulkDeleteInProgress}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleBulkDeleteExpiredKeys}
+              disabled={bulkDeleteInProgress}
+            >
+              <Trash2 className={`h-4 w-4 mr-2 ${bulkDeleteInProgress ? 'animate-pulse' : ''}`} />
+              {bulkDeleteInProgress ? 'Deleting...' : 'Delete All Expired Keys'}
             </Button>
           </DialogFooter>
         </DialogContent>

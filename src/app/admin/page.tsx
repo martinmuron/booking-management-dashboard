@@ -115,13 +115,12 @@ export default function AdminDashboard() {
   const [bookings, setBookings] = useState<BookingData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [refreshing, setRefreshing] = useState(false);
   const [copiedLinks, setCopiedLinks] = useState<Record<string, boolean>>({});
   const [sortField, setSortField] = useState<'checkInDate' | 'propertyName' | 'guestLeaderName' | 'status'>('checkInDate');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [dateFrom, setDateFrom] = useState<string>('');
   const [dateTo, setDateTo] = useState<string>('');
-  const [timeFilter, setTimeFilter] = useState<'all' | 'past' | 'upcoming' | 'upcoming30' | 'inprogress'>('all');
+  const [timeFilter, setTimeFilter] = useState<'all' | 'past' | 'upcoming' | 'upcoming30' | 'inprogress'>('upcoming');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
   const fetchBookings = async () => {
@@ -139,36 +138,7 @@ export default function AdminDashboard() {
       setError('Network error: Unable to fetch bookings');
     } finally {
       setLoading(false);
-      setRefreshing(false);
     }
-  };
-
-  const syncWithHostAway = async () => {
-    try {
-      setRefreshing(true);
-      
-      const response = await fetch('/api/bookings/sync', {
-        method: 'POST'
-      });
-      
-      const data = await response.json();
-      
-      if (data.success) {
-        await fetchBookings();
-      } else {
-        setError(data.error || 'Sync failed');
-      }
-    } catch {
-      setError('Network error: Unable to sync bookings');
-    } finally {
-      setRefreshing(false);
-    }
-  };
-
-
-
-  const handleRefresh = async () => {
-    await syncWithHostAway();
   };
 
   const copyCheckInLink = async (bookingId: string, checkInToken: string) => {
@@ -344,15 +314,7 @@ export default function AdminDashboard() {
                 Manage all bookings and guest information
               </p>
             </div>
-                                                   <div className="flex flex-col md:flex-row gap-2 mt-4 md:mt-0 md:items-center flex-wrap">
-              
-              <Button 
-                onClick={handleRefresh}
-                disabled={refreshing}
-              >
-                <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-                {refreshing ? 'Syncing...' : 'Sync with HostAway'}
-              </Button>
+            <div className="flex flex-col md:flex-row gap-2 mt-4 md:mt-0 md:items-center flex-wrap">
               <Button
                 onClick={() => router.push('/admin/nuki')}
                 variant="outline"
@@ -370,61 +332,177 @@ export default function AdminDashboard() {
             </div>
           </div>
 
+          {/* Filters */}
+          <div className="mb-6">
+            <div className="flex flex-col md:flex-row gap-3 md:gap-4 flex-wrap md:items-center mb-4">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-sm font-medium text-muted-foreground">Filter:</span>
+                <Button
+                  variant={timeFilter === 'all' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setTimeFilter('all')}
+                  className="h-8"
+                >
+                  All
+                </Button>
+                <Button
+                  variant={timeFilter === 'past' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setTimeFilter('past')}
+                  className="h-8"
+                >
+                  Past
+                </Button>
+                <Button
+                  variant={timeFilter === 'upcoming' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setTimeFilter('upcoming')}
+                  className="h-8"
+                >
+                  Upcoming
+                </Button>
+                <Button
+                  variant={timeFilter === 'upcoming30' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setTimeFilter('upcoming30')}
+                  className="h-8"
+                >
+                  30 Days
+                </Button>
+                <Button
+                  variant={timeFilter === 'inprogress' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setTimeFilter('inprogress')}
+                  className="h-8"
+                >
+                  In Progress
+                </Button>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <Label className="text-xs text-muted-foreground">Check-in from</Label>
+                <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-8 w-[160px]" />
+                <Label className="text-xs text-muted-foreground">to</Label>
+                <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="h-8 w-[160px]" />
+                {(dateFrom || dateTo || timeFilter !== 'upcoming') && (
+                  <Button variant="ghost" size="sm" className="h-8" onClick={() => { setDateFrom(''); setDateTo(''); setTimeFilter('upcoming'); }}>Clear All</Button>
+                )}
+              </div>
+            </div>
+          </div>
+
           {/* Summary Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Bookings</CardTitle>
+          <div className={`grid grid-cols-1 gap-3 mb-6 ${
+            timeFilter === 'upcoming' || timeFilter === 'upcoming30' || timeFilter === 'inprogress'
+              ? 'md:grid-cols-4'
+              : 'md:grid-cols-5'
+          }`}>
+            <Card className="p-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground">
+                    {timeFilter === 'all' ? 'Total Bookings' :
+                     timeFilter === 'past' ? 'Past Bookings' :
+                     timeFilter === 'upcoming' ? 'Upcoming Bookings' :
+                     timeFilter === 'upcoming30' ? 'Next 30 Days' :
+                     timeFilter === 'inprogress' ? 'In Progress' :
+                     'Filtered Bookings'}
+                  </p>
+                  <p className="text-xl font-bold">{totalBookings}</p>
+                </div>
                 <Home className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{totalBookings}</div>
-              </CardContent>
+              </div>
             </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Completed</CardTitle>
-                <Calendar className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-blue-600">{completedBookings}</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Pending</CardTitle>
+
+            {/* Hide Completed card for future-focused and in-progress filters */}
+            {timeFilter !== 'upcoming' && timeFilter !== 'upcoming30' && timeFilter !== 'inprogress' && (
+              <Card className="p-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground">Completed</p>
+                    <p className="text-xl font-bold text-blue-600">{completedBookings}</p>
+                  </div>
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                </div>
+              </Card>
+            )}
+
+            {/* Hide Pending card for in-progress filter (they've already checked in) */}
+            {timeFilter !== 'inprogress' && (
+              <Card className="p-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground">Pending</p>
+                    <p className="text-xl font-bold text-yellow-600">{pendingBookings}</p>
+                  </div>
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                </div>
+              </Card>
+            )}
+
+            {/* Show In Progress card for all filters except when it's the main filter */}
+            {timeFilter !== 'inprogress' && (
+              <Card className="p-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground">In Progress</p>
+                    <p className="text-xl font-bold text-green-600">{inProgressBookings}</p>
+                  </div>
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                </div>
+              </Card>
+            )}
+
+            <Card className="p-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground">Checked In</p>
+                  <p className="text-xl font-bold text-orange-600">{checkedInBookings}</p>
+                </div>
                 <Users className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-yellow-600">{pendingBookings}</div>
-              </CardContent>
+              </div>
             </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">In Progress</CardTitle>
-                <Clock className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-green-600">{inProgressBookings}</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Checked In</CardTitle>
-                <Users className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-orange-600">{checkedInBookings}</div>
-              </CardContent>
-            </Card>
+
+            {/* Show additional relevant cards for In Progress filter */}
+            {timeFilter === 'inprogress' && (
+              <>
+                <Card className="p-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground">Total Guests</p>
+                      <p className="text-xl font-bold text-purple-600">
+                        {filteredBookings.reduce((total, booking) => total + booking.numberOfGuests, 0)}
+                      </p>
+                    </div>
+                    <Users className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                </Card>
+                <Card className="p-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground">Check-outs Today</p>
+                      <p className="text-xl font-bold text-orange-600">
+                        {filteredBookings.filter(booking => {
+                          const checkOut = new Date(booking.checkOutDate);
+                          const today = new Date();
+                          checkOut.setHours(0, 0, 0, 0);
+                          today.setHours(0, 0, 0, 0);
+                          return checkOut.getTime() === today.getTime();
+                        }).length}
+                      </p>
+                    </div>
+                    <Calendar className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                </Card>
+              </>
+            )}
           </div>
 
           {/* Bookings Table */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">HostAway Reservations</CardTitle>
+              <CardTitle className="text-lg">Reservations</CardTitle>
               <CardDescription>
-                Database bookings synced from HostAway (Status managed by your platform)
+                Synced with HostAway
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -450,59 +528,6 @@ export default function AdminDashboard() {
                   )}
                 </div>
                 
-                <div className="flex flex-col md:flex-row gap-3 md:gap-4 flex-wrap md:items-center">
-                   <div className="flex items-center gap-2 flex-wrap">
-                     <Button
-                       variant={timeFilter === 'all' ? 'default' : 'outline'}
-                       size="sm"
-                       onClick={() => setTimeFilter('all')}
-                       className="h-8"
-                     >
-                       All
-                     </Button>
-                     <Button
-                       variant={timeFilter === 'past' ? 'default' : 'outline'}
-                       size="sm"
-                       onClick={() => setTimeFilter('past')}
-                       className="h-8"
-                     >
-                       Past
-                     </Button>
-                     <Button
-                       variant={timeFilter === 'upcoming' ? 'default' : 'outline'}
-                       size="sm"
-                       onClick={() => setTimeFilter('upcoming')}
-                       className="h-8"
-                     >
-                       Upcoming
-                     </Button>
-                     <Button
-                       variant={timeFilter === 'upcoming30' ? 'default' : 'outline'}
-                       size="sm"
-                       onClick={() => setTimeFilter('upcoming30')}
-                       className="h-8"
-                     >
-                       30 Days
-                     </Button>
-                     <Button
-                       variant={timeFilter === 'inprogress' ? 'default' : 'outline'}
-                       size="sm"
-                       onClick={() => setTimeFilter('inprogress')}
-                       className="h-8"
-                     >
-                       In Progress
-                     </Button>
-                   </div>
-                   <div className="flex items-center gap-2 flex-wrap">
-                     <Label className="text-xs text-muted-foreground">Check-in from</Label>
-                     <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-8 w-[160px]" />
-                     <Label className="text-xs text-muted-foreground">to</Label>
-                     <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="h-8 w-[160px]" />
-                     {(dateFrom || dateTo || timeFilter !== 'all') && (
-                       <Button variant="ghost" size="sm" className="h-8" onClick={() => { setDateFrom(''); setDateTo(''); setTimeFilter('all'); }}>Clear All</Button>
-                     )}
-                   </div>
-                 </div>
                </div>
               {loading ? (
                 <div className="flex items-center justify-center py-8">
@@ -541,8 +566,8 @@ export default function AdminDashboard() {
                             {React.createElement(getSortIcon('guestLeaderName'), { className: "h-3 w-3" })}
                           </div>
                         </TableHead>
-                        <TableHead 
-                          className="cursor-pointer hover:bg-muted/50 select-none w-[11%] sm:w-[12%]"
+                        <TableHead
+                          className="cursor-pointer hover:bg-muted/50 select-none w-[10%] sm:w-[11%]"
                           onClick={() => handleSort('checkInDate')}
                         >
                           <div className="flex items-center gap-1 text-xs">
@@ -550,7 +575,8 @@ export default function AdminDashboard() {
                             {React.createElement(getSortIcon('checkInDate'), { className: "h-3 w-3" })}
                           </div>
                         </TableHead>
-                        <TableHead className="w-[8%] text-xs hidden md:table-cell">Guests</TableHead>
+                        <TableHead className="w-[10%] sm:w-[11%] text-xs hidden sm:table-cell">Check-out</TableHead>
+                        <TableHead className="w-[7%] text-xs hidden md:table-cell">Guests</TableHead>
                         <TableHead 
                           className="cursor-pointer hover:bg-muted/50 select-none w-[18%] sm:w-[20%]"
                           onClick={() => handleSort('status')}
@@ -583,6 +609,9 @@ export default function AdminDashboard() {
                             </TableCell>
                             <TableCell className="text-sm whitespace-nowrap">
                               {formatDate(booking.checkInDate)}
+                            </TableCell>
+                            <TableCell className="text-sm whitespace-nowrap hidden sm:table-cell">
+                              {formatDate(booking.checkOutDate)}
                             </TableCell>
                             <TableCell className="text-center hidden md:table-cell">
                               <div className="flex items-center justify-center">

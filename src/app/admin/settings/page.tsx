@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, RefreshCw } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
 export default function AdminSettingsPage() {
@@ -33,7 +33,33 @@ export default function AdminSettingsPage() {
     error?: string;
   }>>([]);
   const [logsLoading, setLogsLoading] = useState(false);
-  
+
+  // Manual sync state
+  const [syncing, setSyncing] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<string | null>(null);
+
+  // Manual sync function
+  const syncWithHostAway = async () => {
+    setSyncing(true);
+    setSyncStatus(null);
+    try {
+      const response = await fetch('/api/bookings/sync', {
+        method: 'POST'
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setSyncStatus(`✅ Sync successful: ${data.message || 'Bookings updated'}`);
+      } else {
+        setSyncStatus(`❌ Sync failed: ${data.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      setSyncStatus('❌ Network error: Unable to sync with HostAway');
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   const save = async () => {
     setLoading(true);
@@ -221,6 +247,47 @@ export default function AdminSettingsPage() {
               {status && <p className="text-sm text-green-600">{status}</p>}
               <Button onClick={save} disabled={loading} className="w-full">
                 {loading ? 'Saving...' : 'Save Credentials'}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Manual Sync */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Manual Sync</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Manually sync with HostAway to fetch new or updated bookings. This is usually not needed since webhooks handle real-time updates.
+            </p>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="p-4 border rounded-lg bg-muted/50">
+                <h4 className="font-medium text-sm mb-2">When to use manual sync:</h4>
+                <ul className="text-sm text-muted-foreground space-y-1">
+                  <li>• If webhooks are temporarily down</li>
+                  <li>• To troubleshoot missing bookings</li>
+                  <li>• After webhook configuration changes</li>
+                </ul>
+              </div>
+
+              {syncStatus && (
+                <div className={`p-3 rounded border text-sm ${
+                  syncStatus.includes('✅')
+                    ? 'bg-green-50 text-green-700 border-green-200'
+                    : 'bg-red-50 text-red-700 border-red-200'
+                }`}>
+                  {syncStatus}
+                </div>
+              )}
+
+              <Button
+                onClick={syncWithHostAway}
+                disabled={syncing}
+                className="w-full"
+              >
+                <RefreshCw className={`mr-2 h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
+                {syncing ? 'Syncing with HostAway...' : 'Sync with HostAway'}
               </Button>
             </div>
           </CardContent>
