@@ -121,7 +121,7 @@ export default function AdminDashboard() {
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [dateFrom, setDateFrom] = useState<string>('');
   const [dateTo, setDateTo] = useState<string>('');
-  const [timeFilter, setTimeFilter] = useState<'all' | 'past' | 'upcoming' | 'upcoming30'>('all');
+  const [timeFilter, setTimeFilter] = useState<'all' | 'past' | 'upcoming' | 'upcoming30' | 'inprogress'>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
   const fetchBookings = async () => {
@@ -165,45 +165,6 @@ export default function AdminDashboard() {
     }
   };
 
-  const clearAndSyncWithHostAway = async () => {
-    try {
-      setRefreshing(true);
-      const now = new Date();
-      const augustFirst = `${now.getFullYear()}-08-01`;
-      const response = await fetch(`/api/bookings/sync?clear=true&start=${augustFirst}`, {
-        method: 'POST'
-      });
-      const data = await response.json();
-      if (data.success) {
-        await fetchBookings();
-      } else {
-        setError(data.error || 'Clear + Sync failed');
-      }
-    } catch {
-      setError('Network error: Unable to clear + sync bookings');
-    } finally {
-      setRefreshing(false);
-    }
-  };
-
-  const importAllBookings = async () => {
-    try {
-      setRefreshing(true);
-      const response = await fetch('/api/bookings/sync?all=true', {
-        method: 'POST'
-      });
-      const data = await response.json();
-      if (data.success) {
-        await fetchBookings();
-      } else {
-        setError(data.error || 'Import all failed');
-      }
-    } catch {
-      setError('Network error: Unable to import all bookings');
-    } finally {
-      setRefreshing(false);
-    }
-  };
 
 
   const handleRefresh = async () => {
@@ -314,13 +275,18 @@ export default function AdminDashboard() {
   
   const filteredBookings = searchFilteredBookings.filter(booking => {
     const checkInDate = new Date(booking.checkInDate);
+    const checkOutDate = new Date(booking.checkOutDate);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
-    // Time filter (past/upcoming/upcoming30). If searching, don't constrain by time.
+
+    // Time filter (past/upcoming/upcoming30/inprogress). If searching, don't constrain by time.
     if (!searchQuery) {
       if (timeFilter === 'past' && checkInDate >= today) return false;
       if (timeFilter === 'upcoming' && checkInDate < today) return false;
+      if (timeFilter === 'inprogress') {
+        // In Progress: checked in AND checkout date hasn't passed yet
+        if (booking.status !== 'CHECKED_IN' || checkOutDate < today) return false;
+      }
     }
     if (!searchQuery && timeFilter === 'upcoming30') {
       // Show only bookings within next 30 days
@@ -355,6 +321,15 @@ export default function AdminDashboard() {
   const checkedInBookings = filteredBookings.filter(b => b.status === "CHECKED_IN").length;
   const completedBookings = filteredBookings.filter(b => b.status === "COMPLETED").length;
 
+  // Calculate In Progress: guests who have checked in but haven't checked out yet
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const inProgressBookings = bookings.filter(b => {
+    if (b.status !== "CHECKED_IN") return false;
+    const checkOutDate = new Date(b.checkOutDate);
+    return checkOutDate >= today; // Checkout date is today or in the future
+  }).length;
+
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
       <div className="container mx-auto px-4 py-8">
@@ -377,22 +352,6 @@ export default function AdminDashboard() {
               >
                 <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
                 {refreshing ? 'Syncing...' : 'Sync with HostAway'}
-              </Button>
-              <Button 
-                onClick={importAllBookings}
-                variant="secondary"
-                disabled={refreshing}
-              >
-                <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-                {refreshing ? 'Importing...' : 'Import All'}
-              </Button>
-              <Button 
-                onClick={clearAndSyncWithHostAway}
-                variant="destructive"
-                disabled={refreshing}
-              >
-                <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-                {refreshing ? 'Clearing...' : 'Clear + Sync'}
               </Button>
               <Button
                 onClick={() => router.push('/admin/nuki')}
@@ -442,11 +401,20 @@ export default function AdminDashboard() {
             </Card>
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">In Progress</CardTitle>
+                <Clock className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-green-600">{inProgressBookings}</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Checked In</CardTitle>
                 <Users className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-green-600">{checkedInBookings}</div>
+                <div className="text-2xl font-bold text-orange-600">{checkedInBookings}</div>
               </CardContent>
             </Card>
           </div>
@@ -515,6 +483,14 @@ export default function AdminDashboard() {
                        className="h-8"
                      >
                        30 Days
+                     </Button>
+                     <Button
+                       variant={timeFilter === 'inprogress' ? 'default' : 'outline'}
+                       size="sm"
+                       onClick={() => setTimeFilter('inprogress')}
+                       className="h-8"
+                     >
+                       In Progress
                      </Button>
                    </div>
                    <div className="flex items-center gap-2 flex-wrap">

@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/ubyport-exports",
       "schedule": "0 23 * * *"
+    },
+    {
+      "path": "/api/cron/checkout-completion",
+      "schedule": "0 6 * * *"
     }
   ]
 }
