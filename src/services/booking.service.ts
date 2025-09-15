@@ -76,8 +76,8 @@ class BookingService {
    */
   private async updateHostAwayCheckInLinkForNewBooking(reservationId: number, checkInToken: string): Promise<void> {
     try {
-      // Get the base URL from environment or use current deployment URL  
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL || 'https://localhost:3000';
+      // Use the production Nick & Jenny domain
+      const baseUrl = 'https://nickandjenny.cz';
       const checkInLink = `${baseUrl}/checkin/${checkInToken}`;
       
       console.log(`🔗 Updating HostAway NEW reservation ${reservationId} with Nick Jenny check-in link: ${checkInLink}`);
