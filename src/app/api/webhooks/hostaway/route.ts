@@ -107,11 +107,12 @@ export async function POST(request: NextRequest) {
       case 'update':
       case 'updated':
       case 'modified':
-        console.log('📌 Matched: reservation updated event - IGNORING (prevents email flooding)');
+        console.log('📌 Matched: reservation updated event - Processing for status changes');
+        await handleReservationUpdated(reservationData);
         await logWebhookActivity({
           eventType,
           status: 'success',
-          message: `Reservation update event ignored to prevent email flooding`,
+          message: `Successfully processed reservation update`,
           reservationId: reservationData?.id?.toString() || reservationData?.reservationId?.toString()
         });
         break;
@@ -225,6 +226,46 @@ async function handleReservationCreated(reservationData: Record<string, unknown>
   }
 }
 
+async function handleReservationUpdated(reservationData: Record<string, unknown>) {
+  console.log('🔄 Processing reservation update for status changes');
+  console.log('📦 Webhook payload data:', JSON.stringify(reservationData, null, 2));
+
+  try {
+    // Extract reservation ID
+    const reservationId = Number(reservationData.id || reservationData.reservationId);
+
+    if (!reservationId || isNaN(reservationId)) {
+      console.log('⚠️  No valid reservation ID found in payload');
+      console.log('🔍 Available keys in payload:', Object.keys(reservationData));
+      return;
+    }
+
+    console.log(`🔍 Fetching full reservation details for ID: ${reservationId} to check for status changes`);
+
+    // Fetch complete reservation details from HostAway API
+    const fullReservation = await hostAwayService.getReservationById(reservationId);
+
+    if (!fullReservation) {
+      console.log(`❌ Could not fetch reservation ${reservationId} from HostAway API`);
+      return;
+    }
+
+    console.log(`✅ Successfully fetched reservation ${reservationId} from HostAway:`, {
+      id: fullReservation.id,
+      guestName: fullReservation.guestName,
+      arrivalDate: fullReservation.arrivalDate,
+      departureDate: fullReservation.departureDate,
+      listingName: fullReservation.listingName
+    });
+
+    // Sync this specific reservation to check for status updates
+    const result = await syncSingleReservation(fullReservation, 'updated');
+    console.log(`📊 Update sync result for reservation ${reservationId}:`, result);
+
+  } catch (error) {
+    console.error('❌ Error handling reservation update:', error);
+  }
+}
 
 async function syncSingleReservation(reservation: HostAwayReservation, action: 'created' | 'updated') {
   try {

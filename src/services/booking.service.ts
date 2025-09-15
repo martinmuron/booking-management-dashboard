@@ -727,11 +727,11 @@ class BookingService {
           existingBooking.guestLeaderPhone !== bookingData.guestLeaderPhone
         );
         
-        // Allow status transition from PENDING to CHECKED_IN when guest completes external check-in
+        // Allow status transition from PENDING to CHECKED_IN when guest actually completes check-in
         const shouldUpdateStatus = (
-          checkInInfo.status === 'CHECKED_IN' && 
-          existingBooking.status === 'PENDING' &&
-          checkInInfo.hasExistingCheckInLink
+          checkInInfo.status === 'CHECKED_IN' &&
+          existingBooking.status === 'PENDING'
+          // No need to check for existing check-in link - update based on actual completion
         );
 
         if (hasHostAwayChanges || shouldUpdateStatus) {
