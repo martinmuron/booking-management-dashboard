@@ -5,12 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import React from 'react';
 import { Search, Calendar, Users, Home, RefreshCw, Loader2, AlertCircle, ExternalLink, Copy, Check, ArrowUpDown, ArrowUp, ArrowDown, Clock, CreditCard, KeyRound, CheckCircle2, AlertTriangle, Shield, Settings, X } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Label } from "@/components/ui/label";
+import { useAuth } from "@/hooks/useAuth";
 
 interface BookingData {
   id: string;
@@ -110,6 +110,7 @@ const formatDate = (dateString: string) => {
 };
 
 export default function AdminDashboard() {
+  useAuth(); // Protect this page
   const router = useRouter();
   const [bookings, setBookings] = useState<BookingData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -120,7 +121,7 @@ export default function AdminDashboard() {
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [dateFrom, setDateFrom] = useState<string>('');
   const [dateTo, setDateTo] = useState<string>('');
-  const [timeFilter, setTimeFilter] = useState<'all' | 'past' | 'upcoming' | 'upcoming30'>('upcoming');
+  const [timeFilter, setTimeFilter] = useState<'all' | 'past' | 'upcoming' | 'upcoming30'>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
   const fetchBookings = async () => {
@@ -316,10 +317,12 @@ export default function AdminDashboard() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    // Time filter (past/upcoming/upcoming30)
-    if (timeFilter === 'past' && checkInDate >= today) return false;
-    if (timeFilter === 'upcoming' && checkInDate < today) return false;
-    if (timeFilter === 'upcoming30') {
+    // Time filter (past/upcoming/upcoming30). If searching, don't constrain by time.
+    if (!searchQuery) {
+      if (timeFilter === 'past' && checkInDate >= today) return false;
+      if (timeFilter === 'upcoming' && checkInDate < today) return false;
+    }
+    if (!searchQuery && timeFilter === 'upcoming30') {
       // Show only bookings within next 30 days
       const thirtyDaysFromNow = new Date(today);
       thirtyDaysFromNow.setDate(today.getDate() + 30);

@@ -26,6 +26,7 @@ model Booking {
   guests           Guest[]
   payments         Payment[]
   virtualKeys      VirtualKey[]
+  ubyPortExport    UbyPortExport?
 
   @@map("bookings")
 }
@@ -97,6 +98,26 @@ model WebhookLog {
   @@map("webhook_logs")
 }
 
+model UbyPortExport {
+  id              String            @id @default(cuid())
+  bookingId       String
+  exportDate      DateTime          // The check-in date when export was triggered
+  status          UbyPortStatus     @default(PENDING)
+  exportData      String            @db.Text // JSON string of the exported data
+  submittedAt     DateTime?         // When data was sent to Czech police
+  errorMessage    String?           @db.Text
+  retryCount      Int               @default(0)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  booking         Booking           @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  // Index for efficient querying
+  @@index([exportDate])
+  @@index([status])
+  @@unique([bookingId]) // One export record per booking
+  @@map("ubyport_exports")
+}
+
 enum BookingStatus {
   PENDING
   CONFIRMED
@@ -113,4 +134,11 @@ enum VirtualKeyType {
   LUGGAGE_ROOM
   LAUNDRY_ROOM
   ROOM
+}
+
+enum UbyPortStatus {
+  PENDING
+  EXPORTED
+  SUBMITTED
+  FAILED
 }

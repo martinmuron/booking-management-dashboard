@@ -107,42 +107,39 @@ export async function POST(request: NextRequest) {
       case 'update':
       case 'updated':
       case 'modified':
-        console.log('📌 Matched: reservation updated event');
-        await handleReservationUpdated(reservationData);
+        console.log('📌 Matched: reservation updated event - IGNORING (prevents email flooding)');
         await logWebhookActivity({
           eventType,
           status: 'success',
-          message: `Successfully processed reservation update`,
+          message: `Reservation update event ignored to prevent email flooding`,
           reservationId: reservationData?.id?.toString() || reservationData?.reservationId?.toString()
         });
         break;
         
-      case 'new message received':
-      case 'message_received':
-      case 'message.received':  // HostAway uses dot notation!
-      case 'message':
-        console.log('📨 New message received - logging only');
-        await logWebhookActivity({
-          eventType,
-          status: 'success',
-          message: `Message received (not processed)`,
-          reservationId: reservationData?.id?.toString() || reservationData?.reservationId?.toString()
-        });
-        // Future: Handle guest messages
-        break;
         
       default:
-        console.log(`⚠️  Unknown event type: "${eventType}" (normalized: "${normalizedEventType}")`);
-        console.log('🔍 Attempting to process as reservation update anyway...');
-        
-        // Try to process it as a reservation update if it has an ID
-        if (reservationData?.id || reservationData?.reservationId) {
-          console.log('🔄 Found reservation ID, processing as update');
-          await handleReservationUpdated(reservationData);
+        // Check if this is a message event that we want to ignore
+        if (normalizedEventType.includes('message')) {
+          console.log(`📨 Ignoring message event: "${eventType}"`);
           await logWebhookActivity({
             eventType,
             status: 'success',
-            message: `Processed unknown event type "${eventType}" as reservation update`,
+            message: `Message event ignored: ${eventType}`,
+            reservationId: reservationData?.id?.toString() || reservationData?.reservationId?.toString()
+          });
+          break;
+        }
+        
+        console.log(`⚠️  Unknown event type: "${eventType}" (normalized: "${normalizedEventType}")`);
+        console.log('🔍 Attempting to process as reservation update anyway...');
+        
+        // Don't process unknown events as updates to prevent email flooding
+        if (reservationData?.id || reservationData?.reservationId) {
+          console.log('🔄 Found reservation ID, but ignoring unknown event to prevent email flooding');
+          await logWebhookActivity({
+            eventType,
+            status: 'success',
+            message: `Unknown event type "${eventType}" ignored to prevent email flooding`,
             reservationId: reservationData?.id?.toString() || reservationData?.reservationId?.toString()
           });
         } else {
@@ -228,46 +225,6 @@ async function handleReservationCreated(reservationData: Record<string, unknown>
   }
 }
 
-async function handleReservationUpdated(reservationData: Record<string, unknown>) {
-  console.log('✏️  Processing reservation updated');
-  console.log('📦 Webhook payload data:', JSON.stringify(reservationData, null, 2));
-  
-  try {
-    // Extract reservation ID
-    const reservationId = Number(reservationData.id || reservationData.reservationId);
-    
-    if (!reservationId || isNaN(reservationId)) {
-      console.log('⚠️  No valid reservation ID found in payload');
-      console.log('🔍 Available keys in payload:', Object.keys(reservationData));
-      return;
-    }
-    
-    console.log(`🔍 Fetching updated reservation details for ID: ${reservationId}`);
-    
-    // Fetch complete reservation details from HostAway API
-    const fullReservation = await hostAwayService.getReservationById(reservationId);
-    
-    if (!fullReservation) {
-      console.log(`❌ Could not fetch reservation ${reservationId} from HostAway API`);
-      return;
-    }
-    
-    console.log(`✅ Successfully fetched reservation ${reservationId} from HostAway:`, {
-      id: fullReservation.id,
-      guestName: fullReservation.guestName,
-      arrivalDate: fullReservation.arrivalDate,
-      departureDate: fullReservation.departureDate,
-      listingName: fullReservation.listingName
-    });
-    
-    // Sync this specific reservation to our database using the main booking service
-    const result = await syncSingleReservation(fullReservation, 'updated');
-    console.log(`📊 Sync result for reservation ${reservationId}:`, result);
-    
-  } catch (error) {
-    console.error('❌ Error handling reservation updated:', error);
-  }
-}
 
 async function syncSingleReservation(reservation: HostAwayReservation, action: 'created' | 'updated') {
   try {

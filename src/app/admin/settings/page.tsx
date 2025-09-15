@@ -6,8 +6,10 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function AdminSettingsPage() {
+  useAuth(); // Protect this page
   const router = useRouter();
   const [email, setEmail] = useState("nick@investmentsolutions.cz");
   const [password, setPassword] = useState("123456");
@@ -31,6 +33,7 @@ export default function AdminSettingsPage() {
     error?: string;
   }>>([]);
   const [logsLoading, setLogsLoading] = useState(false);
+  
 
   const save = async () => {
     setLoading(true);
@@ -168,6 +171,7 @@ export default function AdminSettingsPage() {
       console.error('Failed to clear webhook logs:', error);
     }
   };
+
 
   useEffect(() => {
     loadWebhooks();
@@ -388,6 +392,7 @@ export default function AdminSettingsPage() {
             )}
           </CardContent>
         </Card>
+
 
       </div>
     </div>

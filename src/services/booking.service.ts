@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/database';
 import { hostAwayService, type HostAwayReservation } from './hostaway.service';
+import { ubyPortService } from './ubyport.service';
 
 interface BookingData {
   id: string;
@@ -23,6 +24,113 @@ class BookingService {
    */
   private generateCheckInToken(): string {
     return Math.random().toString(36).substring(2, 12).toUpperCase();
+  }
+
+  /**
+   * Extract existing check-in status from HostAway custom fields
+   * Maps checkin.io status to our platform status
+   */
+  private extractCheckInStatusFromCustomFields(reservation: HostAwayReservation & { customFieldValues?: any[] }): {
+    status: 'PENDING' | 'CHECKED_IN' | 'PAYMENT_PENDING' | 'PAYMENT_COMPLETED' | 'KEYS_DISTRIBUTED' | 'COMPLETED';
+    hasExistingCheckInLink: boolean;
+    existingCheckInUrl?: string;
+  } {
+    const customFields = reservation.customFieldValues || [];
+    
+    // Look for existing check-in status (field ID 60179)
+    const statusField = customFields.find(field => field.customFieldId === 60179);
+    const checkInStatus = statusField?.value;
+    
+    // Look for existing check-in URL (field ID 60175)
+    const urlField = customFields.find(field => field.customFieldId === 60175);
+    const existingCheckInUrl = urlField?.value;
+    
+    console.log(`🔍 [CHECK-IN STATUS] Reservation ${reservation.id} - Status: ${checkInStatus}, Has URL: ${!!existingCheckInUrl}`);
+    
+    // Map checkin.io status to our platform status
+    let status: 'PENDING' | 'CHECKED_IN' | 'PAYMENT_PENDING' | 'PAYMENT_COMPLETED' | 'KEYS_DISTRIBUTED' | 'COMPLETED' = 'PENDING';
+    
+    if (checkInStatus === 'GUESTS_REGISTERED') {
+      // Guest has completed check-in with checkin.io
+      status = 'CHECKED_IN';
+      console.log(`✅ [CHECK-IN STATUS] Reservation ${reservation.id} has completed check-in via existing system`);
+    } else if (checkInStatus === 'MISSING_GUESTS') {
+      // Guest has not completed check-in yet
+      status = 'PENDING';
+      console.log(`⏳ [CHECK-IN STATUS] Reservation ${reservation.id} check-in still pending`);
+    } else if (existingCheckInUrl && !checkInStatus) {
+      // Has check-in link but no status - assume pending
+      status = 'PENDING';
+      console.log(`🔗 [CHECK-IN STATUS] Reservation ${reservation.id} has check-in link but no status - assuming pending`);
+    }
+    
+    return {
+      status,
+      hasExistingCheckInLink: !!existingCheckInUrl,
+      existingCheckInUrl
+    };
+  }
+
+  /**
+   * Update HostAway with check-in link for NEW reservations only
+   */
+  private async updateHostAwayCheckInLinkForNewBooking(reservationId: number, checkInToken: string): Promise<void> {
+    try {
+      // Get the base URL from environment or use current deployment URL  
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL || 'https://localhost:3000';
+      const checkInLink = `${baseUrl}/checkin/${checkInToken}`;
+      
+      console.log(`🔗 Updating HostAway NEW reservation ${reservationId} with Nick Jenny check-in link: ${checkInLink}`);
+      
+      const result = await hostAwayService.updateNickJennyCheckInLink(reservationId, checkInLink);
+      
+      if (result.success) {
+        console.log(`✅ Successfully updated Nick Jenny check-in link for NEW HostAway reservation ${reservationId}`);
+      } else {
+        console.error(`❌ Failed to update Nick Jenny check-in link for NEW HostAway reservation ${reservationId}:`, result.error);
+      }
+    } catch (error) {
+      console.error(`❌ Error updating Nick Jenny check-in link for NEW HostAway reservation ${reservationId}:`, error);
+    }
+  }
+
+  /**
+   * Prepare UbyPort export data when guest completes check-in (but don't submit yet)
+   */
+  private async prepareUbyPortExportOnCheckIn(bookingId: string, previousStatus?: string): Promise<void> {
+    try {
+      // Check if UbyPort credentials are configured
+      const credentials = {
+        username: process.env.UBYPORT_USERNAME || '',
+        password: process.env.UBYPORT_PASSWORD || ''
+      };
+
+      if (!credentials.username || !credentials.password) {
+        console.log(`⚠️  UbyPort credentials not configured - skipping export preparation for booking ${bookingId}`);
+        return;
+      }
+
+      console.log(`📋 Preparing UbyPort export data for booking ${bookingId} (will submit on check-in night)...`);
+      
+      // Only prepare export data - actual submission happens on check-in night via cron
+      const exportResult = await ubyPortService.createExportData(bookingId);
+      
+      if (exportResult.success && exportResult.data) {
+        // Save as EXPORTED (ready to submit on check-in night)
+        const saveResult = await ubyPortService.saveExportData(bookingId, exportResult.data, 'EXPORTED');
+        
+        if (saveResult.success) {
+          console.log(`✅ UbyPort export data prepared for booking ${bookingId} - will submit to Czech Police on check-in night`);
+        } else {
+          console.error(`❌ Failed to save UbyPort export data for booking ${bookingId}: ${saveResult.error}`);
+        }
+      } else {
+        console.error(`❌ Failed to prepare UbyPort export data for booking ${bookingId}: ${exportResult.error}`);
+      }
+      
+    } catch (error) {
+      console.error(`❌ Error preparing UbyPort export for booking ${bookingId}:`, error);
+    }
   }
 
   /**
@@ -275,6 +383,9 @@ class BookingService {
             where: { hostAwayId: reservation.id.toString() }
           });
 
+          // Extract existing check-in status from HostAway custom fields
+          const checkInInfo = this.extractCheckInStatusFromCustomFields(reservation as HostAwayReservation & { customFieldValues?: any[] });
+          
           const bookingData = {
             hostAwayId: reservation.id.toString(),
             propertyName: reservation.listingName || listing?.name || `Property ${reservation.listingMapId}`,
@@ -286,15 +397,16 @@ class BookingService {
             numberOfGuests: reservation.numberOfGuests || reservation.adults || 1,
             roomNumber: listing?.address || null,
             checkInToken: existingBooking?.checkInToken || this.generateCheckInToken(),
-            // Only update status to PENDING if it's a new booking or current status is PENDING
-            // This preserves our platform's status updates (CHECKED_IN, PAYMENT_COMPLETED, etc.)
-            status: existingBooking?.status || 'PENDING' as const
+            // Use existing check-in status for new bookings, preserve existing status for updates
+            // This handles the seamless transition from checkin.io
+            status: existingBooking?.status || checkInInfo.status
           };
 
           if (existingBooking) {
             console.log(`🔍 [SYNC DEBUG] Found existing booking: ${existingBooking.id}`);
             // Update existing booking only if HostAway data has changed
-            // CRITICAL: Never overwrite our platform's status or check-in token
+            // CRITICAL: Never overwrite our platform's advanced status (PAYMENT_COMPLETED, KEYS_DISTRIBUTED, etc.)
+            // BUT allow upgrading from PENDING to CHECKED_IN when guest completes checkin.io
             const hasHostAwayChanges = (
               existingBooking.propertyName !== bookingData.propertyName ||
               existingBooking.guestLeaderName !== bookingData.guestLeaderName ||
@@ -304,13 +416,24 @@ class BookingService {
               existingBooking.guestLeaderEmail !== bookingData.guestLeaderEmail ||
               existingBooking.guestLeaderPhone !== bookingData.guestLeaderPhone
             );
+            
+            // Allow status transition from PENDING to CHECKED_IN when guest completes external check-in
+            const shouldUpdateStatus = (
+              checkInInfo.status === 'CHECKED_IN' && 
+              existingBooking.status === 'PENDING' &&
+              checkInInfo.hasExistingCheckInLink
+            );
 
-            if (hasHostAwayChanges) {
-              console.log(`🔍 [SYNC DEBUG] Updating booking ${existingBooking.id} with new data`);
-              const updatedBooking = await prisma.booking.update({
-                where: { id: existingBooking.id },
-                data: {
-                  // Only update HostAway data, preserve our platform status and token
+            if (hasHostAwayChanges || shouldUpdateStatus) {
+              console.log(`🔍 [SYNC DEBUG] Updating booking ${existingBooking.id} with ${hasHostAwayChanges ? 'HostAway data' : ''}${hasHostAwayChanges && shouldUpdateStatus ? ' and ' : ''}${shouldUpdateStatus ? 'check-in status' : ''}`);
+              
+              const updateData: any = {
+                updatedAt: new Date()
+              };
+              
+              // Update HostAway data if changed
+              if (hasHostAwayChanges) {
+                Object.assign(updateData, {
                   propertyName: bookingData.propertyName,
                   guestLeaderName: bookingData.guestLeaderName,
                   guestLeaderEmail: bookingData.guestLeaderEmail,
@@ -318,19 +441,35 @@ class BookingService {
                   checkInDate: bookingData.checkInDate,
                   checkOutDate: bookingData.checkOutDate,
                   numberOfGuests: bookingData.numberOfGuests,
-                  roomNumber: bookingData.roomNumber,
-                  updatedAt: new Date()
-                  // Keep existing status and checkInToken
-                }
+                  roomNumber: bookingData.roomNumber
+                });
+              }
+              
+              // Update status if guest completed check-in externally
+              if (shouldUpdateStatus) {
+                updateData.status = 'CHECKED_IN';
+                console.log(`✅ [CHECK-IN STATUS] Upgrading booking ${existingBooking.id} from PENDING to CHECKED_IN (external system completion)`);
+              }
+              
+              const updatedBooking = await prisma.booking.update({
+                where: { id: existingBooking.id },
+                data: updateData
               });
               updatedBookings++;
-              console.log(`📝 [SYNC DEBUG] Updated booking: ${updatedBooking.id} - ${bookingData.guestLeaderName}`);
+              console.log(`📝 [SYNC DEBUG] Updated booking: ${updatedBooking.id} - ${bookingData.guestLeaderName} - Status: ${updatedBooking.status}`);
+              
+              // Prepare UbyPort export data if status changed to CHECKED_IN (submit on check-in night)
+              if (shouldUpdateStatus && updateData.status === 'CHECKED_IN') {
+                await this.prepareUbyPortExportOnCheckIn(updatedBooking.id, existingBooking.status);
+              }
+              
+              // Skip HostAway check-in link update to prevent email flooding
             } else {
               console.log(`🔍 [SYNC DEBUG] No changes for booking ${existingBooking.id}, skipping update`);
             }
           } else {
             console.log(`🔍 [SYNC DEBUG] Creating new booking for reservation ${reservation.id}`);
-            // Create new booking
+            // Create new booking with appropriate status based on existing check-in
             const newBooking = await prisma.booking.create({
               data: {
                 id: `BK_${reservation.id}`,
@@ -338,7 +477,17 @@ class BookingService {
               }
             });
             newBookings++;
-            console.log(`➕ [SYNC DEBUG] Created new booking: ${newBooking.id} - ${bookingData.guestLeaderName}`);
+            console.log(`➕ [SYNC DEBUG] Created new booking: ${newBooking.id} - ${bookingData.guestLeaderName} - Status: ${newBooking.status} ${checkInInfo.hasExistingCheckInLink ? '(has existing check-in)' : ''}`);
+            
+            // Only add Nick Jenny check-in link if guest hasn't already completed check-in with existing system
+            if (!checkInInfo.hasExistingCheckInLink || checkInInfo.status === 'PENDING') {
+              console.log(`🔗 [NEW BOOKING] Adding Nick Jenny check-in link for reservation ${reservation.id}`);
+              this.updateHostAwayCheckInLinkForNewBooking(reservation.id, newBooking.checkInToken).catch((error) => {
+                console.error(`Failed to update HostAway check-in link for NEW booking ${newBooking.id}:`, error);
+              });
+            } else {
+              console.log(`✅ [NEW BOOKING] Reservation ${reservation.id} already completed check-in externally - skipping Nick Jenny link addition`);
+            }
             
             // Verify the booking was created
             const verifyBooking = await prisma.booking.findUnique({
@@ -546,6 +695,9 @@ class BookingService {
         where: { hostAwayId: reservation.id.toString() }
       });
 
+      // Extract existing check-in status from HostAway custom fields
+      const checkInInfo = this.extractCheckInStatusFromCustomFields(reservation as HostAwayReservation & { customFieldValues?: any[] });
+      
       const bookingData = {
         hostAwayId: reservation.id.toString(),
         propertyName: reservation.listingName || listing?.name || `Property ${reservation.listingMapId}`,
@@ -557,9 +709,8 @@ class BookingService {
         numberOfGuests: reservation.numberOfGuests || reservation.adults || 1,
         roomNumber: listing?.address || null,
         checkInToken: existingBooking?.checkInToken || this.generateCheckInToken(),
-        // Only update status to PENDING if it's a new booking or current status is PENDING
-        // This preserves our platform's status updates (CHECKED_IN, PAYMENT_COMPLETED, etc.)
-        status: existingBooking?.status || 'PENDING' as const
+        // Use existing check-in status for new bookings, preserve existing status for updates
+        status: existingBooking?.status || checkInInfo.status
       };
 
       if (existingBooking) {
@@ -575,13 +726,24 @@ class BookingService {
           existingBooking.guestLeaderEmail !== bookingData.guestLeaderEmail ||
           existingBooking.guestLeaderPhone !== bookingData.guestLeaderPhone
         );
+        
+        // Allow status transition from PENDING to CHECKED_IN when guest completes external check-in
+        const shouldUpdateStatus = (
+          checkInInfo.status === 'CHECKED_IN' && 
+          existingBooking.status === 'PENDING' &&
+          checkInInfo.hasExistingCheckInLink
+        );
 
-        if (hasHostAwayChanges) {
-          console.log(`🔍 [SINGLE SYNC] Updating booking ${existingBooking.id} with new data`);
-          const updatedBooking = await prisma.booking.update({
-            where: { id: existingBooking.id },
-            data: {
-              // Only update HostAway data, preserve our platform status and token
+        if (hasHostAwayChanges || shouldUpdateStatus) {
+          console.log(`🔍 [SINGLE SYNC] Updating booking ${existingBooking.id} with ${hasHostAwayChanges ? 'HostAway data' : ''}${hasHostAwayChanges && shouldUpdateStatus ? ' and ' : ''}${shouldUpdateStatus ? 'check-in status' : ''}`);
+          
+          const updateData: any = {
+            updatedAt: new Date()
+          };
+          
+          // Update HostAway data if changed
+          if (hasHostAwayChanges) {
+            Object.assign(updateData, {
               propertyName: bookingData.propertyName,
               guestLeaderName: bookingData.guestLeaderName,
               guestLeaderEmail: bookingData.guestLeaderEmail,
@@ -589,16 +751,33 @@ class BookingService {
               checkInDate: bookingData.checkInDate,
               checkOutDate: bookingData.checkOutDate,
               numberOfGuests: bookingData.numberOfGuests,
-              roomNumber: bookingData.roomNumber,
-              updatedAt: new Date()
-              // Keep existing status and checkInToken
-            }
+              roomNumber: bookingData.roomNumber
+            });
+          }
+          
+          // Update status if guest completed check-in externally
+          if (shouldUpdateStatus) {
+            updateData.status = 'CHECKED_IN';
+            console.log(`✅ [SINGLE SYNC CHECK-IN] Upgrading booking ${existingBooking.id} from PENDING to CHECKED_IN (external system completion)`);
+          }
+          
+          const updatedBooking = await prisma.booking.update({
+            where: { id: existingBooking.id },
+            data: updateData
           });
           
-          console.log(`✅ [SINGLE SYNC] Updated booking: ${updatedBooking.id} - ${bookingData.guestLeaderName}`);
+          console.log(`✅ [SINGLE SYNC] Updated booking: ${updatedBooking.id} - ${bookingData.guestLeaderName} - Status: ${updatedBooking.status}`);
+          
+          // Prepare UbyPort export data if status changed to CHECKED_IN (submit on check-in night)
+          if (shouldUpdateStatus && updateData.status === 'CHECKED_IN') {
+            await this.prepareUbyPortExportOnCheckIn(updatedBooking.id, existingBooking.status);
+          }
+          
+          // Skip HostAway check-in link update to prevent email flooding
+          
           return {
             success: true,
-            message: `Updated booking ${updatedBooking.id}`,
+            message: `Updated booking ${updatedBooking.id} - Status: ${updatedBooking.status}`,
             bookingId: updatedBooking.id,
             action: 'updated'
           };
@@ -614,7 +793,7 @@ class BookingService {
       } else {
         console.log(`🔍 [SINGLE SYNC] Creating new booking for reservation ${reservation.id}`);
         
-        // Create new booking
+        // Create new booking with appropriate status based on existing check-in
         const newBooking = await prisma.booking.create({
           data: {
             id: `BK_${reservation.id}`,
@@ -622,10 +801,21 @@ class BookingService {
           }
         });
         
-        console.log(`✅ [SINGLE SYNC] Created new booking: ${newBooking.id} - ${bookingData.guestLeaderName}`);
+        console.log(`✅ [SINGLE SYNC] Created new booking: ${newBooking.id} - ${bookingData.guestLeaderName} - Status: ${newBooking.status} ${checkInInfo.hasExistingCheckInLink ? '(has existing check-in)' : ''}`);
+        
+        // Only add Nick Jenny check-in link if guest hasn't already completed check-in with existing system
+        if (!checkInInfo.hasExistingCheckInLink || checkInInfo.status === 'PENDING') {
+          console.log(`🔗 [SINGLE SYNC NEW] Adding Nick Jenny check-in link for reservation ${reservation.id}`);
+          this.updateHostAwayCheckInLinkForNewBooking(reservation.id, newBooking.checkInToken).catch((error) => {
+            console.error(`Failed to update HostAway check-in link for NEW booking ${newBooking.id}:`, error);
+          });
+        } else {
+          console.log(`✅ [SINGLE SYNC NEW] Reservation ${reservation.id} already completed check-in externally - skipping Nick Jenny link addition`);
+        }
+        
         return {
           success: true,
-          message: `Created new booking ${newBooking.id}`,
+          message: `Created new booking ${newBooking.id} - Status: ${newBooking.status}`,
           bookingId: newBooking.id,
           action: 'created'
         };

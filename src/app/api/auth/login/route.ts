@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
       maxAge: 60 * 60 * 8
     });
     return res;
-  } catch (e) {
+  } catch {
     return NextResponse.json({ success: false, error: 'Bad request' }, { status: 400 });
   }
 } 

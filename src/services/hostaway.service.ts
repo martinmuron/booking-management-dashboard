@@ -49,11 +49,60 @@ interface HostAwayListing {
   id: number;
   name: string;
   address: string;
+  description?: string;
+  personCapacity?: number;
+  bedroomsNumber?: number;
+  bathroomsNumber?: number;
+  price?: number;
+  currencyCode?: string;
+  thumbnailUrl?: string;
+  listingImages?: Array<{
+    id: number;
+    url: string;
+    caption: string;
+  }>;
+  listingAmenities?: Array<{
+    id: number;
+    amenityName: string;
+  }>;
+  airbnbListingUrl?: string;
+  vrboListingUrl?: string;
+  expediaListingUrl?: string;
 }
 
 interface HostAwayListingsResponse {
   status: string;
   result: HostAwayListing[];
+}
+
+interface HostAwayCalendarDay {
+  date: string;
+  available: boolean;
+  price: number;
+  minimumStay: number;
+  reservationId?: number;
+  note?: string;
+}
+
+interface HostAwayCalendarResponse {
+  status: string;
+  result: HostAwayCalendarDay[];
+}
+
+interface HostAwayCustomField {
+  id?: number;
+  customFieldId?: number;
+  name?: string;
+  fieldName?: string;
+  varName?: string;
+  identifier?: string;
+  value?: string;
+  customFieldName?: string;
+}
+
+interface HostAwayCustomFieldsResponse {
+  status: string;
+  result: HostAwayCustomField[];
 }
 
 let accessToken: string | null = null;
@@ -160,13 +209,187 @@ class HostAwayService {
     }
   }
 
+  private async makeUpdateRequest<T>(endpoint: string, data: Record<string, unknown>): Promise<T> {
+    const token = await this.getAccessToken();
+    
+    const url = `${this.baseUrl}${endpoint}`;
+
+    console.log('🌐 Making HostAway API PUT request:', url);
+    console.log('📦 Request data:', JSON.stringify(data, null, 2));
+
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
+      const response = await fetch(url, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Cache-control': 'no-cache',
+        },
+        body: JSON.stringify(data),
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ HostAway PUT request failed:', {
+          status: response.status,
+          statusText: response.statusText,
+          errorBody: errorText
+        });
+        throw new Error(`HostAway API PUT request failed: ${response.status} ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error(`Failed to PUT to HostAway endpoint ${endpoint}:`, error);
+      throw error;
+    }
+  }
+
   async getListings(): Promise<HostAwayListing[]> {
     try {
-      const response = await this.makeRequest<HostAwayListingsResponse>('/listings');
+      const response = await this.makeRequest<HostAwayListingsResponse>('/listings', {
+        includeResources: '1'
+      });
       return response.result || [];
     } catch (error) {
       console.error('Failed to fetch listings:', error);
       return [];
+    }
+  }
+
+  /**
+   * Search listings using HostAway's built-in availability filters.
+   * This leverages server-side filtering for date range and guest count.
+   */
+  async searchListings(params: {
+    availabilityDateStart?: string;
+    availabilityDateEnd?: string;
+    availabilityGuestNumber?: number;
+    limit?: number;
+    offset?: number;
+  }): Promise<HostAwayListing[]> {
+    try {
+      const queryParams: Record<string, string> = { includeResources: '1' };
+
+      if (params.limit !== undefined) queryParams.limit = String(params.limit);
+      if (params.offset !== undefined) queryParams.offset = String(params.offset);
+      if (params.availabilityDateStart) queryParams.availabilityDateStart = params.availabilityDateStart;
+      if (params.availabilityDateEnd) queryParams.availabilityDateEnd = params.availabilityDateEnd;
+      if (params.availabilityGuestNumber !== undefined) {
+        queryParams.availabilityGuestNumber = String(params.availabilityGuestNumber);
+      }
+
+      const response = await this.makeRequest<HostAwayListingsResponse>('/listings', queryParams);
+      return response.result || [];
+    } catch (error) {
+      console.error('Failed to search listings with availability filters:', error);
+      return [];
+    }
+  }
+
+  async getListingCalendar(
+    listingId: number, 
+    startDate: string, 
+    endDate: string
+  ): Promise<HostAwayCalendarDay[]> {
+    try {
+      const response = await this.makeRequest<any>(
+        `/listings/${listingId}/calendar`,
+        {
+          startDate,
+          endDate,
+          includeResources: '1'
+        }
+      );
+      
+      // Transform the raw HostAway response to our expected interface
+      const rawCalendar = response.result || [];
+      return rawCalendar.map((day: any): HostAwayCalendarDay => ({
+        date: day.date,
+        available: day.isAvailable === 1 && day.status === 'available', // Convert HostAway format to boolean
+        price: day.price || 0,
+        minimumStay: day.minimumStay || 1,
+        reservationId: day.reservations?.length > 0 ? day.reservations[0].id : undefined
+      }));
+    } catch (error) {
+      console.error(`Failed to fetch calendar for listing ${listingId}:`, error);
+      return [];
+    }
+  }
+
+  async checkAvailability(
+    listingId: number,
+    checkInDate: string,
+    checkOutDate: string
+  ): Promise<{
+    available: boolean;
+    unavailableDates: string[];
+    minimumStay?: number;
+    averagePrice?: number;
+  }> {
+    try {
+      // Get calendar data - need to extend end date to get proper availability info
+      const checkIn = new Date(checkInDate);
+      const checkOut = new Date(checkOutDate);
+      
+      // Extend the calendar fetch by one day to ensure we get all needed data
+      const extendedEndDate = new Date(checkOut);
+      extendedEndDate.setDate(extendedEndDate.getDate() + 1);
+      
+      const calendar = await this.getListingCalendar(
+        listingId, 
+        checkInDate, 
+        extendedEndDate.toISOString().split('T')[0]
+      );
+      
+      
+      // Generate list of dates that need to be available (excluding checkout date)
+      const requiredDates: string[] = [];
+      const current = new Date(checkIn);
+      while (current < checkOut) {
+        requiredDates.push(current.toISOString().split('T')[0]);
+        current.setDate(current.getDate() + 1);
+      }
+      
+      // Check if all required dates are available
+      const unavailableDates = requiredDates.filter(date => {
+        const calendarDay = calendar.find(day => day.date === date);
+        return !calendarDay || !calendarDay.available;
+      });
+      
+      const available = unavailableDates.length === 0 && requiredDates.length > 0;
+      
+      // Calculate stats from available days in the stay period
+      const relevantDays = calendar.filter(day => 
+        requiredDates.includes(day.date) && day.available
+      );
+      
+      const averagePrice = relevantDays.length > 0 
+        ? relevantDays.reduce((sum, day) => sum + day.price, 0) / relevantDays.length
+        : undefined;
+        
+      const minimumStay = relevantDays.length > 0
+        ? Math.max(...relevantDays.map(day => day.minimumStay))
+        : undefined;
+
+      return {
+        available,
+        unavailableDates,
+        minimumStay,
+        averagePrice
+      };
+    } catch (error) {
+      console.error(`❌ Failed to check availability for listing ${listingId}:`, error);
+      return {
+        available: false,
+        unavailableDates: []
+      };
     }
   }
 
@@ -242,6 +465,139 @@ class HostAwayService {
     }
   }
 
+  /**
+   * Get all available custom fields to find the Nick Jenny check-in link field ID
+   */
+  async getCustomFields(): Promise<{ success: boolean; fields?: HostAwayCustomField[]; nickJennyFieldId?: number; error?: string }> {
+    try {
+      console.log('🔍 Fetching HostAway custom fields to find Nick Jenny check-in link field...');
+      
+      // First try the standard custom fields endpoint
+      try {
+        const response = await this.makeRequest<HostAwayCustomFieldsResponse>('/customFields');
+        if (response && response.result) {
+          const nickJennyField = response.result.find((field: HostAwayCustomField) => 
+            field.name === 'Check In Link Nick Jenny' || 
+            field.varName === 'reservation_check_in_link_nick_jenny' ||
+            field.id === 81717
+          );
+          
+          console.log('✅ Retrieved custom fields, Nick Jenny field:', nickJennyField);
+          return { 
+            success: true, 
+            fields: response.result,
+            nickJennyFieldId: nickJennyField?.id || nickJennyField?.customFieldId
+          };
+        }
+      } catch {
+        console.log('⚠️ /customFields endpoint failed, trying reservation sample...');
+      }
+
+      // Fallback: Get a sample reservation with includeResources to see customFieldValues format
+      const sampleResponse = await this.makeRequest<{result: (HostAwayReservation & {customFieldValues?: HostAwayCustomField[]})[]}>('/reservations', {
+        includeResources: '1',
+        limit: '1'
+      });
+      
+      if (sampleResponse?.result?.[0]?.customFieldValues) {
+        console.log('✅ Sample reservation customFieldValues:', sampleResponse.result[0].customFieldValues);
+        return { 
+          success: true, 
+          fields: sampleResponse.result[0].customFieldValues 
+        };
+      }
+      
+      return { success: false, error: 'No custom fields found' };
+    } catch (error) {
+      console.error('❌ Failed to fetch custom fields:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  }
+
+  /**
+   * Update ONLY the Nick Jenny check-in link field for NEW reservations
+   * This preserves all other existing custom fields
+   */
+  async updateNickJennyCheckInLink(
+    reservationId: number, 
+    checkInLink: string
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      console.log(`🔗 Updating Nick Jenny check-in link for NEW reservation ${reservationId}`);
+
+      // Get existing reservation to preserve other custom fields
+      const existingReservation = await this.getReservationById(reservationId);
+      if (!existingReservation) {
+        return { success: false, error: 'Reservation not found' };
+      }
+
+      // Get current custom field values to preserve them
+      const currentCustomFields = ((existingReservation as HostAwayReservation & {customFieldValues?: HostAwayCustomField[]}).customFieldValues) || [];
+      console.log('📋 Current custom fields:', currentCustomFields);
+
+      // Find Nick Jenny field ID if it exists
+      let nickJennyFieldId: number | null = null;
+      const existingNickJennyField = currentCustomFields.find((field: HostAwayCustomField) => 
+        field.customFieldId && (
+          // Try to identify by checking if it contains a check-in link
+          field.value?.includes('/checkin/') ||
+          // Or by any other identifier you might have
+          field.customFieldName?.includes('nick_jenny') ||
+          field.name?.includes('nick_jenny')
+        )
+      );
+
+      if (existingNickJennyField && existingNickJennyField.customFieldId) {
+        nickJennyFieldId = existingNickJennyField.customFieldId;
+        console.log(`🎯 Found existing Nick Jenny field ID: ${nickJennyFieldId}`);
+      } else {
+        // Try to get field ID from custom fields endpoint
+        const customFieldsResult = await this.getCustomFields();
+        if (customFieldsResult.nickJennyFieldId) {
+          nickJennyFieldId = customFieldsResult.nickJennyFieldId;
+          console.log(`🎯 Found Nick Jenny field ID from API: ${nickJennyFieldId}`);
+        }
+      }
+
+      if (!nickJennyFieldId) {
+        console.log('⚠️ Nick Jenny custom field ID not found, skipping HostAway update');
+        return { success: true, error: 'Nick Jenny custom field not configured in HostAway' };
+      }
+
+      // Prepare updated custom fields - preserve existing ones, update only Nick Jenny
+      const updatedCustomFields = currentCustomFields.filter((field: HostAwayCustomField) => 
+        field.customFieldId !== nickJennyFieldId
+      );
+      
+      // Add the Nick Jenny field with new value
+      updatedCustomFields.push({
+        customFieldId: nickJennyFieldId,
+        value: checkInLink
+      });
+
+      console.log(`🔄 Updating only Nick Jenny field (ID: ${nickJennyFieldId}) with check-in link`);
+      
+      const response = await this.makeUpdateRequest(`/reservations/${reservationId}`, {
+        customFieldValues: updatedCustomFields
+      }) as { status: string; result?: string };
+
+      if (response.status === 'success') {
+        console.log(`✅ Successfully updated Nick Jenny check-in link for reservation ${reservationId}`);
+        return { success: true };
+      } else {
+        console.error(`❌ HostAway API error:`, response);
+        return { success: false, error: response.result || 'HostAway API error' };
+      }
+      
+    } catch (error) {
+      console.error(`❌ Failed to update Nick Jenny check-in link:`, error);
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      };
+    }
+  }
+
   // Transform HostAway data to our dashboard format
   transformReservationForDashboard(reservation: HostAwayReservation, listings: HostAwayListing[]) {
     const listing = listings.find(l => l.id === reservation.listingMapId);
@@ -262,4 +618,8 @@ class HostAwayService {
 }
 
 export const hostAwayService = new HostAwayService();
-export type { HostAwayReservation, HostAwayListing };
+export type { 
+  HostAwayReservation, 
+  HostAwayListing, 
+  HostAwayCalendarDay 
+};

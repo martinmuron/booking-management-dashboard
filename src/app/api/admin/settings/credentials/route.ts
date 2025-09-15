@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
     }
     store.__adminCreds = { email, password };
     return NextResponse.json({ success: true });
-  } catch (e) {
+  } catch {
     return NextResponse.json({ success: false, error: 'Bad request' }, { status: 400 });
   }
 }
