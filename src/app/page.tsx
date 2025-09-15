@@ -126,10 +126,6 @@ export default function Home() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Logo size="lg" />
-              <div>
-                <h1 className="text-2xl font-bold text-black">Nick & Jenny</h1>
-                <p className="text-sm text-gray-600">Premium Accommodations</p>
-              </div>
             </div>
             <div className="flex items-center gap-4">
               <Link href="/about">
