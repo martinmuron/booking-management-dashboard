@@ -94,6 +94,7 @@ interface HostAwayCustomField {
   customFieldId?: number;
   name?: string;
   fieldName?: string;
+  varName?: string;
   identifier?: string;
   value?: string;
   customFieldName?: string;
@@ -476,9 +477,9 @@ class HostAwayService {
         const response = await this.makeRequest<HostAwayCustomFieldsResponse>('/customFields');
         if (response && response.result) {
           const nickJennyField = response.result.find((field: HostAwayCustomField) => 
-            field.name === 'reservation_check_in_link_nick_jenny' || 
-            field.fieldName === 'reservation_check_in_link_nick_jenny' ||
-            field.identifier === 'reservation_check_in_link_nick_jenny'
+            field.name === 'Check In Link Nick Jenny' || 
+            field.varName === 'reservation_check_in_link_nick_jenny' ||
+            field.id === 81717
           );
           
           console.log('✅ Retrieved custom fields, Nick Jenny field:', nickJennyField);

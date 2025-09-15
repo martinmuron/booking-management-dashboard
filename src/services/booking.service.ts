@@ -803,15 +803,11 @@ class BookingService {
         
         console.log(`✅ [SINGLE SYNC] Created new booking: ${newBooking.id} - ${bookingData.guestLeaderName} - Status: ${newBooking.status} ${checkInInfo.hasExistingCheckInLink ? '(has existing check-in)' : ''}`);
         
-        // Only add Nick Jenny check-in link if guest hasn't already completed check-in with existing system
-        if (!checkInInfo.hasExistingCheckInLink || checkInInfo.status === 'PENDING') {
-          console.log(`🔗 [SINGLE SYNC NEW] Adding Nick Jenny check-in link for reservation ${reservation.id}`);
-          this.updateHostAwayCheckInLinkForNewBooking(reservation.id, newBooking.checkInToken).catch((error) => {
-            console.error(`Failed to update HostAway check-in link for NEW booking ${newBooking.id}:`, error);
-          });
-        } else {
-          console.log(`✅ [SINGLE SYNC NEW] Reservation ${reservation.id} already completed check-in externally - skipping Nick Jenny link addition`);
-        }
+        // Always add Nick Jenny check-in link for all new reservations
+        console.log(`🔗 [SINGLE SYNC NEW] Adding Nick Jenny check-in link for reservation ${reservation.id}`);
+        this.updateHostAwayCheckInLinkForNewBooking(reservation.id, newBooking.checkInToken).catch((error) => {
+          console.error(`Failed to update HostAway check-in link for NEW booking ${newBooking.id}:`, error);
+        });
         
         return {
           success: true,
