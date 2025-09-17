@@ -1,14 +1,6 @@
-"use client";
-
-import { useState, useEffect } from "react";
-import { useParams } from "next/navigation";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
-import { MapPin, Star, Users, Calendar, ArrowLeft, Loader2 } from "lucide-react";
-import { Logo } from "@/components/Logo";
-import { ImageModal } from "@/components/ImageModal";
-import Link from "next/link";
+import { Metadata } from 'next';
+import { notFound } from 'next/navigation';
+import PropertyClient from './PropertyClient';
 
 interface PropertyDetail {
   id: number;
@@ -35,351 +27,117 @@ interface PropertyDetail {
   expediaListingUrl?: string;
 }
 
-export default function PropertyDetailPage() {
-  const params = useParams();
-  const propertyId = params.id as string;
-  const [property, setProperty] = useState<PropertyDetail | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+async function getPropertyById(propertyId: string): Promise<PropertyDetail | null> {
+  try {
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.nickandjenny.cz';
+    const response = await fetch(`${baseUrl}/api/properties`, {
+      cache: 'force-cache', // Cache properties for better performance
+      next: { revalidate: 3600 } // Revalidate every hour
+    });
 
-  useEffect(() => {
-    const fetchProperty = async () => {
-      try {
-        // For now, we'll simulate fetching a single property by filtering the properties list
-        const response = await fetch('/api/properties');
-        const data = await response.json();
-        
-        if (data.success) {
-          const foundProperty = data.data.find((p: PropertyDetail) => p.id.toString() === propertyId);
-          if (foundProperty) {
-            setProperty(foundProperty);
-          } else {
-            setError('Property not found');
-          }
-        } else {
-          setError(data.error || 'Failed to load property');
-        }
-      } catch {
-        setError('Failed to connect to property service');
-      } finally {
-        setLoading(false);
-      }
+    if (!response.ok) {
+      return null;
+    }
+
+    const data = await response.json();
+    if (!data.success) {
+      return null;
+    }
+
+    const property = data.data.find((p: PropertyDetail) => p.id.toString() === propertyId);
+    return property || null;
+  } catch (error) {
+    console.error('Error fetching property for metadata:', error);
+    return null;
+  }
+}
+
+export async function generateMetadata({
+  params
+}: {
+  params: Promise<{ id: string }>
+}): Promise<Metadata> {
+  const { id } = await params;
+  const property = await getPropertyById(id);
+
+  if (!property) {
+    return {
+      title: 'Property Not Found | Nick & Jenny',
+      description: 'The property you are looking for is not available. Browse our other beautiful Prague vacation rentals.',
+      robots: { index: false, follow: false }
     };
-
-    fetchProperty();
-  }, [propertyId]);
-
-  const handleImageClick = (index: number) => {
-    setCurrentImageIndex(index);
-    setIsModalOpen(true);
-  };
-
-  const handleModalClose = () => {
-    setIsModalOpen(false);
-  };
-
-  const handleModalNavigate = (index: number) => {
-    setCurrentImageIndex(index);
-  };
-
-  // Prepare images for modal
-  const modalImages = property?.listingImages || (property?.thumbnailUrl ? [
-    { id: 0, url: property.thumbnailUrl, caption: property.name }
-  ] : []);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="flex items-center gap-2">
-          <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
-          <span className="text-gray-600">Loading property details...</span>
-        </div>
-      </div>
-    );
   }
 
-  if (error || !property) {
-    return (
-      <div className="min-h-screen bg-white">
-        <header className="border-b border-gray-200">
-          <div className="container mx-auto px-4 py-6">
-            <div className="flex items-center gap-4">
-              <Link href="/">
-                <Button variant="outline" size="sm" className="border-black text-black hover:bg-black hover:text-white">
-                  <ArrowLeft className="w-4 h-4 mr-2" />
-                  Back to Properties
-                </Button>
-              </Link>
-              <Logo size="md" />
-            </div>
-          </div>
-        </header>
-        <div className="container mx-auto px-4 py-20 text-center">
-          <h2 className="text-2xl font-bold text-black mb-4">Property Not Found</h2>
-          <p className="text-gray-600 mb-6">{error}</p>
-          <Link href="/">
-            <Button className="bg-black hover:bg-gray-800 text-white">
-              View All Properties
-            </Button>
-          </Link>
-        </div>
-      </div>
-    );
+  // Extract key amenities for description
+  const keyAmenities = property.listingAmenities
+    ?.slice(0, 3)
+    .map(a => a.amenityName)
+    .join(', ') || '';
+
+  const title = `${property.name} | Nick & Jenny Prague Rentals`;
+  const description = `${property.bedroomsNumber} bedroom, ${property.bathroomsNumber} bathroom apartment in ${property.address.includes('Prague') ? property.address : `${property.address}, Prague`}. Sleeps ${property.personCapacity}. From ${property.currencyCode} ${property.price}/night. ${keyAmenities ? `Features: ${keyAmenities}.` : ''} Book now on Airbnb, VRBO, or Expedia.`.trim();
+
+  // Create a clean description for meta (remove line breaks)
+  const cleanDescription = property.description
+    ? property.description.replace(/\n/g, ' ').substring(0, 300).trim()
+    : description;
+
+  return {
+    title,
+    description: cleanDescription,
+    keywords: [
+      `${property.name.toLowerCase()}`,
+      'Prague vacation rental',
+      'Prague apartment',
+      `${property.bedroomsNumber} bedroom Prague`,
+      property.address.toLowerCase(),
+      'Airbnb Prague',
+      'VRBO Prague',
+      'short term rental Prague',
+      ...property.listingAmenities?.slice(0, 5).map(a => a.amenityName.toLowerCase()) || []
+    ],
+    openGraph: {
+      title,
+      description: cleanDescription,
+      type: 'website',
+      images: [
+        {
+          url: property.thumbnailUrl || '/og-property.jpg',
+          width: 1200,
+          height: 630,
+          alt: `${property.name} - Prague Vacation Rental`,
+        },
+        ...(property.listingImages?.slice(0, 3).map(img => ({
+          url: img.url,
+          width: 1200,
+          height: 630,
+          alt: img.caption || `${property.name} - Additional Image`,
+        })) || [])
+      ],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description: cleanDescription,
+      images: [property.thumbnailUrl || '/og-property.jpg'],
+    },
+    alternates: {
+      canonical: `/property/${property.id}`,
+    },
+  };
+}
+
+export default async function PropertyDetailPage({
+  params
+}: {
+  params: Promise<{ id: string }>
+}) {
+  const { id } = await params;
+  const property = await getPropertyById(id);
+
+  if (!property) {
+    notFound();
   }
 
-  return (
-    <div className="min-h-screen bg-white">
-      {/* Header */}
-      <header className="border-b border-gray-200">
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Link href="/">
-                <Button variant="outline" size="sm" className="border-black text-black hover:bg-black hover:text-white">
-                  <ArrowLeft className="w-4 h-4 mr-2" />
-                  Back to Properties
-                </Button>
-              </Link>
-              <Logo size="md" />
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="hidden md:flex items-center gap-3">
-                <Link href="/about">
-                  <Button variant="ghost" size="sm" className="text-black hover:bg-gray-100">
-                    About Us
-                  </Button>
-                </Link>
-                <Link href="/contact">
-                  <Button variant="outline" size="sm" className="border-black text-black hover:bg-black hover:text-white">
-                    Contact
-                  </Button>
-                </Link>
-              </div>
-            {/* Header booking button - prioritize Airbnb, then VRBO, then Expedia */}
-            {property.airbnbListingUrl ? (
-              <a href={property.airbnbListingUrl} target="_blank" rel="noopener noreferrer">
-                <Button className="bg-black hover:bg-gray-800 text-white">
-                  Book Now
-                </Button>
-              </a>
-            ) : property.vrboListingUrl ? (
-              <a href={property.vrboListingUrl} target="_blank" rel="noopener noreferrer">
-                <Button className="bg-black hover:bg-gray-800 text-white">
-                  Book Now
-                </Button>
-              </a>
-            ) : property.expediaListingUrl ? (
-              <a href={property.expediaListingUrl} target="_blank" rel="noopener noreferrer">
-                <Button className="bg-black hover:bg-gray-800 text-white">
-                  Book Now
-                </Button>
-              </a>
-            ) : (
-              <Button className="bg-black hover:bg-gray-800 text-white" disabled>
-                Book Now
-              </Button>
-            )}
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* Property Images */}
-      <section className="py-8">
-        <div className="container mx-auto px-4">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-            <div 
-              className="aspect-video bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg flex items-center justify-center overflow-hidden cursor-pointer hover:shadow-lg transition-shadow group"
-              onClick={() => handleImageClick(0)}
-            >
-              {property.listingImages?.[0]?.url || property.thumbnailUrl ? (
-                <>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img 
-                    src={property.listingImages?.[0]?.url || property.thumbnailUrl} 
-                    alt={property.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                  {/* Overlay indicator */}
-                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-all duration-300 flex items-center justify-center pointer-events-none">
-                    <div className="text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-black/50 px-3 py-1 rounded-full text-sm font-medium">
-                      Click to enlarge
-                    </div>
-                  </div>
-                </>
-              ) : (
-                <div className="text-center">
-                  <MapPin className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-500">Photo coming soon</p>
-                </div>
-              )}
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              {property.listingImages?.slice(1, 5).map((image, index) => (
-                <div 
-                  key={image.id} 
-                  className="aspect-square bg-gray-100 rounded-lg overflow-hidden cursor-pointer hover:shadow-lg transition-shadow group relative"
-                  onClick={() => handleImageClick(index + 1)}
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img 
-                    src={image.url} 
-                    alt={image.caption || `View ${index + 2}`}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                  {/* Overlay indicator */}
-                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-all duration-300 flex items-center justify-center pointer-events-none">
-                    <div className="text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-black/50 px-2 py-1 rounded-full text-xs font-medium">
-                      Enlarge
-                    </div>
-                  </div>
-                </div>
-              )) || (
-                // Show placeholder if no additional images
-                Array.from({ length: 4 }).map((_, index) => (
-                  <div key={index} className="aspect-square bg-gray-100 rounded-lg flex items-center justify-center">
-                    <MapPin className="w-6 h-6 text-gray-400" />
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Property Details */}
-      <section className="py-8">
-        <div className="container mx-auto px-4">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2">
-              <div className="mb-6">
-                <h1 className="text-3xl font-bold text-black mb-2">{property.name}</h1>
-                <div className="flex items-center gap-2 text-gray-600 mb-4">
-                  <MapPin className="w-4 h-4" />
-                  <span>{property.address}</span>
-                </div>
-                <div className="flex items-center gap-6 text-sm text-gray-500">
-                  <div className="flex items-center gap-2">
-                    <Users className="w-4 h-4" />
-                    <span>{property.personCapacity} guests</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Calendar className="w-4 h-4" />
-                    <span>{property.bedroomsNumber} bedroom{property.bedroomsNumber !== 1 ? 's' : ''}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Star className="w-4 h-4 fill-black text-black" />
-                    <span>{property.bathroomsNumber} bathroom{property.bathroomsNumber !== 1 ? 's' : ''}</span>
-                  </div>
-                </div>
-              </div>
-
-              <Separator className="my-6" />
-
-              <div className="mb-6">
-                <h2 className="text-2xl font-bold text-black mb-4">About this place</h2>
-                <div className="prose max-w-none">
-                  <p className="text-gray-600 leading-relaxed">
-                    {property.description.split('\n\n')[0]}
-                  </p>
-                </div>
-              </div>
-
-              <Separator className="my-6" />
-
-              <div className="mb-6">
-                <h2 className="text-2xl font-bold text-black mb-4">Amenities</h2>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                  {property.listingAmenities?.slice(0, 12).map((amenity) => (
-                    <div key={amenity.id} className="flex items-center gap-2 text-gray-600">
-                      <div className="w-2 h-2 bg-black rounded-full"></div>
-                      <span className="text-sm">{amenity.amenityName}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div className="lg:col-span-1">
-              <Card className="sticky top-4">
-                <CardHeader>
-                  <div className="text-center">
-                    <h3 className="text-lg font-semibold text-black">Book Your Stay</h3>
-                    <p className="text-sm text-gray-600">Choose your preferred platform</p>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {/* Book Directly - Featured Option */}
-                  <div className="relative">
-                    <div className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full animate-pulse z-10">
-                      SAVE 10%
-                    </div>
-                    <a href="https://myprague.holiday" target="_blank" rel="noopener noreferrer" className="block">
-                      <Button className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-bold py-3 shadow-lg border-2 border-green-500 relative overflow-hidden group">
-                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
-                        <span className="relative flex items-center justify-center gap-2">
-                          🏠 Book Directly & Save 10%
-                        </span>
-                      </Button>
-                    </a>
-                    <p className="text-xs text-center text-green-700 font-semibold mt-1">
-                      Best rates guaranteed!
-                    </p>
-                  </div>
-
-                  <div className="text-center py-2">
-                    <span className="text-sm text-gray-400">or choose a platform:</span>
-                  </div>
-
-                  {/* Booking platform buttons */}
-                  <div className="space-y-2">
-                    {property.airbnbListingUrl && (
-                      <a href={property.airbnbListingUrl} target="_blank" rel="noopener noreferrer" className="block">
-                        <Button className="w-full bg-[#ff5a5f] hover:bg-[#e7484d] text-white">
-                          Book on Airbnb
-                        </Button>
-                      </a>
-                    )}
-                    {property.vrboListingUrl && (
-                      <a href={property.vrboListingUrl} target="_blank" rel="noopener noreferrer" className="block">
-                        <Button className="w-full bg-[#0073e6] hover:bg-[#005bb5] text-white">
-                          Book on VRBO
-                        </Button>
-                      </a>
-                    )}
-                    {property.expediaListingUrl && (
-                      <a href={property.expediaListingUrl} target="_blank" rel="noopener noreferrer" className="block">
-                        <Button className="w-full bg-[#ffc72c] hover:bg-[#e6b329] text-black">
-                          Book on Expedia
-                        </Button>
-                      </a>
-                    )}
-                    {!property.airbnbListingUrl && !property.vrboListingUrl && !property.expediaListingUrl && (
-                      <Button className="w-full bg-black hover:bg-gray-800 text-white" disabled>
-                        Check availability
-                      </Button>
-                    )}
-                  </div>
-                  <div className="text-center text-sm text-gray-500">
-                    You won&apos;t be charged yet
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Image Modal */}
-      <ImageModal
-        images={modalImages}
-        isOpen={isModalOpen}
-        currentIndex={currentImageIndex}
-        onClose={handleModalClose}
-        onNavigate={handleModalNavigate}
-      />
-    </div>
-  );
+  return <PropertyClient initialProperty={property} />;
 }
