@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import StripePayment from "@/components/ui/stripe-payment";
+import { hasNukiAccess, getNukiPropertyType } from "@/utils/nuki-properties";
 import {
   Calendar,
   Users,
@@ -34,7 +35,8 @@ import {
   Activity,
   Menu,
   X,
-  ChevronRight
+  ChevronRight,
+  Shield
 } from "lucide-react";
 
 interface Guest {
@@ -107,6 +109,10 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
   const [booking, setBooking] = useState<BookingData | null>(initialBooking || null);
   const [loading, setLoading] = useState(!initialBooking);
   const [error, setError] = useState<string | null>(null);
+
+  // Check if this property should have NUKI access
+  const propertyHasNukiAccess = booking ? hasNukiAccess(booking.propertyName) : false;
+  const propertyType = booking ? getNukiPropertyType(booking.propertyName) : 'unauthorized';
 
   // Rest of the component logic would go here...
   // This is a placeholder for now - you'd move all the existing logic from the original page.tsx
@@ -193,14 +199,113 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
           </CardContent>
         </Card>
 
-        {/* TODO: Add the rest of the check-in flow components here */}
+        {/* Digital Access Section - Only for authorized NUKI properties */}
+        {propertyHasNukiAccess && (
+          <Card className="border-blue-200 bg-blue-50/50">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-blue-900">
+                <Shield className="h-5 w-5" />
+                Digital Access Available
+              </CardTitle>
+              <CardDescription className="text-blue-700">
+                This property features smart lock technology for keyless entry
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex items-start gap-3 p-4 bg-white rounded-lg border border-blue-200">
+                  <Key className="h-5 w-5 text-blue-600 mt-1" />
+                  <div className="flex-1">
+                    <h4 className="font-medium text-blue-900 mb-1">Access Code Generation</h4>
+                    <p className="text-sm text-blue-700 mb-3">
+                      Your digital access code will be generated automatically 5 days before your check-in date,
+                      after completing guest registration and payment.
+                    </p>
+                    <div className="flex items-center gap-2 text-xs text-blue-600">
+                      <CheckCircle className="h-3 w-3" />
+                      <span>Works on all property doors</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-blue-600 mt-1">
+                      <Clock className="h-3 w-3" />
+                      <span>Valid from check-in to check-out date</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                  <div className="flex items-center gap-2 text-blue-700">
+                    <Building2 className="h-4 w-4" />
+                    <span>Main entrance access</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-blue-700">
+                    <Home className="h-4 w-4" />
+                    <span>Apartment door access</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-blue-700">
+                    <ShoppingBag className="h-4 w-4" />
+                    <span>Luggage room (if available)</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-blue-700">
+                    <Activity className="h-4 w-4" />
+                    <span>Laundry room (if available)</span>
+                  </div>
+                </div>
+
+                <div className="bg-blue-100 border border-blue-300 rounded-lg p-3">
+                  <p className="text-sm text-blue-800">
+                    <strong>Note:</strong> You'll receive your access code via email and SMS closer to your arrival date.
+                    No physical keys needed!
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Standard Check-in Information */}
         <Card>
-          <CardContent className="pt-6">
-            <p className="text-center text-muted-foreground">
-              Check-in interface is being updated for better sharing experience.
-              <br />
-              Please use the admin panel for now.
-            </p>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <User className="h-5 w-5" />
+              Check-in Process
+            </CardTitle>
+            <CardDescription>
+              Complete your registration to finalize your stay
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <h4 className="font-medium">Required Steps:</h4>
+                  <ul className="text-sm text-muted-foreground space-y-1">
+                    <li>• Complete guest registration</li>
+                    <li>• Provide required documentation</li>
+                    <li>• Pay tourist tax (if applicable)</li>
+                    {propertyHasNukiAccess && <li>• Receive digital access code</li>}
+                  </ul>
+                </div>
+                <div className="space-y-2">
+                  <h4 className="font-medium">Property Information:</h4>
+                  <ul className="text-sm text-muted-foreground space-y-1">
+                    <li>• Check-in: 3:00 PM onwards</li>
+                    <li>• Check-out: 10:00 AM</li>
+                    <li>• {propertyHasNukiAccess ? 'Smart lock access' : 'Traditional key pickup'}</li>
+                    <li>• 24/7 support available</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div className="pt-4 border-t">
+                <p className="text-center text-muted-foreground text-sm">
+                  Complete check-in interface coming soon.
+                  {propertyHasNukiAccess
+                    ? ' Your access code will be sent automatically when ready.'
+                    : ' Please contact us for check-in arrangements.'
+                  }
+                </p>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
