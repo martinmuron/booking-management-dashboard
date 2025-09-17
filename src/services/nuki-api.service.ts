@@ -173,16 +173,27 @@ export class NukiApiService {
     checkInDate: Date,
     checkOutDate: Date,
     roomNumber: string,
-    keyTypes: VirtualKeyType[] = [
-      VirtualKeyType.MAIN_ENTRANCE,
-      VirtualKeyType.ROOM,
-      VirtualKeyType.LUGGAGE_ROOM,
-      VirtualKeyType.LAUNDRY_ROOM,
-    ]
-  ): Promise<{ 
+    propertyName?: string,
+    keyTypes?: VirtualKeyType[]
+  ): Promise<{
     results: Array<{ keyType: VirtualKeyType; nukiAuth: NukiAuth }>;
     universalKeypadCode: string;
   }> {
+    // Determine key types based on property
+    if (!keyTypes) {
+      if (propertyName === 'Bořivojova 50' || propertyName === 'Řehořova') {
+        // Standalone properties - only main entrance
+        keyTypes = [VirtualKeyType.MAIN_ENTRANCE];
+      } else {
+        // Z apartments - full suite of keys
+        keyTypes = [
+          VirtualKeyType.MAIN_ENTRANCE,
+          VirtualKeyType.ROOM,
+          VirtualKeyType.LUGGAGE_ROOM,
+          VirtualKeyType.LAUNDRY_ROOM,
+        ];
+      }
+    }
     // Generate ONE keypad code for all doors
     const universalKeypadCode = this.generateKeypadCode();
     const results = [];

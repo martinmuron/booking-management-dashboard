@@ -181,6 +181,7 @@ export default function BookingAdminPage() {
   const [error, setError] = useState<string | null>(null);
   const [editingStatus, setEditingStatus] = useState(false);
   const [newStatus, setNewStatus] = useState('');
+  const [generatingKeys, setGeneratingKeys] = useState(false);
 
   useEffect(() => {
     const fetchBooking = async () => {
@@ -234,6 +235,45 @@ export default function BookingAdminPage() {
       }
     } catch {
       setError('Network error: Unable to update status');
+    }
+  };
+
+  const generateVirtualKeys = async () => {
+    if (!booking || !booking.roomNumber) return;
+
+    setGeneratingKeys(true);
+    setError(null);
+
+    try {
+      const response = await fetch('/api/virtual-keys', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          bookingId: booking.id,
+          roomNumber: booking.roomNumber,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Refresh booking data to show the new keys
+        const bookingResponse = await fetch(`/api/bookings/${bookingId}`);
+        const bookingData = await bookingResponse.json();
+
+        if (bookingData.success) {
+          setBooking(bookingData.data);
+        }
+      } else {
+        setError(data.error || 'Failed to generate virtual keys');
+      }
+    } catch (err) {
+      setError('Network error: Unable to generate virtual keys');
+      console.error('Error generating virtual keys:', err);
+    } finally {
+      setGeneratingKeys(false);
     }
   };
 
@@ -662,14 +702,50 @@ export default function BookingAdminPage() {
                     Virtual Keys
                   </CardTitle>
                   <CardDescription>
-                    {booking.universalKeypadCode 
-                      ? `Universal code: ${booking.universalKeypadCode}` 
-                      : 'Digital access keys for all doors'
-                    }
+                    {(() => {
+                      // Check if property is authorized for NUKI
+                      const NUKI_AUTHORIZED_PROPERTIES = [
+                        "Bořivojova 50", "Řehořova", "Ž001", "Ž004", "Ž101", "Ž102", "Ž103", "Ž104",
+                        "Ž201", "Ž202", "Ž203", "Ž204", "Ž301", "Ž302", "Ž303", "Ž304",
+                        "Ž401", "Ž402", "Ž403", "Ž404", "Ž501", "Ž502", "Ž503", "Ž504",
+                        "Ž601", "Ž602", "Ž604"
+                      ];
+                      const isAuthorized = NUKI_AUTHORIZED_PROPERTIES.includes(booking.propertyName);
+
+                      if (!isAuthorized) {
+                        return 'This property does not have smart lock access';
+                      }
+
+                      return booking.universalKeypadCode
+                        ? `Universal code: ${booking.universalKeypadCode}`
+                        : 'Digital access keys for all doors';
+                    })()}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  {booking.universalKeypadCode ? (
+                  {(() => {
+                    // Check if property is authorized for NUKI
+                    const NUKI_AUTHORIZED_PROPERTIES = [
+                      "Bořivojova 50", "Řehořova", "Ž001", "Ž004", "Ž101", "Ž102", "Ž103", "Ž104",
+                      "Ž201", "Ž202", "Ž203", "Ž204", "Ž301", "Ž302", "Ž303", "Ž304",
+                      "Ž401", "Ž402", "Ž403", "Ž404", "Ž501", "Ž502", "Ž503", "Ž504",
+                      "Ž601", "Ž602", "Ž604"
+                    ];
+                    const isAuthorized = NUKI_AUTHORIZED_PROPERTIES.includes(booking.propertyName);
+
+                    if (!isAuthorized) {
+                      return (
+                        <div className="text-center py-8">
+                          <Key className="mx-auto h-12 w-12 mb-3 opacity-50" />
+                          <p className="text-muted-foreground mb-2">Smart lock access not available</p>
+                          <p className="text-sm text-muted-foreground">
+                            Property "{booking.propertyName}" does not have NUKI smart lock integration
+                          </p>
+                        </div>
+                      );
+                    }
+
+                    return booking.universalKeypadCode ? (
                     <div className="space-y-4">
                       {/* Universal Code Display */}
                       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
@@ -731,12 +807,17 @@ export default function BookingAdminPage() {
                     <div className="text-center py-8">
                       <Key className="mx-auto h-12 w-12 mb-3 opacity-50" />
                       <p className="text-muted-foreground mb-4">No virtual keys generated yet</p>
-                      <Button>
-                        <Key className="mr-2 h-4 w-4" />
-                        Generate Virtual Keys
+                      <Button onClick={generateVirtualKeys} disabled={generatingKeys}>
+                        {generatingKeys ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <Key className="mr-2 h-4 w-4" />
+                        )}
+                        {generatingKeys ? 'Generating...' : 'Generate Virtual Keys'}
                       </Button>
                     </div>
-                  )}
+                  );
+                  })()}
                 </CardContent>
               </Card>
               {/* Quick Actions */}
@@ -753,13 +834,18 @@ export default function BookingAdminPage() {
                     <ExternalLink className="mr-2 h-4 w-4" />
                     Open Check-in Page
                   </Button>
-                  <Button 
-                    className="w-full" 
+                  <Button
+                    className="w-full"
                     variant="outline"
-                    disabled={!!booking.universalKeypadCode}
+                    onClick={generateVirtualKeys}
+                    disabled={!!booking.universalKeypadCode || generatingKeys}
                   >
-                    <Key className="mr-2 h-4 w-4" />
-                    {booking.universalKeypadCode ? 'Keys Generated' : 'Generate Virtual Keys'}
+                    {generatingKeys ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Key className="mr-2 h-4 w-4" />
+                    )}
+                    {generatingKeys ? 'Generating...' : (booking.universalKeypadCode ? 'Keys Generated' : 'Generate Virtual Keys')}
                   </Button>
                   <Button className="w-full" variant="outline">
                     <Mail className="mr-2 h-4 w-4" />

@@ -52,12 +52,7 @@ export async function POST(request: NextRequest) {
       new Date(booking.checkInDate),
       new Date(booking.checkOutDate),
       roomNumber,
-      [
-        VirtualKeyType.MAIN_ENTRANCE,
-        VirtualKeyType.ROOM,
-        VirtualKeyType.LUGGAGE_ROOM,
-        VirtualKeyType.LAUNDRY_ROOM,
-      ]
+      booking.propertyName  // Pass property name to determine key types
     );
 
     if (nukiResults.length === 0) {
