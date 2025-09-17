@@ -53,7 +53,7 @@ export async function GET(
     }
 
     // Use our pre-computed mapping (for demo - normally would fetch from NUKI API)
-    const existingKeysMappings = {
+    const existingKeysMappings: Record<string, any[]> = {
       'BK_45799790': [ // Ž103 - Oscar Canon
         {
           id: '68c3695489e3a04d6b7b984a',

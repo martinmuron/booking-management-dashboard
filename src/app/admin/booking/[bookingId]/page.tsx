@@ -812,7 +812,9 @@ export default function BookingAdminPage() {
                         </div>
                         </div>
                       );
-                  ) : (
+                    }
+
+                    return (
                     <div className="text-center py-8">
                       <Key className="mx-auto h-12 w-12 mb-3 opacity-50" />
                       <p className="text-muted-foreground mb-4">No existing NUKI keys found for this booking</p>

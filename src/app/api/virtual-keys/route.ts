@@ -52,7 +52,8 @@ export async function POST(request: NextRequest) {
       new Date(booking.checkInDate),
       new Date(booking.checkOutDate),
       roomNumber,
-      booking.propertyName  // Pass property name to determine key types
+      booking.propertyName,  // Pass property name to determine key types
+      undefined              // Let function determine key types based on property
     );
 
     if (nukiResults.length === 0) {
