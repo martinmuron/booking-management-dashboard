@@ -182,6 +182,7 @@ export default function BookingAdminPage() {
   const [editingStatus, setEditingStatus] = useState(false);
   const [newStatus, setNewStatus] = useState('');
   const [generatingKeys, setGeneratingKeys] = useState(false);
+  const [existingKeys, setExistingKeys] = useState<any>({ hasKeys: false, existingKeys: [], universalKeypadCode: null });
 
   useEffect(() => {
     const fetchBooking = async () => {
@@ -198,6 +199,17 @@ export default function BookingAdminPage() {
         if (data.success) {
           setBooking(data.data);
           setNewStatus(data.data.status);
+
+          // Fetch existing NUKI keys
+          try {
+            const keysResponse = await fetch(`/api/bookings/${bookingId}/existing-keys`);
+            const keysData = await keysResponse.json();
+            if (keysData.success) {
+              setExistingKeys(keysData.data);
+            }
+          } catch (err) {
+            console.error('Error fetching existing keys:', err);
+          }
         } else {
           setError(data.error || 'Failed to fetch booking');
           console.error('Failed to fetch booking:', data);
@@ -703,37 +715,23 @@ export default function BookingAdminPage() {
                   </CardTitle>
                   <CardDescription>
                     {(() => {
-                      // Check if property is authorized for NUKI
-                      const NUKI_AUTHORIZED_PROPERTIES = [
-                        "Bořivojova 50", "Řehořova", "Ž001", "Ž004", "Ž101", "Ž102", "Ž103", "Ž104",
-                        "Ž201", "Ž202", "Ž203", "Ž204", "Ž301", "Ž302", "Ž303", "Ž304",
-                        "Ž401", "Ž402", "Ž403", "Ž404", "Ž501", "Ž502", "Ž503", "Ž504",
-                        "Ž601", "Ž602", "Ž604"
-                      ];
-                      const isAuthorized = NUKI_AUTHORIZED_PROPERTIES.includes(booking.propertyName);
-
-                      if (!isAuthorized) {
+                      if (!existingKeys.booking?.isAuthorized) {
                         return 'This property does not have smart lock access';
                       }
 
-                      return booking.universalKeypadCode
-                        ? `Universal code: ${booking.universalKeypadCode}`
-                        : 'Digital access keys for all doors';
+                      if (existingKeys.hasKeys) {
+                        return existingKeys.universalKeypadCode
+                          ? `Universal code: ${existingKeys.universalKeypadCode} (${existingKeys.totalKeys} keys active)`
+                          : `${existingKeys.totalKeys} existing access keys found`;
+                      }
+
+                      return 'Checking for existing digital access keys...';
                     })()}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   {(() => {
-                    // Check if property is authorized for NUKI
-                    const NUKI_AUTHORIZED_PROPERTIES = [
-                      "Bořivojova 50", "Řehořova", "Ž001", "Ž004", "Ž101", "Ž102", "Ž103", "Ž104",
-                      "Ž201", "Ž202", "Ž203", "Ž204", "Ž301", "Ž302", "Ž303", "Ž304",
-                      "Ž401", "Ž402", "Ž403", "Ž404", "Ž501", "Ž502", "Ž503", "Ž504",
-                      "Ž601", "Ž602", "Ž604"
-                    ];
-                    const isAuthorized = NUKI_AUTHORIZED_PROPERTIES.includes(booking.propertyName);
-
-                    if (!isAuthorized) {
+                    if (!existingKeys.booking?.isAuthorized) {
                       return (
                         <div className="text-center py-8">
                           <Key className="mx-auto h-12 w-12 mb-3 opacity-50" />
@@ -745,76 +743,82 @@ export default function BookingAdminPage() {
                       );
                     }
 
-                    return booking.universalKeypadCode ? (
-                    <div className="space-y-4">
-                      {/* Universal Code Display */}
-                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <Label className="text-sm font-medium text-blue-900">Universal Keypad Code</Label>
-                            <p className="text-2xl font-bold text-blue-800 font-mono">{booking.universalKeypadCode}</p>
-                            <p className="text-sm text-blue-600">Works on all doors below</p>
+                    if (existingKeys.hasKeys) {
+                      return (
+                        <div className="space-y-4">
+                        {/* Universal Code Display */}
+                        {existingKeys.universalKeypadCode && (
+                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <Label className="text-sm font-medium text-blue-900">Universal Keypad Code</Label>
+                                <p className="text-2xl font-bold text-blue-800 font-mono">{existingKeys.universalKeypadCode}</p>
+                                <p className="text-sm text-blue-600">Works on all {existingKeys.totalKeys} doors below</p>
+                              </div>
+                              <div className="text-blue-600">
+                                <Key className="h-8 w-8" />
+                              </div>
+                            </div>
                           </div>
-                          <div className="text-blue-600">
-                            <Key className="h-8 w-8" />
-                          </div>
-                        </div>
-                      </div>
+                        )}
 
-                      {/* Door List */}
-                      <div className="overflow-x-auto">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead className="min-w-[140px]">Door</TableHead>
-                              <TableHead className="min-w-[100px]">Status</TableHead>
-                              <TableHead className="min-w-[80px]">Active</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {[
-                              { name: 'Main Entrance', type: 'MAIN_ENTRANCE' },
-                              { name: booking.roomNumber ? `Room ${booking.roomNumber}` : `Room (${booking.propertyName})`, type: 'ROOM' },
-                              { name: 'Luggage Room', type: 'LUGGAGE_ROOM' },
-                              { name: 'Laundry Room', type: 'LAUNDRY_ROOM' },
-                            ].map((door) => {
-                              const virtualKey = booking.virtualKeys?.find(vk => vk.keyType === door.type);
-                              return (
-                                <TableRow key={door.type}>
-                                  <TableCell className="font-medium">{door.name}</TableCell>
+                        {/* Existing Keys List */}
+                        <div className="overflow-x-auto">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead className="min-w-[140px]">Door/Device</TableHead>
+                                <TableHead className="min-w-[120px]">Guest Name</TableHead>
+                                <TableHead className="min-w-[100px]">Type</TableHead>
+                                <TableHead className="min-w-[80px]">Status</TableHead>
+                                <TableHead className="min-w-[120px]">Valid Until</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {existingKeys.existingKeys.map((key: any, index: number) => (
+                                <TableRow key={index}>
+                                  <TableCell className="font-medium">{key.device}</TableCell>
+                                  <TableCell>{key.name}</TableCell>
                                   <TableCell>
-                                    <Badge className={virtualKey ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
-                                      {virtualKey ? 'Generated' : 'Not Generated'}
+                                    <Badge className="bg-blue-100 text-blue-800">
+                                      {key.keyType.replace('_', ' ')}
                                     </Badge>
                                   </TableCell>
                                   <TableCell>
-                                    {virtualKey ? (
-                                      <Badge className={virtualKey.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
-                                        {virtualKey.isActive ? 'Active' : 'Inactive'}
-                                      </Badge>
-                                    ) : (
-                                      <span className="text-muted-foreground text-sm">-</span>
-                                    )}
+                                    <Badge className={key.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
+                                      {key.isActive ? 'Active' : 'Inactive'}
+                                    </Badge>
+                                  </TableCell>
+                                  <TableCell>
+                                    {key.allowedUntilDate ? new Date(key.allowedUntilDate).toLocaleDateString() : '-'}
                                   </TableCell>
                                 </TableRow>
-                              );
-                            })}
-                          </TableBody>
-                        </Table>
-                      </div>
-                    </div>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+
+                        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                          <div className="flex items-start space-x-3">
+                            <CheckCircle2 className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
+                            <div>
+                              <p className="text-sm font-medium text-green-900">Existing NUKI Keys Found</p>
+                              <p className="text-sm text-green-700">
+                                {existingKeys.totalKeys} digital access keys are already active for this booking.
+                                Guest can use the universal keypad code on all doors.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                        </div>
+                      );
                   ) : (
                     <div className="text-center py-8">
                       <Key className="mx-auto h-12 w-12 mb-3 opacity-50" />
-                      <p className="text-muted-foreground mb-4">No virtual keys generated yet</p>
-                      <Button onClick={generateVirtualKeys} disabled={generatingKeys}>
-                        {generatingKeys ? (
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        ) : (
-                          <Key className="mr-2 h-4 w-4" />
-                        )}
-                        {generatingKeys ? 'Generating...' : 'Generate Virtual Keys'}
-                      </Button>
+                      <p className="text-muted-foreground mb-4">No existing NUKI keys found for this booking</p>
+                      <p className="text-sm text-muted-foreground">
+                        Keys may need to be created in NUKI app or dates may not match exactly.
+                      </p>
                     </div>
                   );
                   })()}
