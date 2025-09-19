@@ -38,26 +38,24 @@ const guestSchema = z.object({
   phoneCountryCode: z.string().trim().regex(/^\+[0-9]{1,6}$/, {
     message: 'Country code must start with + followed by up to 6 digits'
   }).optional().default('+420'),
-  dateOfBirth: z.string().trim().min(1, 'Date of birth is required').transform((value) => {
+  dateOfBirth: z.string().trim().min(1, 'Date of birth is required').transform((value, ctx) => {
     const parsed = new Date(value);
     if (Number.isNaN(parsed.getTime())) {
-      throw new z.ZodError([
-        {
-          code: z.ZodIssueCode.custom,
-          message: 'Invalid date',
-          path: ['dateOfBirth']
-        }
-      ]);
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Invalid date',
+        path: ['dateOfBirth']
+      });
+      return z.NEVER;
     }
 
     if (parsed > new Date()) {
-      throw new z.ZodError([
-        {
-          code: z.ZodIssueCode.custom,
-          message: 'Date of birth cannot be in the future',
-          path: ['dateOfBirth']
-        }
-      ]);
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Date of birth cannot be in the future',
+        path: ['dateOfBirth']
+      });
+      return z.NEVER;
     }
 
     return parsed;
@@ -72,7 +70,12 @@ const guestSchema = z.object({
   documentNumber: z.string().trim().transform((value) => value.toUpperCase()).refine((value) => DOCUMENT_NUMBER_REGEX.test(value), {
     message: 'Document number must be 4-30 characters (letters and numbers only)'
   }),
-  visaNumber: z.string().trim().transform((value) => value.toUpperCase()).max(15).optional().or(z.literal('')).transform((value) => value ? value : undefined),
+  visaNumber: z.string().trim().max(15).optional().or(z.literal('')).transform((value) => {
+    if (!value) {
+      return undefined;
+    }
+    return value.toUpperCase();
+  }),
   notes: z.string().trim().max(255).optional().or(z.literal('')).transform((value) => value ? value : undefined)
 }).transform((guest) => ({
   ...guest,

@@ -119,7 +119,7 @@ class UbyPortService {
   /**
    * Format date of birth for UbyPort API (DDMMYYYY, 0000YYYY, or 00DDYYYY)
    */
-  private formatDateOfBirth(dateOfBirth?: Date): string {
+  private formatDateOfBirth(dateOfBirth?: Date | null): string {
     if (!dateOfBirth) {
       return '00001900'; // Default if no birth date
     }
@@ -139,7 +139,7 @@ class UbyPortService {
   /**
    * Format nationality code for UbyPort (3-letter code from Czech police číselník)
    */
-  private formatNationalityCode(nationality?: string): string {
+  private formatNationalityCode(nationality?: string | null): string {
     if (!nationality) {
       return 'XXX';
     }
@@ -393,7 +393,7 @@ class UbyPortService {
    */
   private formatGuestForUbyPort(guest: PrismaGuest, booking: PrismaBooking): UbyPortGuestData {
     const residenceComponents = [guest.residenceAddress, guest.residenceCity, guest.residenceCountry]
-      .map((value: string | undefined) => (typeof value === 'string' ? value.trim() : ''))
+      .map((value) => (typeof value === 'string' ? value.trim() : ''))
       .filter(Boolean);
 
     return {
