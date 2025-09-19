@@ -4,37 +4,51 @@ import CheckinClient from './CheckinClient';
 
 interface BookingData {
   id: string;
-  hostAwayId: string;
   propertyName: string;
+  propertyAddress?: string;
   checkInDate: string;
   checkOutDate: string;
   numberOfGuests: number;
+  roomNumber?: string;
   guestLeaderName: string;
-  guestLeaderEmail: string;
-  guestLeaderPhone: string;
-  totalAmount: number;
-  currencyCode: string;
-  status: string;
-  propertyAddress?: string;
-  guests: any[];
-  payments: any[];
-  virtualKeys: any[];
+  cityTaxAmount: number;
+  cityTaxPerPerson: number;
+  universalKeypadCode?: string;
+  virtualKeys?: any[];
 }
 
 async function getBookingByToken(token: string): Promise<BookingData | null> {
   try {
-    // Call the API endpoint to get booking data
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.nickandjenny.cz';
-    const response = await fetch(`${baseUrl}/api/check-in?token=${token}`, {
-      cache: 'no-store' // Always get fresh data for metadata
+    // Use database directly instead of calling API to avoid issues during SSR
+    const { prisma } = await import('@/lib/database');
+
+    const booking = await prisma.booking.findUnique({
+      where: { checkInToken: token },
+      include: {
+        guests: true,
+        payments: true
+      }
     });
 
-    if (!response.ok) {
+    if (!booking) {
       return null;
     }
 
-    const data = await response.json();
-    return data.success ? data.data.booking : null;
+    // Transform the booking data to match the expected interface
+    return {
+      id: booking.id,
+      propertyName: booking.propertyName,
+      propertyAddress: undefined,
+      checkInDate: booking.checkInDate.toISOString(),
+      checkOutDate: booking.checkOutDate.toISOString(),
+      numberOfGuests: booking.numberOfGuests,
+      roomNumber: booking.roomNumber || undefined,
+      guestLeaderName: booking.guestLeaderName,
+      cityTaxAmount: 0,
+      cityTaxPerPerson: 50,
+      universalKeypadCode: booking.universalKeypadCode || undefined,
+      virtualKeys: [] // Not included in this simplified version
+    };
   } catch (error) {
     console.error('Error fetching booking for metadata:', error);
     return null;
