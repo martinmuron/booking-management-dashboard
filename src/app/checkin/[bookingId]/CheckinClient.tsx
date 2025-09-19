@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useParams } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -36,6 +36,10 @@ import {
   X,
   ChevronRight
 } from "lucide-react";
+import {
+  calculateCityTaxForGuests,
+  isPragueCityTaxExempt
+} from "@/lib/city-tax";
 
 interface Guest {
   id: string;
@@ -179,11 +183,6 @@ const sanitizeDocumentNumber = (value: string) => sanitizeString(value).toUpperC
 
 type GuestErrors = Partial<Record<keyof Guest, string>>;
 
-// Helper function to check if Prague city tax exemption applies
-const isPragueCityTaxExempt = (residenceCity: string): boolean => {
-  return residenceCity.toLowerCase().includes('prague') || residenceCity.toLowerCase().includes('praha');
-};
-
 const formatDate = (dateString: string) => {
   return new Date(dateString).toLocaleDateString('en-US', {
     weekday: 'long',
@@ -200,32 +199,6 @@ const formatTime = (dateString: string) => {
   });
 };
 
-const calculateAge = (dateOfBirth: string): number => {
-  if (!dateOfBirth) return 0;
-  const today = new Date();
-  const birthDate = new Date(dateOfBirth);
-  let age = today.getFullYear() - birthDate.getFullYear();
-  const monthDiff = today.getMonth() - birthDate.getMonth();
-  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-    age--;
-  }
-  return age;
-};
-
-const calculateCityTax = (guests: Guest[], nights: number): number => {
-  const TAX_PER_PERSON_PER_NIGHT = 50; // 50 CZK
-  const MIN_AGE_FOR_TAX = 18;
-
-  const eligibleGuests = guests.filter(guest => {
-    const age = calculateAge(guest.dateOfBirth);
-    const isOfAge = age >= MIN_AGE_FOR_TAX;
-    const isNotPragueResident = !isPragueCityTaxExempt(guest.residenceCity);
-    return isOfAge && isNotPragueResident;
-  });
-
-  return eligibleGuests.length * nights * TAX_PER_PERSON_PER_NIGHT;
-};
-
 export default function CheckinClient({ initialBooking }: CheckinClientProps) {
   const params = useParams();
   const bookingToken = params.bookingId as string;
@@ -237,6 +210,7 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
   const [guestErrors, setGuestErrors] = useState<Record<string, GuestErrors>>({});
   const [paymentCompleted, setPaymentCompleted] = useState(false);
   const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
+  const [paymentIntentAmount, setPaymentIntentAmount] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
@@ -602,8 +576,52 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
     return isValid;
   };
 
-  const handlePaymentSuccess = (intentId: string) => {
+  const nights = useMemo(() => {
+    if (!booking) {
+      return 0;
+    }
+
+    const checkIn = new Date(booking.checkInDate);
+    const checkOut = new Date(booking.checkOutDate);
+    const diff = checkOut.getTime() - checkIn.getTime();
+
+    if (Number.isNaN(diff) || diff <= 0) {
+      return 0;
+    }
+
+    return Math.ceil(diff / (1000 * 60 * 60 * 24));
+  }, [booking]);
+
+  const cityTaxAmount = useMemo(
+    () => calculateCityTaxForGuests(guests, nights),
+    [guests, nights]
+  );
+
+  useEffect(() => {
+    if (cityTaxAmount === 0) {
+      setPaymentCompleted(true);
+      setPaymentIntentId(null);
+      setPaymentIntentAmount(null);
+      setShowPaymentForm(false);
+      return;
+    }
+
+    if (paymentIntentAmount === null) {
+      setPaymentCompleted(false);
+      return;
+    }
+
+    if (paymentIntentAmount !== cityTaxAmount) {
+      setPaymentCompleted(false);
+      setPaymentIntentId(null);
+      setPaymentIntentAmount(null);
+      setShowPaymentForm(false);
+    }
+  }, [cityTaxAmount, paymentIntentAmount]);
+
+  const handlePaymentSuccess = (intentId: string, amountPaid: number) => {
     setPaymentIntentId(intentId);
+    setPaymentIntentAmount(amountPaid);
     setPaymentCompleted(true);
     setShowPaymentForm(false);
     setError(null);
@@ -611,7 +629,10 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
 
   const handlePaymentError = (errorMessage: string) => {
     setError(`Payment failed: ${errorMessage}`);
-    setShowPaymentForm(false);
+    setShowPaymentForm(true);
+    setPaymentIntentId(null);
+    setPaymentIntentAmount(null);
+    setPaymentCompleted(false);
   };
 
   const initiatePayment = () => {
@@ -720,7 +741,6 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
     );
   }
 
-  const nights = Math.ceil((new Date(booking.checkOutDate).getTime() - new Date(booking.checkInDate).getTime()) / (1000 * 60 * 60 * 24));
   const firstName = booking.guestLeaderName.split(' ')[0] || 'Guest';
 
   const navigationItems = [
@@ -1212,26 +1232,30 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
                     {!paymentCompleted ? (
                       <div className="space-y-4">
                         <p className="text-sm text-muted-foreground">
-                          Total tax amount: <strong>{calculateCityTax(guests, nights)} CZK</strong>
+                          Total tax amount: <strong>{cityTaxAmount} CZK</strong>
                         </p>
                         {showPaymentForm ? (
                           <StripePayment
-                            amount={calculateCityTax(guests, nights)}
+                            amount={cityTaxAmount}
                             bookingId={booking.id}
                             guestCount={guests.length}
                             onSuccess={handlePaymentSuccess}
                             onError={handlePaymentError}
                           />
                         ) : (
-                          <Button onClick={initiatePayment} disabled={calculateCityTax(guests, nights) === 0}>
-                            Pay Prague City Tax ({calculateCityTax(guests, nights)} CZK)
+                          <Button onClick={initiatePayment} disabled={cityTaxAmount === 0}>
+                            Pay Prague City Tax ({cityTaxAmount} CZK)
                           </Button>
                         )}
                       </div>
                     ) : (
                       <div className="flex items-center space-x-2 text-green-600">
                         <CheckCircle className="h-5 w-5" />
-                        <span>City tax payment completed successfully!</span>
+                        <span>
+                          {cityTaxAmount > 0
+                            ? 'City tax payment completed successfully!'
+                            : 'No city tax payment required.'}
+                        </span>
                       </div>
                     )}
                   </CardContent>

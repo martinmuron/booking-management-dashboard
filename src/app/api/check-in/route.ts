@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/database';
 import { hostAwayService } from '@/services/hostaway.service';
+import { stripe } from '@/lib/stripe-server';
+import { calculateCityTaxForStay } from '@/lib/city-tax';
+import type { CityTaxGuestInput } from '@/lib/city-tax';
 import { z } from 'zod';
 
 const NAME_CHAR_REGEX = /^[A-Za-zÀ-ÖØ-öø-ÿ'\-\s]+$/u;
@@ -257,11 +260,102 @@ export async function POST(request: NextRequest) {
       notes: guest.notes ?? null,
       isLeadGuest: index === 0
     }));
-    
+
+    const cityTaxAmount = calculateCityTaxForStay(
+      guests as Array<CityTaxGuestInput>,
+      booking.checkInDate,
+      booking.checkOutDate
+    );
+
+    if (cityTaxAmount > 0) {
+      if (!paymentIntentId) {
+        return NextResponse.json(
+          { success: false, error: 'City tax payment is required before completing check-in.' },
+          { status: 400 }
+        );
+      }
+
+      try {
+        const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+
+        if (!paymentIntent) {
+          return NextResponse.json(
+            { success: false, error: 'Payment intent not found.' },
+            { status: 400 }
+          );
+        }
+
+        if (paymentIntent.status !== 'succeeded') {
+          return NextResponse.json(
+            { success: false, error: 'Payment has not been completed yet.' },
+            { status: 400 }
+          );
+        }
+
+        const expectedAmountMinor = Math.round(cityTaxAmount * 100);
+        const amountReceived = paymentIntent.amount_received ?? 0;
+
+        if (amountReceived !== expectedAmountMinor) {
+          return NextResponse.json(
+            { success: false, error: 'Paid amount does not match the required city tax.' },
+            { status: 400 }
+          );
+        }
+
+        if (paymentIntent.currency?.toLowerCase() !== 'czk') {
+          return NextResponse.json(
+            { success: false, error: 'Payment must be completed in CZK.' },
+            { status: 400 }
+          );
+        }
+
+        if (paymentIntent.metadata?.bookingId && paymentIntent.metadata.bookingId !== booking.id) {
+          return NextResponse.json(
+            { success: false, error: 'Payment intent does not belong to this booking.' },
+            { status: 400 }
+          );
+        }
+
+        const amountInCzk = Math.round(amountReceived / 100);
+
+        await prisma.payment.upsert({
+          where: { stripePaymentIntentId: paymentIntentId },
+          update: {
+            bookingId: booking.id,
+            amount: amountInCzk,
+            currency: paymentIntent.currency?.toUpperCase() || 'CZK',
+            status: 'paid',
+            paidAt: paymentIntent.status === 'succeeded'
+              ? new Date((paymentIntent.created || Math.floor(Date.now() / 1000)) * 1000)
+              : null,
+          },
+          create: {
+            bookingId: booking.id,
+            amount: amountInCzk,
+            currency: paymentIntent.currency?.toUpperCase() || 'CZK',
+            status: 'paid',
+            stripePaymentIntentId: paymentIntentId,
+            paidAt: new Date((paymentIntent.created || Math.floor(Date.now() / 1000)) * 1000)
+          }
+        });
+      } catch (paymentError) {
+        console.error('Error verifying Stripe payment intent:', paymentError);
+        return NextResponse.json(
+          {
+            success: false,
+            error: paymentError instanceof Error
+              ? `Failed to verify Stripe payment: ${paymentError.message}`
+              : 'Failed to verify Stripe payment.'
+          },
+          { status: 400 }
+        );
+      }
+    }
+
     await prisma.guest.createMany({
       data: guestData
     });
-    
+
     // Update booking status
     await prisma.booking.update({
       where: { id: booking.id },
@@ -288,7 +382,8 @@ export async function POST(request: NextRequest) {
       success: true,
       data: {
         bookingId: booking.id,
-        status: 'CHECKED_IN'
+        status: 'CHECKED_IN',
+        cityTaxAmount
       },
       message: 'Check-in completed successfully'
     });

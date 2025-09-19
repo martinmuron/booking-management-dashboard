@@ -1,15 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
-import Stripe from 'stripe';
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-06-30.basil',
-});
+import { stripe } from '@/lib/stripe-server';
 
 export async function POST(request: NextRequest) {
   try {
-    const { amount, currency = 'eur', bookingId, guestCount } = await request.json();
+    const { amount, bookingId, guestCount } = await request.json();
 
-    if (!amount || !bookingId) {
+    if (typeof amount !== 'number' || Number.isNaN(amount) || amount <= 0) {
+      return NextResponse.json(
+        { error: 'Amount must be a positive number' },
+        { status: 400 }
+      );
+    }
+
+    if (!bookingId || typeof bookingId !== 'string') {
       return NextResponse.json(
         { error: 'Missing required fields: amount and bookingId' },
         { status: 400 }
@@ -18,8 +21,8 @@ export async function POST(request: NextRequest) {
 
     // Create payment intent for city tax
     const paymentIntent = await stripe.paymentIntents.create({
-      amount: Math.round(amount * 100), // Convert to cents
-      currency,
+      amount: Math.round(amount * 100), // Convert CZK to haléře
+      currency: 'czk',
       metadata: {
         bookingId,
         guestCount: guestCount?.toString() || '1',

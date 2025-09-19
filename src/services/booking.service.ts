@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { prisma } from '@/lib/database';
 import { hostAwayService, type HostAwayReservation } from './hostaway.service';
 import { ubyPortService } from './ubyport.service';
@@ -22,8 +23,19 @@ class BookingService {
   /**
    * Generate a unique check-in token for a booking
    */
-  private generateCheckInToken(): string {
-    return Math.random().toString(36).substring(2, 12).toUpperCase();
+  private async generateCheckInToken(): Promise<string> {
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      const candidate = randomUUID().replace(/-/g, '').slice(0, 12).toUpperCase();
+      const existing = await prisma.booking.findUnique({
+        where: { checkInToken: candidate }
+      });
+
+      if (!existing) {
+        return candidate;
+      }
+    }
+
+    throw new Error('Unable to generate a unique check-in token after multiple attempts');
   }
 
   /**
@@ -386,6 +398,8 @@ class BookingService {
           // Extract existing check-in status from HostAway custom fields
           const checkInInfo = this.extractCheckInStatusFromCustomFields(reservation as HostAwayReservation & { customFieldValues?: any[] });
           
+          const checkInToken = existingBooking?.checkInToken ?? await this.generateCheckInToken();
+
           const bookingData = {
             hostAwayId: reservation.id.toString(),
             propertyName: reservation.listingName || listing?.name || `Property ${reservation.listingMapId}`,
@@ -396,7 +410,7 @@ class BookingService {
             checkOutDate,
             numberOfGuests: reservation.numberOfGuests || reservation.adults || 1,
             roomNumber: listing?.address || null,
-            checkInToken: existingBooking?.checkInToken || this.generateCheckInToken(),
+            checkInToken,
             // Use existing check-in status for new bookings, preserve existing status for updates
             // This handles the seamless transition from checkin.io
             status: existingBooking?.status || checkInInfo.status
@@ -698,6 +712,8 @@ class BookingService {
       // Extract existing check-in status from HostAway custom fields
       const checkInInfo = this.extractCheckInStatusFromCustomFields(reservation as HostAwayReservation & { customFieldValues?: any[] });
       
+      const checkInToken = existingBooking?.checkInToken ?? await this.generateCheckInToken();
+
       const bookingData = {
         hostAwayId: reservation.id.toString(),
         propertyName: reservation.listingName || listing?.name || `Property ${reservation.listingMapId}`,
@@ -708,7 +724,7 @@ class BookingService {
         checkOutDate,
         numberOfGuests: reservation.numberOfGuests || reservation.adults || 1,
         roomNumber: listing?.address || null,
-        checkInToken: existingBooking?.checkInToken || this.generateCheckInToken(),
+        checkInToken,
         // Use existing check-in status for new bookings, preserve existing status for updates
         status: existingBooking?.status || checkInInfo.status
       };

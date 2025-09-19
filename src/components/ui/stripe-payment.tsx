@@ -17,9 +17,15 @@ interface PaymentFormProps {
   amount: number;
   bookingId: string;
   guestCount: number;
-  onSuccess: (paymentIntentId: string) => void;
+  onSuccess: (paymentIntentId: string, amountPaid: number) => void;
   onError: (error: string) => void;
 }
+
+const currencyFormatter = new Intl.NumberFormat('cs-CZ', {
+  style: 'currency',
+  currency: 'CZK',
+  maximumFractionDigits: 2
+});
 
 function PaymentForm({ amount, bookingId, guestCount, onSuccess, onError }: PaymentFormProps) {
   const stripe = useStripe();
@@ -49,6 +55,11 @@ function PaymentForm({ amount, bookingId, guestCount, onSuccess, onError }: Paym
         }),
       });
 
+      if (!response.ok) {
+        const errorBody = await response.json().catch(() => ({}));
+        throw new Error(errorBody.error || 'Failed to create payment intent');
+      }
+
       const { clientSecret, paymentIntentId } = await response.json();
 
       if (!clientSecret) {
@@ -65,7 +76,7 @@ function PaymentForm({ amount, bookingId, guestCount, onSuccess, onError }: Paym
       if (error) {
         onError(error.message || 'Payment failed');
       } else if (paymentIntent?.status === 'succeeded') {
-        onSuccess(paymentIntentId);
+        onSuccess(paymentIntentId, amount);
       }
     } catch (err) {
       onError(err instanceof Error ? err.message : 'Payment failed');
@@ -103,7 +114,7 @@ function PaymentForm({ amount, bookingId, guestCount, onSuccess, onError }: Paym
             Processing Payment...
           </>
         ) : (
-          `Pay €${amount.toFixed(2)}`
+          `Pay ${currencyFormatter.format(amount)}`
         )}
       </Button>
     </form>
@@ -114,7 +125,7 @@ interface StripePaymentProps {
   amount: number;
   bookingId: string;
   guestCount: number;
-  onSuccess: (paymentIntentId: string) => void;
+  onSuccess: (paymentIntentId: string, amountPaid: number) => void;
   onError: (error: string) => void;
 }
 
