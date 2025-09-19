@@ -1121,6 +1121,214 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
                 </Card>
               </div>
 
+              {/* Restaurants & Bars */}
+              <div ref={restaurantsRef}>
+                <Card className="mb-6">
+                  <CardHeader>
+                    <CardTitle className="flex items-center">
+                      <Utensils className="mr-2 h-5 w-5" />
+                      Restaurants & Bars 🍻
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="bg-muted p-4 rounded-lg">
+                        <h5 className="font-medium text-sm mb-2">U Fleku</h5>
+                        <p className="text-xs text-muted-foreground">
+                          Historic brewery from 1499. Traditional Czech beer and food in a medieval setting.
+                        </p>
+                      </div>
+
+                      <div className="bg-muted p-4 rounded-lg">
+                        <h5 className="font-medium text-sm mb-2">Lokál</h5>
+                        <p className="text-xs text-muted-foreground">
+                          Modern Czech pub with excellent beer and traditional dishes. Popular with locals.
+                        </p>
+                      </div>
+
+                      <div className="bg-muted p-4 rounded-lg">
+                        <h5 className="font-medium text-sm mb-2">Café Savoy</h5>
+                        <p className="text-xs text-muted-foreground">
+                          Elegant café with beautiful interior, perfect for breakfast or afternoon coffee.
+                        </p>
+                      </div>
+
+                      <div className="bg-muted p-4 rounded-lg">
+                        <h5 className="font-medium text-sm mb-2">Hemingway Bar</h5>
+                        <p className="text-xs text-muted-foreground">
+                          Award-winning cocktail bar with expert mixologists and sophisticated atmosphere.
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Shopping */}
+              <div ref={shoppingRef}>
+                <Card className="mb-6">
+                  <CardHeader>
+                    <CardTitle className="flex items-center">
+                      <ShoppingBag className="mr-2 h-5 w-5" />
+                      Shopping
+                    </CardTitle>
+                    <CardDescription>
+                      If Tesco next door doesn&apos;t have what you need, try some of these other options:
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                      <div className="flex items-center gap-2">
+                        <ShoppingBag className="h-4 w-4 text-muted-foreground" />
+                        <div>
+                          <p className="font-medium text-sm">Lidl</p>
+                          <p className="text-xs text-muted-foreground">Groceries</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <Heart className="h-4 w-4 text-muted-foreground" />
+                        <div>
+                          <p className="font-medium text-sm">Teta</p>
+                          <p className="text-xs text-muted-foreground">Beauty products</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <Activity className="h-4 w-4 text-muted-foreground" />
+                        <div>
+                          <p className="font-medium text-sm">Dr. Max Lékárna</p>
+                          <p className="text-xs text-muted-foreground">Pharmacy</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <Building2 className="h-4 w-4 text-muted-foreground" />
+                        <div>
+                          <p className="font-medium text-sm">Flora Shopping Centre</p>
+                          <p className="text-xs text-muted-foreground">Multiple retailers, Cinema</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-4 w-4 text-muted-foreground" />
+                        <div>
+                          <p className="font-medium text-sm">Zabka</p>
+                          <p className="text-xs text-muted-foreground">Small grocery store, 24hrs</p>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Services */}
+              <div ref={servicesRef}>
+                <Card className="mb-6">
+                  <CardHeader>
+                    <CardTitle className="flex items-center">
+                      <Heart className="mr-2 h-5 w-5" />
+                      Services
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      <div className="flex items-start gap-2">
+                        <span className="text-sm">💵</span>
+                        <div>
+                          <p className="font-medium text-sm">Money exchange / 📦 DHL Service</p>
+                          <p className="text-xs text-muted-foreground">Mobifon, Seifertova street</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-start gap-2">
+                        <span className="text-sm">🏥</span>
+                        <div>
+                          <p className="font-medium text-sm">Hospital (VFN)</p>
+                          <p className="text-xs text-muted-foreground">U Nemocnice 499/2, 128 08 Nové Město</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-start gap-2">
+                        <span className="text-sm">🏥</span>
+                        <div>
+                          <p className="font-medium text-sm">Children&apos;s hospital (FN Motol)</p>
+                          <p className="text-xs text-muted-foreground">V Úvalu 84, 150 06 Praha 5</p>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Virtual Keys */}
+              <div ref={virtualKeysRef}>
+                <Card className="mb-6">
+                  <CardHeader>
+                    <CardTitle className="flex items-center">
+                      <Key className="mr-2 h-5 w-5" />
+                      Your Access Code
+                    </CardTitle>
+                    <CardDescription>
+                      {booking?.universalKeypadCode
+                        ? 'Your universal keypad code for all doors'
+                        : 'Digital keys will be available after check-in completion'
+                      }
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {booking?.universalKeypadCode ? (
+                      <div className="space-y-6">
+                        {/* Universal Code Display */}
+                        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-6 text-center">
+                          <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
+                            <Key className="h-8 w-8 text-blue-600" />
+                          </div>
+                          <h3 className="text-lg font-semibold text-blue-900 mb-2">Your Universal Access Code</h3>
+                          <div className="text-4xl font-bold text-blue-800 font-mono mb-2 tracking-wider">
+                            {booking.universalKeypadCode}
+                          </div>
+                          <p className="text-sm text-blue-600 mb-4">
+                            Use this code on all keypads to access your areas
+                          </p>
+                          <Badge className="bg-green-100 text-green-800 border-green-300">
+                            <CheckCircle className="h-3 w-3 mr-1" />
+                            Active Now
+                          </Badge>
+                        </div>
+
+                        {/* Instructions */}
+                        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                          <h4 className="font-medium text-amber-900 mb-2 flex items-center">
+                            <AlertCircle className="h-4 w-4 mr-2" />
+                            How to Use Your Code
+                          </h4>
+                          <ol className="text-sm text-amber-800 space-y-1">
+                            <li>1. Find the keypad on the door</li>
+                            <li>2. Enter your 6-digit code: <span className="font-mono font-bold">{booking.universalKeypadCode}</span></li>
+                            <li>3. Press the unlock button or wait for auto-unlock</li>
+                            <li>4. Turn the handle to open the door</li>
+                          </ol>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="bg-muted p-6 rounded-lg text-center">
+                        <Key className="mx-auto h-12 w-12 text-muted-foreground mb-3" />
+                        <h4 className="font-medium mb-2">Access Code Not Yet Available</h4>
+                        <p className="text-sm text-muted-foreground mb-4">
+                          Your universal access code will be generated automatically once you complete
+                          the check-in process and payment.
+                        </p>
+                        <Badge className="bg-blue-100 text-blue-800">
+                          <Clock className="h-3 w-3 mr-1" />
+                          Pending Check-in Completion
+                        </Badge>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+
               {/* Submit Button */}
               <Card>
                 <CardContent className="pt-6">
