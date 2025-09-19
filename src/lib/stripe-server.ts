@@ -5,5 +5,6 @@ if (!process.env.STRIPE_SECRET_KEY) {
 }
 
 export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: '2024-06-20'
+  // Stripe 18.x ships with a narrowed API version union; use the latest supported version.
+  apiVersion: '2025-06-30.basil'
 });
