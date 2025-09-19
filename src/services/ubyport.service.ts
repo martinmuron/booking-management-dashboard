@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/database';
+import type { Booking as PrismaBooking, Guest as PrismaGuest, UbyPortExport as PrismaUbyPortExport } from '@prisma/client';
 import { UbyPortStatus } from '@prisma/client';
 
 // UbyPort SOAP API interfaces based on Czech Police documentation
@@ -66,6 +67,16 @@ interface UbyPortExportData {
   exportedAt: string;
 }
 
+type PendingExport = PrismaUbyPortExport & {
+  booking: {
+    hostAwayId: string;
+    propertyName: string;
+    guestLeaderName: string;
+    checkInDate: Date;
+    numberOfGuests: number;
+  };
+};
+
 class UbyPortService {
 
   private getApiUrl(): string {
@@ -129,46 +140,43 @@ class UbyPortService {
    * Format nationality code for UbyPort (3-letter code from Czech police číselník)
    */
   private formatNationalityCode(nationality?: string): string {
-    // Common nationality mappings to 3-letter codes used by Czech police
+    if (!nationality) {
+      return 'XXX';
+    }
+
+    const trimmed = nationality.trim().toUpperCase();
+    if (/^[A-Z]{3}$/.test(trimmed)) {
+      return trimmed;
+    }
+
+    // Legacy support: map a handful of common names if encountered
     const nationalityMap: Record<string, string> = {
-      'Czech Republic': 'CZE',
-      'Slovakia': 'SVK',
-      'Germany': 'DEU',
-      'Austria': 'AUT',
-      'Poland': 'POL',
-      'Hungary': 'HUN',
-      'United States': 'USA',
-      'United Kingdom': 'GBR',
-      'France': 'FRA',
-      'Italy': 'ITA',
-      'Spain': 'ESP',
-      'Netherlands': 'NLD',
-      'Belgium': 'BEL',
-      'Switzerland': 'CHE',
-      'Russian Federation': 'RUS',
-      'Ukraine': 'UKR',
-      'China': 'CHN',
-      'Japan': 'JPN',
-      'South Korea': 'KOR',
-      'India': 'IND',
-      'Canada': 'CAN',
-      'Australia': 'AUS',
-      'Brazil': 'BRA',
-      'Argentina': 'ARG',
-      'Mexico': 'MEX',
+      'CZECH REPUBLIC': 'CZE',
+      'SLOVAKIA': 'SVK',
+      'GERMANY': 'DEU',
+      'AUSTRIA': 'AUT',
+      'POLAND': 'POL',
+      'HUNGARY': 'HUN',
+      'UNITED STATES': 'USA',
+      'UNITED KINGDOM': 'GBR',
+      'FRANCE': 'FRA',
+      'ITALY': 'ITA',
+      'SPAIN': 'ESP',
+      'NETHERLANDS': 'NLD',
+      'BELGIUM': 'BEL',
+      'SWITZERLAND': 'CHE',
+      'UKRAINE': 'UKR',
+      'RUSSIA': 'RUS',
+      'CHINA': 'CHN',
+      'JAPAN': 'JPN',
+      'INDIA': 'IND',
+      'CANADA': 'CAN',
+      'AUSTRALIA': 'AUS',
+      'BRAZIL': 'BRA',
+      'MEXICO': 'MEX'
     };
 
-    if (!nationality) {
-      return 'XXX'; // Unknown nationality
-    }
-
-    // Direct 3-letter code
-    if (nationality.length === 3) {
-      return nationality.toUpperCase();
-    }
-
-    // Map common country names
-    return nationalityMap[nationality] || 'XXX';
+    return nationalityMap[trimmed] || 'XXX';
   }
 
   /**
@@ -354,10 +362,16 @@ class UbyPortService {
   /**
    * Convert guest data to UbyPort SOAP format
    */
-  private formatGuestForUbyPortSoap(guest: any, booking: any): UbyPortSoapGuest {
+  private formatGuestForUbyPortSoap(guest: PrismaGuest, booking: PrismaBooking): UbyPortSoapGuest {
     // Format check-in and check-out times (UbyPort expects DateTime format)
     const checkInDateTime = new Date(booking.checkInDate).toISOString();
     const checkOutDateTime = new Date(booking.checkOutDate).toISOString();
+
+    const residenceComponents = [guest.residenceAddress, guest.residenceCity, guest.residenceCountry]
+      .map((value) => (typeof value === 'string' ? value.trim() : ''))
+      .filter(Boolean);
+
+    const purposeCode = guest.purposeOfStay ? Number.parseInt(guest.purposeOfStay, 10) : NaN;
 
     return {
       cFrom: checkInDateTime,
@@ -366,10 +380,10 @@ class UbyPortService {
       cFirstN: guest.firstName || 'Unknown', 
       cDate: this.formatDateOfBirth(guest.dateOfBirth),
       cNati: this.formatNationalityCode(guest.nationality || guest.citizenship),
-      cDocN: guest.documentNumber || 'UNKNOWN',
-      cVisN: guest.visaNumber || undefined,
-      cResi: guest.residenceAddress || `${guest.residenceCity || ''}, ${guest.residenceCountry || ''}`.trim() || undefined,
-      cPurp: guest.purposeOfStay === 'Tourism' ? 99 : undefined, // 99 = Other/Tourism (default)
+      cDocN: guest.documentNumber ? String(guest.documentNumber).toUpperCase() : 'UNKNOWN',
+      cVisN: guest.visaNumber ? String(guest.visaNumber).toUpperCase() : undefined,
+      cResi: residenceComponents.length ? residenceComponents.join(', ') : undefined,
+      cPurp: Number.isNaN(purposeCode) ? 99 : purposeCode,
       cNote: guest.notes || undefined
     };
   }
@@ -377,19 +391,23 @@ class UbyPortService {
   /**
    * Format guest data for UbyPort Czech police export (internal data structure)
    */
-  private formatGuestForUbyPort(guest: any, booking: any): UbyPortGuestData {
+  private formatGuestForUbyPort(guest: PrismaGuest, booking: PrismaBooking): UbyPortGuestData {
+    const residenceComponents = [guest.residenceAddress, guest.residenceCity, guest.residenceCountry]
+      .map((value: string | undefined) => (typeof value === 'string' ? value.trim() : ''))
+      .filter(Boolean);
+
     return {
       firstName: guest.firstName || 'Unknown',
       lastName: guest.lastName || 'Unknown',
       dateOfBirth: guest.dateOfBirth ? new Date(guest.dateOfBirth).toISOString().split('T')[0] : undefined,
       nationality: guest.nationality || guest.citizenship || undefined,
       documentType: guest.documentType || undefined,
-      documentNumber: guest.documentNumber || undefined,
-      visaNumber: guest.visaNumber || undefined,
+      documentNumber: guest.documentNumber ? String(guest.documentNumber).toUpperCase() : undefined,
+      visaNumber: guest.visaNumber ? String(guest.visaNumber).toUpperCase() : undefined,
       arrivalDate: new Date(booking.checkInDate).toISOString().split('T')[0],
       departureDate: new Date(booking.checkOutDate).toISOString().split('T')[0],
-      address: booking.propertyName, // Using property name as address for now
-      purposeOfStay: guest.purposeOfStay || 'Tourism'
+      address: residenceComponents.length ? residenceComponents.join(', ') : booking.propertyName,
+      purposeOfStay: guest.purposeOfStay || '99'
     };
   }
 
@@ -644,13 +662,13 @@ class UbyPortService {
    */
   async getPendingExports(): Promise<{
     success: boolean;
-    exports?: any[];
+    exports?: PendingExport[];
     error?: string;
   }> {
     try {
       console.log('📋 Getting pending UbyPort exports...');
 
-      const pendingExports = await prisma.ubyPortExport.findMany({
+      const pendingExports: PendingExport[] = await prisma.ubyPortExport.findMany({
         where: {
           status: 'EXPORTED' // Ready to submit
         },
