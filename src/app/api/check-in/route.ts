@@ -356,12 +356,15 @@ export async function POST(request: NextRequest) {
       data: guestData
     });
 
-    // Update booking status
+    const leadGuest = guestData[0];
+
     await prisma.booking.update({
       where: { id: booking.id },
       data: {
         status: 'CHECKED_IN',
-        updatedAt: new Date()
+        updatedAt: new Date(),
+        ...(leadGuest.email ? { guestLeaderEmail: leadGuest.email } : {}),
+        ...(leadGuest.phone ? { guestLeaderPhone: leadGuest.phone } : {}),
       }
     });
     
