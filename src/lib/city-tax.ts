@@ -75,7 +75,7 @@ export const calculateCityTaxForGuests = <T extends CityTaxGuestInput>(
   const eligibleGuestCount = guests.reduce((count, guest) => {
     const dateOfBirth = toDateOrNull(guest.dateOfBirth ?? null);
     const age = calculateAge(dateOfBirth, referenceDate);
-    const isAdult = typeof age === 'number' && age >= MINIMUM_TAX_AGE;
+    const isAdult = age === null ? true : age >= MINIMUM_TAX_AGE;
     const exempt = isPragueCityTaxExempt(guest.residenceCity);
 
     return count + (isAdult && !exempt ? 1 : 0);
