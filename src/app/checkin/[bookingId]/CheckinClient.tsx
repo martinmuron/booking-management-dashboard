@@ -24,14 +24,8 @@ import {
   AlertCircle,
   Home,
   Wifi,
-  ShoppingBag,
-  Heart,
   Video,
   Navigation,
-  Utensils,
-  Building2,
-  Mountain,
-  Activity,
   Menu,
   X,
   ChevronRight
@@ -222,10 +216,7 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
   const cityTaxRef = useRef<HTMLDivElement>(null);
   const arrivalRef = useRef<HTMLDivElement>(null);
   const appliancesRef = useRef<HTMLDivElement>(null);
-  const localInterestRef = useRef<HTMLDivElement>(null);
-  const restaurantsRef = useRef<HTMLDivElement>(null);
-  const shoppingRef = useRef<HTMLDivElement>(null);
-  const servicesRef = useRef<HTMLDivElement>(null);
+  const aroundRef = useRef<HTMLDivElement>(null);
   const virtualKeysRef = useRef<HTMLDivElement>(null);
 
   const scrollToSection = (sectionId: string) => {
@@ -235,10 +226,7 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
       'city-tax': cityTaxRef,
       'arrival': arrivalRef,
       'appliances': appliancesRef,
-      'local-interest': localInterestRef,
-      'restaurants': restaurantsRef,
-      'shopping': shoppingRef,
-      'services': servicesRef,
+      'around-you': aroundRef,
       'virtual-keys': virtualKeysRef
     };
 
@@ -259,10 +247,7 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
         { id: 'city-tax', ref: cityTaxRef },
         { id: 'arrival', ref: arrivalRef },
         { id: 'appliances', ref: appliancesRef },
-        { id: 'local-interest', ref: localInterestRef },
-        { id: 'restaurants', ref: restaurantsRef },
-        { id: 'shopping', ref: shoppingRef },
-        { id: 'services', ref: servicesRef },
+        { id: 'around-you', ref: aroundRef },
         { id: 'virtual-keys', ref: virtualKeysRef }
       ];
 
@@ -743,16 +728,18 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
 
   const firstName = booking.guestLeaderName.split(' ')[0] || 'Guest';
 
+  const aroundAddress = booking.propertyAddress || booking.roomNumber || booking.propertyName || 'Prague, Czechia';
+  const mapsQuery = encodeURIComponent(aroundAddress);
+  const mapsEmbedUrl = `https://maps.google.com/maps?q=${mapsQuery}&t=&z=14&ie=UTF8&iwloc=&output=embed`;
+  const mapsExternalUrl = `https://www.google.com/maps/search/?api=1&query=${mapsQuery}`;
+
   const navigationItems = [
     { id: 'booking-details', label: 'Booking Details', icon: MapPin },
     { id: 'guest-registration', label: 'Guest Registration', icon: User },
     { id: 'city-tax', label: 'City Tax Payment', icon: CreditCard },
     { id: 'arrival', label: 'Arrival Instructions', icon: Home },
     { id: 'appliances', label: 'Appliances & WiFi', icon: Wifi },
-    { id: 'local-interest', label: 'Local Attractions', icon: Mountain },
-    { id: 'restaurants', label: 'Restaurants & Bars', icon: Utensils },
-    { id: 'shopping', label: 'Shopping', icon: ShoppingBag },
-    { id: 'services', label: 'Services', icon: Heart },
+    { id: 'around-you', label: 'Around You', icon: Navigation },
     { id: 'virtual-keys', label: 'Virtual Keys', icon: Key }
   ];
 
@@ -1386,191 +1373,39 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
                 </Card>
               </div>
 
-              {/* Local Points of Interest */}
-              <div ref={localInterestRef}>
+              {/* Around You */}
+              <div ref={aroundRef}>
                 <Card className="mb-6">
                   <CardHeader>
                     <CardTitle className="flex items-center">
-                      <Mountain className="mr-2 h-5 w-5" />
-                      Local Points of Interest 🇨🇿
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="bg-muted p-4 rounded-lg">
-                        <h5 className="font-medium text-sm mb-2">Vitkov Hill</h5>
-                        <p className="text-xs text-muted-foreground">
-                          Go for the fantastic views of Prague. There is also a military museum and a huge statue of legendary army commander Jan Zizka. At the bottom of the hill is a foot tunnel leading you to Karlin, a very modern district by the river.
-                        </p>
-                      </div>
-
-                      <div className="bg-muted p-4 rounded-lg">
-                        <h5 className="font-medium text-sm mb-2">Zizkov Tower</h5>
-                        <p className="text-xs text-muted-foreground">
-                          Prague&apos;s tallest tower. If you go to the restaurant, you get free entry, so you can enjoy a reasonably priced meal with a great view.
-                        </p>
-                      </div>
-
-                      <div className="bg-muted p-4 rounded-lg">
-                        <h5 className="font-medium text-sm mb-2">Jiriho z Podebrad</h5>
-                        <p className="text-xs text-muted-foreground">
-                          An imposing gothic church, a farmer&apos;s market (Wed-Sat) and endless cafés, JzP is the place to be.
-                        </p>
-                      </div>
-
-                      <div className="bg-muted p-4 rounded-lg">
-                        <h5 className="font-medium text-sm mb-2">FK Viktoria Zizkov</h5>
-                        <p className="text-xs text-muted-foreground">
-                          Sunday, 10:15am there is only one place to be. Soak up the intimate atmosphere at the local football club. Vikotrka, Her, na, nay!
-                        </p>
-                        <a
-                          href="https://fkzizkov.enigoo.cz/app/tickets"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs text-blue-600 hover:text-blue-700 mt-2 inline-block"
-                        >
-                          📎 Click here for Tickets
-                        </a>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Restaurants & Bars */}
-              <div ref={restaurantsRef}>
-                <Card className="mb-6">
-                  <CardHeader>
-                    <CardTitle className="flex items-center">
-                      <Utensils className="mr-2 h-5 w-5" />
-                      Restaurants & Bars 🍻
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="bg-muted p-4 rounded-lg">
-                        <h5 className="font-medium text-sm mb-2">U Fleku</h5>
-                        <p className="text-xs text-muted-foreground">
-                          Historic brewery from 1499. Traditional Czech beer and food in a medieval setting.
-                        </p>
-                      </div>
-
-                      <div className="bg-muted p-4 rounded-lg">
-                        <h5 className="font-medium text-sm mb-2">Lokál</h5>
-                        <p className="text-xs text-muted-foreground">
-                          Modern Czech pub with excellent beer and traditional dishes. Popular with locals.
-                        </p>
-                      </div>
-
-                      <div className="bg-muted p-4 rounded-lg">
-                        <h5 className="font-medium text-sm mb-2">Café Savoy</h5>
-                        <p className="text-xs text-muted-foreground">
-                          Elegant café with beautiful interior, perfect for breakfast or afternoon coffee.
-                        </p>
-                      </div>
-
-                      <div className="bg-muted p-4 rounded-lg">
-                        <h5 className="font-medium text-sm mb-2">Hemingway Bar</h5>
-                        <p className="text-xs text-muted-foreground">
-                          Award-winning cocktail bar with expert mixologists and sophisticated atmosphere.
-                        </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Shopping */}
-              <div ref={shoppingRef}>
-                <Card className="mb-6">
-                  <CardHeader>
-                    <CardTitle className="flex items-center">
-                      <ShoppingBag className="mr-2 h-5 w-5" />
-                      Shopping
+                      <Navigation className="mr-2 h-5 w-5" />
+                      Around You
                     </CardTitle>
                     <CardDescription>
-                      If Tesco next door doesn&apos;t have what you need, try some of these other options:
+                      Explore dining, coffee, and sights near your stay.
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                      <div className="flex items-center gap-2">
-                        <ShoppingBag className="h-4 w-4 text-muted-foreground" />
-                        <div>
-                          <p className="font-medium text-sm">Lidl</p>
-                          <p className="text-xs text-muted-foreground">Groceries</p>
-                        </div>
+                    <div className="space-y-4">
+                      <div className="aspect-video w-full overflow-hidden rounded-lg border">
+                        <iframe
+                          title={`Map of ${aroundAddress}`}
+                          src={mapsEmbedUrl}
+                          className="h-full w-full"
+                          loading="lazy"
+                          referrerPolicy="no-referrer-when-downgrade"
+                        />
                       </div>
-
-                      <div className="flex items-center gap-2">
-                        <Heart className="h-4 w-4 text-muted-foreground" />
-                        <div>
-                          <p className="font-medium text-sm">Teta</p>
-                          <p className="text-xs text-muted-foreground">Beauty products</p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <Activity className="h-4 w-4 text-muted-foreground" />
-                        <div>
-                          <p className="font-medium text-sm">Dr. Max Lékárna</p>
-                          <p className="text-xs text-muted-foreground">Pharmacy</p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <Building2 className="h-4 w-4 text-muted-foreground" />
-                        <div>
-                          <p className="font-medium text-sm">Flora Shopping Centre</p>
-                          <p className="text-xs text-muted-foreground">Multiple retailers, Cinema</p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <Clock className="h-4 w-4 text-muted-foreground" />
-                        <div>
-                          <p className="font-medium text-sm">Zabka</p>
-                          <p className="text-xs text-muted-foreground">Small grocery store, 24hrs</p>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Services */}
-              <div ref={servicesRef}>
-                <Card className="mb-6">
-                  <CardHeader>
-                    <CardTitle className="flex items-center">
-                      <Heart className="mr-2 h-5 w-5" />
-                      Services
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      <div className="flex items-start gap-2">
-                        <span className="text-sm">💵</span>
-                        <div>
-                          <p className="font-medium text-sm">Money exchange / 📦 DHL Service</p>
-                          <p className="text-xs text-muted-foreground">Mobifon, Seifertova street</p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-start gap-2">
-                        <span className="text-sm">🏥</span>
-                        <div>
-                          <p className="font-medium text-sm">Hospital (VFN)</p>
-                          <p className="text-xs text-muted-foreground">U Nemocnice 499/2, 128 08 Nové Město</p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-start gap-2">
-                        <span className="text-sm">🏥</span>
-                        <div>
-                          <p className="font-medium text-sm">Children&apos;s hospital (FN Motol)</p>
-                          <p className="text-xs text-muted-foreground">V Úvalu 84, 150 06 Praha 5</p>
-                        </div>
+                      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                        <p className="text-sm text-muted-foreground">
+                          Use the map to discover nearby restaurants, bars, and attractions. Tap below to open Google Maps with recommendations around your address.
+                        </p>
+                        <Button asChild variant="outline">
+                          <a href={mapsExternalUrl} target="_blank" rel="noopener noreferrer">
+                            <Navigation className="mr-2 h-4 w-4" />
+                            Open in Google Maps
+                          </a>
+                        </Button>
                       </div>
                     </div>
                   </CardContent>
