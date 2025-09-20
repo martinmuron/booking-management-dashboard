@@ -729,7 +729,19 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
   const firstName = booking.guestLeaderName.split(' ')[0] || 'Guest';
 
   const aroundAddress = booking.propertyAddress || booking.roomNumber || booking.propertyName || 'Prague, Czechia';
-  const mapsQuery = encodeURIComponent(aroundAddress);
+  const aroundCategories = [
+    { id: 'all', label: 'Highlights', query: aroundAddress },
+    { id: 'food', label: 'Food & Drinks', query: `restaurants near ${aroundAddress}` },
+    { id: 'coffee', label: 'Coffee & Cafés', query: `coffee near ${aroundAddress}` },
+    { id: 'attractions', label: 'Attractions', query: `tourist attractions near ${aroundAddress}` }
+  ];
+  const DEFAULT_AROUND_CATEGORY = aroundCategories[0].id;
+  const [selectedAroundCategory, setSelectedAroundCategory] = useState<string>(DEFAULT_AROUND_CATEGORY);
+  useEffect(() => {
+    setSelectedAroundCategory(DEFAULT_AROUND_CATEGORY);
+  }, [aroundAddress]);
+  const selectedAround = aroundCategories.find(category => category.id === selectedAroundCategory) || aroundCategories[0];
+  const mapsQuery = encodeURIComponent(selectedAround.query);
   const mapsEmbedUrl = `https://maps.google.com/maps?q=${mapsQuery}&t=&z=14&ie=UTF8&iwloc=&output=embed`;
   const mapsExternalUrl = `https://www.google.com/maps/search/?api=1&query=${mapsQuery}`;
 
@@ -1387,9 +1399,22 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
+                      <div className="flex flex-wrap gap-2">
+                        {aroundCategories.map((category) => (
+                          <Button
+                            key={category.id}
+                            type="button"
+                            size="sm"
+                            variant={selectedAroundCategory === category.id ? 'default' : 'outline'}
+                            onClick={() => setSelectedAroundCategory(category.id)}
+                          >
+                            {category.label}
+                          </Button>
+                        ))}
+                      </div>
                       <div className="aspect-video w-full overflow-hidden rounded-lg border">
                         <iframe
-                          title={`Map of ${aroundAddress}`}
+                          title={`Map of ${selectedAround.label}`}
                           src={mapsEmbedUrl}
                           className="h-full w-full"
                           loading="lazy"
@@ -1398,7 +1423,7 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
                       </div>
                       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                         <p className="text-sm text-muted-foreground">
-                          Use the map to discover nearby restaurants, bars, and attractions. Tap below to open Google Maps with recommendations around your address.
+                          Showing {selectedAround.label.toLowerCase()} near <span className="font-medium">{aroundAddress}</span>. Tap below to open the full Google Maps view with live suggestions.
                         </p>
                         <Button asChild variant="outline">
                           <a href={mapsExternalUrl} target="_blank" rel="noopener noreferrer">
