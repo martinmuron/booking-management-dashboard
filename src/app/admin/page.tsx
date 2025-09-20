@@ -6,11 +6,12 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import React from 'react';
-import { Search, Calendar, Users, Home, RefreshCw, Loader2, AlertCircle, ExternalLink, Copy, Check, ArrowUpDown, ArrowUp, ArrowDown, Clock, CreditCard, KeyRound, CheckCircle2, AlertTriangle, Shield, Settings, X } from "lucide-react";
+import { Search, Calendar, Users, Home, RefreshCw, Loader2, AlertCircle, ExternalLink, Copy, Check, ArrowUpDown, ArrowUp, ArrowDown, Clock, CreditCard, KeyRound, CheckCircle2, AlertTriangle, X } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
+import { AdminNav } from "@/components/admin/AdminNav";
 
 interface BookingData {
   id: string;
@@ -302,10 +303,11 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
+      <AdminNav />
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-7xl w-full mx-auto">
           {/* Header */}
-                      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 md:gap-6">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 md:gap-6">
             <div>
               <h1 className="text-3xl font-bold text-foreground mb-2">
                 Admin Dashboard
@@ -313,22 +315,6 @@ export default function AdminDashboard() {
               <p className="text-muted-foreground">
                 Manage all bookings and guest information
               </p>
-            </div>
-            <div className="flex flex-col md:flex-row gap-2 mt-4 md:mt-0 md:items-center flex-wrap">
-              <Button
-                onClick={() => router.push('/admin/nuki')}
-                variant="outline"
-              >
-                <Shield className="mr-2 h-4 w-4" />
-                Nuki
-              </Button>
-              <Button
-                onClick={() => router.push('/admin/settings')}
-                variant="outline"
-              >
-                <Settings className="mr-2 h-4 w-4" />
-                Settings
-              </Button>
             </div>
           </div>
 

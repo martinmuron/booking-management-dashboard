@@ -80,17 +80,17 @@ export async function clearWebhookLogs(): Promise<void> {
   }
 }
 
-// Auto-cleanup logs older than 7 days and enforce max count
+// Auto-cleanup logs older than 3 days and enforce max count
 async function cleanupOldLogs(): Promise<void> {
   try {
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const retentionCutoff = new Date();
+    retentionCutoff.setDate(retentionCutoff.getDate() - 3);
 
-    // Delete logs older than 7 days
+    // Delete logs older than 3 days
     const deleteOldResult = await prisma.webhookLog.deleteMany({
       where: {
         createdAt: {
-          lt: sevenDaysAgo
+          lt: retentionCutoff
         }
       }
     });
@@ -126,7 +126,7 @@ async function cleanupOldLogs(): Promise<void> {
     }
 
     if (deleteOldResult.count > 0) {
-      console.log(`🧹 Cleaned up ${deleteOldResult.count} old webhook logs (>7 days)`);
+      console.log(`🧹 Cleaned up ${deleteOldResult.count} old webhook logs (>3 days)`);
     }
   } catch (error) {
     console.error('Failed to cleanup old webhook logs:', error);

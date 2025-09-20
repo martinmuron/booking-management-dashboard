@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { hasNukiAccess } from "@/utils/nuki-properties";
+import { AdminNav } from "@/components/admin/AdminNav";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -17,7 +18,6 @@ import {
   Mail,
   CreditCard,
   Key,
-  ArrowLeft,
   Edit,
   Save,
   X,
@@ -292,10 +292,13 @@ export default function BookingAdminPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="flex items-center space-x-2">
-          <Loader2 className="h-8 w-8 animate-spin" />
-          <span>Loading booking details...</span>
+      <div className="min-h-screen bg-background">
+        <AdminNav />
+        <div className="flex items-center justify-center px-4 py-12">
+          <div className="flex items-center space-x-2">
+            <Loader2 className="h-8 w-8 animate-spin" />
+            <span>Loading booking details...</span>
+          </div>
         </div>
       </div>
     );
@@ -303,21 +306,24 @@ export default function BookingAdminPage() {
 
   if (error && !booking) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Card className="w-full max-w-md">
-          <CardContent className="pt-6">
-            <div className="flex items-center space-x-2 text-red-600">
-              <AlertCircle className="h-5 w-5" />
-              <span>{error}</span>
-            </div>
-            <Button 
-              onClick={() => router.push('/admin')}
-              className="w-full mt-4"
-            >
-              Back to Dashboard
-            </Button>
-          </CardContent>
-        </Card>
+      <div className="min-h-screen bg-background">
+        <AdminNav />
+        <div className="flex items-center justify-center px-4 py-12">
+          <Card className="w-full max-w-md">
+            <CardContent className="pt-6">
+              <div className="flex items-center space-x-2 text-red-600">
+                <AlertCircle className="h-5 w-5" />
+                <span>{error}</span>
+              </div>
+              <Button 
+                onClick={() => router.push('/admin')}
+                className="w-full mt-4"
+              >
+                Back to Dashboard
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     );
   }
@@ -334,26 +340,18 @@ export default function BookingAdminPage() {
 
   return (
     <div className="min-h-screen bg-background">
+      <AdminNav />
       <div className="container mx-auto px-4 py-8">
         <div className="w-full">
           {/* Header */}
-          <div className="flex items-center justify-between mb-8">
-            <div className="flex items-center gap-4">
-              <Button 
-                variant="ghost" 
-                onClick={() => router.push('/admin')}
-                className="p-2"
-              >
-                <ArrowLeft className="h-4 w-4" />
-              </Button>
-              <div>
-                <h1 className="text-3xl font-bold text-foreground">
-                  Booking Management
-                </h1>
-                <p className="text-muted-foreground">
-                  {booking.propertyName} • {booking.guestLeaderName}
-                </p>
-              </div>
+          <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
+            <div>
+              <h1 className="text-3xl font-bold text-foreground">
+                Booking Management
+              </h1>
+              <p className="text-muted-foreground">
+                {booking.propertyName} • {booking.guestLeaderName}
+              </p>
             </div>
             <div className="flex gap-2">
               <Button 

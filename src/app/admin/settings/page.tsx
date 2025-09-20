@@ -4,13 +4,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { useRouter } from "next/navigation";
-import { ArrowLeft, RefreshCw } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { AdminNav } from "@/components/admin/AdminNav";
 
 export default function AdminSettingsPage() {
   useAuth(); // Protect this page
-  const router = useRouter();
   const [email, setEmail] = useState("nick@investmentsolutions.cz");
   const [password, setPassword] = useState("123456");
   const [status, setStatus] = useState<string | null>(null);
@@ -207,26 +206,13 @@ export default function AdminSettingsPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-background p-4">
-      <div className="max-w-4xl mx-auto space-y-6">
+    <div className="min-h-screen bg-background">
+      <AdminNav />
+      <div className="max-w-4xl mx-auto space-y-6 p-4">
         
-        {/* Header with Back Button */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => router.push('/admin')}
-              className="flex items-center gap-2"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Back to Dashboard
-            </Button>
-            <div>
-              <h1 className="text-2xl font-bold">Admin Settings</h1>
-              <p className="text-muted-foreground text-sm">Configure credentials and webhooks</p>
-            </div>
-          </div>
+        <div>
+          <h1 className="text-2xl font-bold">Admin Settings</h1>
+          <p className="text-muted-foreground text-sm">Configure credentials and webhooks</p>
         </div>
         
         {/* Admin Credentials */}
