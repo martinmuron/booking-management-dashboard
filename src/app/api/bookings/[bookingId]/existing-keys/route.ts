@@ -146,7 +146,7 @@ async function resolveNukiPropertyCode(booking: BookingModel): Promise<string | 
   }
 
   const listing = listings.find(item => item.id === reservation.listingMapId);
-  const internalName = listing?.internalListingName?.trim();
+  const internalName = listing?.name?.trim();
 
   if (internalName && hasNukiAccess(internalName)) {
     return internalName;
@@ -224,7 +224,7 @@ async function matchNukiKeysToBooking(
   const checkOut = new Date(booking.checkOutDate);
   const now = Date.now();
 
-  const groupedByCode = new Map<number, Array<{
+  const groupedByCode = new Map<string, Array<{
     auth: NukiAuthorization;
     deviceName: string;
     similarity: number;
@@ -256,14 +256,15 @@ async function matchNukiKeysToBooking(
 
     const similarity = auth.name ? nameSimilarity(booking.guestLeaderName, auth.name) : 0;
 
-    const entries = groupedByCode.get(auth.code) ?? [];
+    const codeKey = String(auth.code);
+    const entries = groupedByCode.get(codeKey) ?? [];
     entries.push({ auth, deviceName: deviceName || '', similarity });
-    groupedByCode.set(auth.code, entries);
+    groupedByCode.set(codeKey, entries);
   }
 
   const matches: NukiKeyMatch[] = [];
 
-  for (const [code, entries] of groupedByCode.entries()) {
+  for (const [codeKey, entries] of groupedByCode.entries()) {
     if (entries.length === 0) {
       continue;
     }
@@ -290,7 +291,7 @@ async function matchNukiKeysToBooking(
       }
 
       const auth = entry.auth as NukiAuthorization;
-      const codeString = String(code).padStart(6, '0');
+      const codeString = String(codeKey).padStart(6, '0');
       const allowedUntil = auth.allowedUntilDate ? new Date(auth.allowedUntilDate).getTime() : null;
       const isActive = !!auth.enabled && (!allowedUntil || allowedUntil >= now);
 
