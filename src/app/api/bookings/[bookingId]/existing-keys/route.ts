@@ -146,7 +146,7 @@ async function resolveNukiPropertyCode(booking: BookingModel): Promise<string | 
   }
 
   const listing = listings.find(item => item.id === reservation.listingMapId);
-  const internalName = listing?.name?.trim();
+  const internalName = (listing?.internalListingName || listing?.name)?.trim();
 
   if (internalName && hasNukiAccess(internalName)) {
     return internalName;

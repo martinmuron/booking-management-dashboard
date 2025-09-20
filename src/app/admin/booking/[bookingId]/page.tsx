@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
+import { hasNukiAccess } from "@/utils/nuki-properties";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -329,6 +330,7 @@ export default function BookingAdminPage() {
   const touristTax = calculateTouristTax(booking);
   const leadGuestEmail = booking.guestLeaderEmail;
   const checkedInGuests = booking.guests || [];
+  const propertyHasNuki = existingKeys.booking?.isAuthorized ?? hasNukiAccess(booking.propertyName);
 
   return (
     <div className="min-h-screen bg-background">
@@ -707,6 +709,7 @@ export default function BookingAdminPage() {
               </Card>
 
               {/* Virtual Keys */}
+              {propertyHasNuki && (
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center">
@@ -715,10 +718,6 @@ export default function BookingAdminPage() {
                   </CardTitle>
                   <CardDescription>
                     {(() => {
-                      if (!existingKeys.booking?.isAuthorized) {
-                        return 'This property does not have smart lock access';
-                      }
-
                       if (existingKeys.hasKeys) {
                         return existingKeys.universalKeypadCode
                           ? `Universal code: ${existingKeys.universalKeypadCode} (${existingKeys.totalKeys} keys active)`
@@ -731,18 +730,6 @@ export default function BookingAdminPage() {
                 </CardHeader>
                 <CardContent>
                   {(() => {
-                    if (!existingKeys.booking?.isAuthorized) {
-                      return (
-                        <div className="text-center py-8">
-                          <Key className="mx-auto h-12 w-12 mb-3 opacity-50" />
-                          <p className="text-muted-foreground mb-2">Smart lock access not available</p>
-                          <p className="text-sm text-muted-foreground">
-                            Property "{booking.propertyName}" does not have NUKI smart lock integration
-                          </p>
-                        </div>
-                      );
-                    }
-
                     if (existingKeys.hasKeys) {
                       return (
                         <div className="space-y-4">
@@ -826,6 +813,7 @@ export default function BookingAdminPage() {
                   })()}
                 </CardContent>
               </Card>
+              )}
               {/* Quick Actions */}
               <Card>
                 <CardHeader>

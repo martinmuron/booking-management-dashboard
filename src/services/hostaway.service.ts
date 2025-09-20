@@ -48,6 +48,7 @@ interface HostAwayReservationsResponse {
 interface HostAwayListing {
   id: number;
   name: string;
+  internalListingName?: string;
   address: string;
   description?: string;
   personCapacity?: number;
