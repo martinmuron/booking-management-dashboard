@@ -267,11 +267,62 @@ class HostAwayService {
       const response = await this.makeRequest<HostAwayListingsResponse>('/listings', {
         includeResources: '1'
       });
-      return response.result || [];
+      const listings = response.result || [];
+
+      // Filter and fix images for each listing
+      return listings.map(listing => this.fixListingImages(listing));
     } catch (error) {
       console.error('Failed to fetch listings:', error);
       return [];
     }
+  }
+
+  /**
+   * Fix listing images by prioritizing HostAway S3 URLs over broken external URLs
+   */
+  private fixListingImages(listing: HostAwayListing): HostAwayListing {
+    // Filter images to only include working URLs
+    const workingImages = listing.listingImages?.filter(img =>
+      img.url && this.isValidImageUrl(img.url)
+    ) || [];
+
+    // Set thumbnail to first working image if current thumbnail is broken
+    let thumbnailUrl = listing.thumbnailUrl;
+    if (!thumbnailUrl || !this.isValidImageUrl(thumbnailUrl)) {
+      // Find first HostAway S3 image or any working image
+      const firstWorkingImage = workingImages.find(img =>
+        img.url.includes('hostaway-platform.s3')
+      ) || workingImages[0];
+
+      if (firstWorkingImage) {
+        thumbnailUrl = firstWorkingImage.url;
+      }
+    }
+
+    return {
+      ...listing,
+      thumbnailUrl,
+      listingImages: workingImages
+    };
+  }
+
+  /**
+   * Check if an image URL is likely to work
+   */
+  private isValidImageUrl(url: string): boolean {
+    // Prioritize HostAway S3 images (these should always work)
+    if (url.includes('hostaway-platform.s3')) {
+      return true;
+    }
+
+    // Filter out known problematic Airbnb URLs that commonly break
+    if (url.includes('muscache.com')) {
+      // These often break or require special authentication
+      return false;
+    }
+
+    // Allow other image domains
+    return url.startsWith('http') && (url.includes('.jpg') || url.includes('.jpeg') || url.includes('.png') || url.includes('.webp'));
   }
 
   /**
@@ -297,7 +348,10 @@ class HostAwayService {
       }
 
       const response = await this.makeRequest<HostAwayListingsResponse>('/listings', queryParams);
-      return response.result || [];
+      const listings = response.result || [];
+
+      // Filter and fix images for each listing
+      return listings.map(listing => this.fixListingImages(listing));
     } catch (error) {
       console.error('Failed to search listings with availability filters:', error);
       return [];
