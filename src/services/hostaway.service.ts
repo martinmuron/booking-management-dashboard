@@ -293,6 +293,9 @@ class HostAwayService {
     if (workingImages.length > 0) {
       // Use the first full-resolution HostAway S3 image
       thumbnailUrl = workingImages[0].url;
+    } else {
+      // Log properties with no working images for debugging
+      console.warn(`⚠️  Property "${listing.name}" has no HostAway S3 images. Raw thumbnail: ${listing.thumbnailUrl}, Raw images: ${listing.listingImages?.length || 0}`);
     }
 
     return {

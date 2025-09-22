@@ -225,14 +225,12 @@ export default function HomeClient() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {displayProperties.map((property) => {
-                const imageUrl = property.thumbnailUrl || property.listingImages?.[0]?.url;
-
                 return (
                   <Card key={property.id} className="overflow-hidden hover:shadow-lg transition-shadow group">
                     <div className="aspect-video relative overflow-hidden">
-                      {imageUrl ? (
+                      {property.thumbnailUrl ? (
                         <Image
-                          src={imageUrl}
+                          src={property.thumbnailUrl}
                           alt={property.name}
                           fill
                           className="object-cover group-hover:scale-105 transition-transform duration-300"
