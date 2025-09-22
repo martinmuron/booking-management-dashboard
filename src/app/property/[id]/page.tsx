@@ -1,50 +1,13 @@
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import PropertyClient from './PropertyClient';
+import { hostAwayService, type HostAwayListing } from '@/services/hostaway.service';
 
-interface PropertyDetail {
-  id: number;
-  name: string;
-  address: string;
-  description: string;
-  personCapacity: number;
-  bedroomsNumber: number;
-  bathroomsNumber: number;
-  price: number;
-  currencyCode: string;
-  thumbnailUrl?: string;
-  listingImages?: Array<{
-    id: number;
-    url: string;
-    caption: string;
-  }>;
-  listingAmenities?: Array<{
-    id: number;
-    amenityName: string;
-  }>;
-  airbnbListingUrl?: string;
-  vrboListingUrl?: string;
-  expediaListingUrl?: string;
-}
-
-async function getPropertyById(propertyId: string): Promise<PropertyDetail | null> {
+async function getPropertyById(propertyId: string): Promise<HostAwayListing | null> {
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.nickandjenny.cz';
-    const response = await fetch(`${baseUrl}/api/properties`, {
-      cache: 'force-cache', // Cache properties for better performance
-      next: { revalidate: 3600 } // Revalidate every hour
-    });
-
-    if (!response.ok) {
-      return null;
-    }
-
-    const data = await response.json();
-    if (!data.success) {
-      return null;
-    }
-
-    const property = data.data.find((p: PropertyDetail) => p.id.toString() === propertyId);
+    // Directly use the hostaway service instead of making an HTTP request
+    const properties = await hostAwayService.getListings();
+    const property = properties.find((p: HostAwayListing) => p.id.toString() === propertyId);
     return property || null;
   } catch (error) {
     console.error('Error fetching property for metadata:', error);
@@ -75,7 +38,7 @@ export async function generateMetadata({
     .join(', ') || '';
 
   const title = `${property.name} | Nick & Jenny Prague Rentals`;
-  const description = `${property.bedroomsNumber} bedroom, ${property.bathroomsNumber} bathroom apartment in ${property.address.includes('Prague') ? property.address : `${property.address}, Prague`}. Sleeps ${property.personCapacity}. From ${property.currencyCode} ${property.price}/night. ${keyAmenities ? `Features: ${keyAmenities}.` : ''} Book now on Airbnb, VRBO, or Expedia.`.trim();
+  const description = `${property.bedroomsNumber || 'Beautiful'} bedroom, ${property.bathroomsNumber || 'modern'} bathroom apartment in ${property.address.includes('Prague') ? property.address : `${property.address}, Prague`}. Sleeps ${property.personCapacity || 'guests'}. ${property.price && property.currencyCode ? `From ${property.currencyCode} ${property.price}/night.` : ''} ${keyAmenities ? `Features: ${keyAmenities}.` : ''} Book now on Airbnb, VRBO, or Expedia.`.trim();
 
   // Create a clean description for meta (remove line breaks)
   const cleanDescription = property.description
@@ -89,7 +52,7 @@ export async function generateMetadata({
       `${property.name.toLowerCase()}`,
       'Prague vacation rental',
       'Prague apartment',
-      `${property.bedroomsNumber} bedroom Prague`,
+      ...(property.bedroomsNumber ? [`${property.bedroomsNumber} bedroom Prague`] : []),
       property.address.toLowerCase(),
       'Airbnb Prague',
       'VRBO Prague',

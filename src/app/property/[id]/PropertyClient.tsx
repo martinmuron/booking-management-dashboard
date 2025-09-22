@@ -9,40 +9,16 @@ import { Logo } from "@/components/Logo";
 import { ImageModal } from "@/components/ImageModal";
 import Link from "next/link";
 import Image from "next/image";
-
-interface PropertyDetail {
-  id: number;
-  name: string;
-  address: string;
-  description: string;
-  personCapacity: number;
-  bedroomsNumber: number;
-  bathroomsNumber: number;
-  price: number;
-  currencyCode: string;
-  thumbnailUrl?: string;
-  listingImages?: Array<{
-    id: number;
-    url: string;
-    caption: string;
-  }>;
-  listingAmenities?: Array<{
-    id: number;
-    amenityName: string;
-  }>;
-  airbnbListingUrl?: string;
-  vrboListingUrl?: string;
-  expediaListingUrl?: string;
-}
+import { type HostAwayListing } from '@/services/hostaway.service';
 
 interface PropertyClientProps {
-  initialProperty?: PropertyDetail;
+  initialProperty?: HostAwayListing;
 }
 
 export default function PropertyClient({ initialProperty }: PropertyClientProps) {
   const params = useParams();
   const propertyId = params.id as string;
-  const [property, setProperty] = useState<PropertyDetail | null>(initialProperty || null);
+  const [property, setProperty] = useState<HostAwayListing | null>(initialProperty || null);
   const [loading, setLoading] = useState(!initialProperty);
   const [error, setError] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -57,7 +33,7 @@ export default function PropertyClient({ initialProperty }: PropertyClientProps)
           const data = await response.json();
 
           if (data.success) {
-            const foundProperty = data.data.find((p: PropertyDetail) => p.id.toString() === propertyId);
+            const foundProperty = data.data.find((p: HostAwayListing) => p.id.toString() === propertyId);
             if (foundProperty) {
               setProperty(foundProperty);
             } else {
@@ -205,26 +181,28 @@ export default function PropertyClient({ initialProperty }: PropertyClientProps)
                 {/* Key Stats */}
                 <div className="grid grid-cols-3 gap-4 py-4 border rounded-lg bg-gray-50">
                   <div className="text-center">
-                    <div className="font-semibold text-lg">{property.bedroomsNumber}</div>
+                    <div className="font-semibold text-lg">{property.bedroomsNumber || 'N/A'}</div>
                     <div className="text-sm text-gray-600">Bedrooms</div>
                   </div>
                   <div className="text-center">
-                    <div className="font-semibold text-lg">{property.bathroomsNumber}</div>
+                    <div className="font-semibold text-lg">{property.bathroomsNumber || 'N/A'}</div>
                     <div className="text-sm text-gray-600">Bathrooms</div>
                   </div>
                   <div className="text-center">
-                    <div className="font-semibold text-lg">{property.personCapacity}</div>
+                    <div className="font-semibold text-lg">{property.personCapacity || 'N/A'}</div>
                     <div className="text-sm text-gray-600">Guests</div>
                   </div>
                 </div>
 
                 {/* Price */}
-                <div className="text-center p-4 border rounded-lg">
-                  <div className="text-3xl font-bold text-blue-600">
-                    {property.currencyCode} {property.price}
+                {(property.price && property.currencyCode) && (
+                  <div className="text-center p-4 border rounded-lg">
+                    <div className="text-3xl font-bold text-blue-600">
+                      {property.currencyCode} {property.price}
+                    </div>
+                    <div className="text-sm text-gray-600">per night</div>
                   </div>
-                  <div className="text-sm text-gray-600">per night</div>
-                </div>
+                )}
 
                 {/* Booking Links */}
                 <div className="space-y-3">
