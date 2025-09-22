@@ -278,25 +278,21 @@ class HostAwayService {
   }
 
   /**
-   * Fix listing images by prioritizing HostAway S3 URLs over broken external URLs
+   * Fix listing images by using high-quality HostAway S3 images instead of thumbnails
    */
   private fixListingImages(listing: HostAwayListing): HostAwayListing {
-    // Filter images to only include working URLs
+    // Filter images to only include working HostAway S3 URLs (full resolution)
     const workingImages = listing.listingImages?.filter(img =>
       img.url && this.isValidImageUrl(img.url)
     ) || [];
 
-    // Set thumbnail to first working image if current thumbnail is broken
-    let thumbnailUrl = listing.thumbnailUrl;
-    if (!thumbnailUrl || !this.isValidImageUrl(thumbnailUrl)) {
-      // Find first HostAway S3 image or any working image
-      const firstWorkingImage = workingImages.find(img =>
-        img.url.includes('hostaway-platform.s3')
-      ) || workingImages[0];
+    // ALWAYS use the first high-quality HostAway image as thumbnail
+    // Never use the low-quality thumbnailUrl - use full resolution instead
+    let thumbnailUrl: string | undefined;
 
-      if (firstWorkingImage) {
-        thumbnailUrl = firstWorkingImage.url;
-      }
+    if (workingImages.length > 0) {
+      // Use the first full-resolution HostAway S3 image
+      thumbnailUrl = workingImages[0].url;
     }
 
     return {
@@ -307,22 +303,12 @@ class HostAwayService {
   }
 
   /**
-   * Check if an image URL is likely to work
+   * Check if an image URL is valid - only allow HostAway S3 images
    */
   private isValidImageUrl(url: string): boolean {
-    // Prioritize HostAway S3 images (these should always work)
-    if (url.includes('hostaway-platform.s3')) {
-      return true;
-    }
-
-    // Filter out known problematic Airbnb URLs that commonly break
-    if (url.includes('muscache.com')) {
-      // These often break or require special authentication
-      return false;
-    }
-
-    // Allow other image domains
-    return url.startsWith('http') && (url.includes('.jpg') || url.includes('.jpeg') || url.includes('.png') || url.includes('.webp'));
+    // ONLY use HostAway S3 images - these are reliable and always work
+    // Reject ALL external platform URLs (Airbnb, VRBO, etc.) as they often break
+    return url.includes('hostaway-platform.s3');
   }
 
   /**
