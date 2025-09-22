@@ -4,11 +4,11 @@ import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
-import { MapPin, Star, Users, Calendar, ArrowLeft, Loader2 } from "lucide-react";
+import { MapPin, ArrowLeft, Loader2 } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { ImageModal } from "@/components/ImageModal";
 import Link from "next/link";
+import Image from "next/image";
 
 interface PropertyDetail {
   id: number;
@@ -153,10 +153,13 @@ export default function PropertyClient({ initialProperty }: PropertyClientProps)
                   className="aspect-[16/10] relative rounded-lg overflow-hidden cursor-pointer group"
                   onClick={() => handleImageClick(0)}
                 >
-                  <img
+                  <Image
                     src={property.thumbnailUrl}
                     alt={property.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    fill
+                    unoptimized
+                    className="object-cover group-hover:scale-105 transition-transform duration-300"
+                    sizes="(min-width: 1024px) 66vw, 100vw"
                   />
                   <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300" />
                 </div>
@@ -171,10 +174,13 @@ export default function PropertyClient({ initialProperty }: PropertyClientProps)
                       className="aspect-square relative rounded-lg overflow-hidden cursor-pointer group"
                       onClick={() => handleImageClick(index + 1)}
                     >
-                      <img
+                      <Image
                         src={image.url}
                         alt={image.caption || `${property.name} - Image ${index + 1}`}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        fill
+                        unoptimized
+                        className="object-cover group-hover:scale-105 transition-transform duration-300"
+                        sizes="(min-width: 768px) 33vw, 50vw"
                       />
                       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300" />
                     </div>

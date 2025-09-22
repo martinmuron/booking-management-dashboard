@@ -59,6 +59,39 @@ interface VirtualKey {
   deactivatedAt?: string;
 }
 
+interface ExistingKeySummary {
+  id: string;
+  device: string;
+  keyType: string;
+  name: string;
+  isActive: boolean;
+  allowedFromDate?: string | null;
+  allowedUntilDate?: string | null;
+}
+
+interface ExistingKeysState {
+  hasKeys: boolean;
+  totalKeys: number;
+  universalKeypadCode: string | null;
+  existingKeys: ExistingKeySummary[];
+  booking?: {
+    isAuthorized?: boolean;
+  };
+}
+
+interface ExistingKeysApiResponse {
+  success: boolean;
+  data?: {
+    hasKeys: boolean;
+    existingKeys?: ExistingKeySummary[];
+    universalKeypadCode?: string | null;
+    totalKeys?: number;
+    booking?: {
+      isAuthorized?: boolean;
+    };
+  };
+}
+
 interface BookingData {
   id: string;
   hostAwayId: string;
@@ -183,7 +216,12 @@ export default function BookingAdminPage() {
   const [editingStatus, setEditingStatus] = useState(false);
   const [newStatus, setNewStatus] = useState('');
   const [generatingKeys, setGeneratingKeys] = useState(false);
-  const [existingKeys, setExistingKeys] = useState<any>({ hasKeys: false, existingKeys: [], universalKeypadCode: null });
+  const [existingKeys, setExistingKeys] = useState<ExistingKeysState>({
+    hasKeys: false,
+    existingKeys: [],
+    universalKeypadCode: null,
+    totalKeys: 0,
+  });
 
   useEffect(() => {
     const fetchBooking = async () => {
@@ -204,9 +242,23 @@ export default function BookingAdminPage() {
           // Fetch existing NUKI keys
           try {
             const keysResponse = await fetch(`/api/bookings/${bookingId}/existing-keys`);
-            const keysData = await keysResponse.json();
-            if (keysData.success) {
-              setExistingKeys(keysData.data);
+            const keysData: ExistingKeysApiResponse = await keysResponse.json();
+            if (keysData.success && keysData.data) {
+              const {
+                hasKeys,
+                existingKeys: fetchedKeys = [],
+                universalKeypadCode = null,
+                totalKeys = fetchedKeys.length,
+                booking: keysBooking,
+              } = keysData.data;
+
+              setExistingKeys({
+                hasKeys,
+                existingKeys: fetchedKeys,
+                universalKeypadCode,
+                totalKeys,
+                booking: keysBooking,
+              });
             }
           } catch (err) {
             console.error('Error fetching existing keys:', err);
@@ -760,7 +812,7 @@ export default function BookingAdminPage() {
                               </TableRow>
                             </TableHeader>
                             <TableBody>
-                              {existingKeys.existingKeys.map((key: any, index: number) => (
+                              {existingKeys.existingKeys.map((key, index) => (
                                 <TableRow key={index}>
                                   <TableCell className="font-medium">{key.device}</TableCell>
                                   <TableCell>{key.name}</TableCell>

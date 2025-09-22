@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { hostAwayService } from '@/services/hostaway.service';
+import { hostAwayService, type HostAwayReservation, type HostAwayCustomField } from '@/services/hostaway.service';
 
 interface CheckInLinkData {
   reservationId: number;
@@ -27,19 +27,19 @@ export async function GET(request: NextRequest) {
       offset,
       // includeResources: '1' is already included in getReservations
     });
-    
-    const reservations = Array.isArray(result) ? result : result.data;
+
+    const reservations: HostAwayReservation[] = Array.isArray(result) ? result : result.data || [];
     const checkInLinks: CheckInLinkData[] = [];
     
     console.log(`📋 Processing ${reservations.length} reservations for check-in links...`);
     
     for (const reservation of reservations) {
       // Check if reservation has custom field values
-      const customFields = (reservation as any).customFieldValues;
-      
+      const customFields: HostAwayCustomField[] | undefined = reservation.customFieldValues;
+
       if (customFields && Array.isArray(customFields)) {
         // Look for existing check-in fields by specific field IDs
-        const checkInField = customFields.find((field: any) => 
+        const checkInField = customFields.find((field: HostAwayCustomField) => 
           field.customFieldId && field.value && [
             60175, // reservation_checkin_online_url
             60177, // reservation_checkin_reservation_url  
@@ -48,15 +48,19 @@ export async function GET(request: NextRequest) {
         );
         
         // Look for check-in status field
-        const statusField = customFields.find((field: any) => 
+        const statusField = customFields.find((field: HostAwayCustomField) => 
           field.customFieldId === 60179 // reservation_checkin_online_status
         );
         
         if (checkInField && checkInField.value) {
+          const customFieldId = checkInField.customFieldId;
+          if (!customFieldId) {
+            continue;
+          }
           // Determine field type
           let fieldType: 'existing_checkin_url' | 'checkin_reservation_url' | 'nick_jenny_field';
-          if (checkInField.customFieldId === 60175) fieldType = 'existing_checkin_url';
-          else if (checkInField.customFieldId === 60177) fieldType = 'checkin_reservation_url';
+          if (customFieldId === 60175) fieldType = 'existing_checkin_url';
+          else if (customFieldId === 60177) fieldType = 'checkin_reservation_url';
           else fieldType = 'nick_jenny_field';
           
           checkInLinks.push({
@@ -67,7 +71,7 @@ export async function GET(request: NextRequest) {
             propertyName: reservation.listingName,
             checkInLink: checkInField.value,
             checkInStatus: statusField?.value || undefined,
-            customFieldId: checkInField.customFieldId,
+            customFieldId,
             fieldType
           });
           

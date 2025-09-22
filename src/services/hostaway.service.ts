@@ -35,6 +35,7 @@ interface HostAwayReservation {
   doorCode?: string;
   checkInTime?: number;
   checkOutTime?: number;
+  customFieldValues?: HostAwayCustomField[];
 }
 
 interface HostAwayReservationsResponse {
@@ -85,12 +86,21 @@ interface HostAwayCalendarDay {
   note?: string;
 }
 
-interface HostAwayCalendarResponse {
-  status: string;
-  result: HostAwayCalendarDay[];
+interface HostAwayCalendarDayRaw {
+  date: string;
+  status?: string;
+  isAvailable?: number;
+  price?: number;
+  minimumStay?: number;
+  reservations?: Array<{ id: number }>;
 }
 
-interface HostAwayCustomField {
+interface HostAwayCalendarApiResponse {
+  status: string;
+  result: HostAwayCalendarDayRaw[];
+}
+
+export interface HostAwayCustomField {
   id?: number;
   customFieldId?: number;
   name?: string;
@@ -300,7 +310,7 @@ class HostAwayService {
     endDate: string
   ): Promise<HostAwayCalendarDay[]> {
     try {
-      const response = await this.makeRequest<any>(
+      const response = await this.makeRequest<HostAwayCalendarApiResponse>(
         `/listings/${listingId}/calendar`,
         {
           startDate,
@@ -311,13 +321,18 @@ class HostAwayService {
       
       // Transform the raw HostAway response to our expected interface
       const rawCalendar = response.result || [];
-      return rawCalendar.map((day: any): HostAwayCalendarDay => ({
-        date: day.date,
-        available: day.isAvailable === 1 && day.status === 'available', // Convert HostAway format to boolean
-        price: day.price || 0,
-        minimumStay: day.minimumStay || 1,
-        reservationId: day.reservations?.length > 0 ? day.reservations[0].id : undefined
-      }));
+      return rawCalendar.map((day): HostAwayCalendarDay => {
+        const reservations = day.reservations ?? [];
+        const reservationId = reservations.length > 0 ? reservations[0]?.id : undefined;
+
+        return {
+          date: day.date,
+          available: day.isAvailable === 1 && day.status === 'available', // Convert HostAway format to boolean
+          price: day.price || 0,
+          minimumStay: day.minimumStay || 1,
+          reservationId,
+        };
+      });
     } catch (error) {
       console.error(`Failed to fetch calendar for listing ${listingId}:`, error);
       return [];
@@ -622,5 +637,5 @@ export const hostAwayService = new HostAwayService();
 export type { 
   HostAwayReservation, 
   HostAwayListing, 
-  HostAwayCalendarDay 
+  HostAwayCalendarDay
 };

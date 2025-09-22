@@ -1,15 +1,16 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { MapPin, Star, Users, Calendar, ArrowRight, Loader2, CheckCircle, XCircle } from "lucide-react";
+import { MapPin, Users, Calendar, ArrowRight, Loader2, CheckCircle, XCircle } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { PropertySearch } from "@/components/PropertySearch";
 import { CountUpAnimation } from "@/components/CountUpAnimation";
 import Link from "next/link";
+import Image from "next/image";
 
 interface Property {
   id: number;
@@ -65,7 +66,7 @@ export default function HomeClient() {
       } else {
         setError('Failed to load properties');
       }
-    } catch (err) {
+    } catch {
       setError('Network error: Unable to load properties');
     } finally {
       setLoading(false);
@@ -89,7 +90,7 @@ export default function HomeClient() {
       }));
 
       setDisplayProperties(propertiesWithAvailability);
-    } catch (err) {
+    } catch {
       setError('Failed to check availability');
     } finally {
       setSearching(false);
@@ -223,60 +224,66 @@ export default function HomeClient() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {displayProperties.map((property) => (
-                <Card key={property.id} className="overflow-hidden hover:shadow-lg transition-shadow group">
-                  <div className="aspect-video relative overflow-hidden">
-                    {property.thumbnailUrl || property.listingImages?.[0]?.url ? (
-                      <img
-                        src={property.thumbnailUrl || property.listingImages?.[0]?.url}
-                        alt={property.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
-                        <MapPin className="w-8 h-8 text-gray-400" />
-                      </div>
-                    )}
-                    {searchCriteria && property.availability && (
-                      <div className="absolute top-3 right-3">
-                        <Badge
-                          variant={property.availability.available ? "default" : "destructive"}
-                          className={property.availability.available ? "bg-green-600" : ""}
-                        >
-                          {property.availability.available ? (
-                            <>
-                              <CheckCircle className="w-3 h-3 mr-1" />
-                              Available
-                            </>
-                          ) : (
-                            <>
-                              <XCircle className="w-3 h-3 mr-1" />
-                              Unavailable
-                            </>
-                          )}
-                        </Badge>
-                      </div>
-                    )}
-                  </div>
+              {displayProperties.map((property) => {
+                const imageUrl = property.thumbnailUrl || property.listingImages?.[0]?.url;
 
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-lg line-clamp-1">{property.name}</CardTitle>
-                    <div className="flex items-center gap-2 text-gray-600">
-                      <MapPin className="w-4 h-4" />
-                      <span className="text-sm line-clamp-1">{property.address}</span>
+                return (
+                  <Card key={property.id} className="overflow-hidden hover:shadow-lg transition-shadow group">
+                    <div className="aspect-video relative overflow-hidden">
+                      {imageUrl ? (
+                        <Image
+                          src={imageUrl}
+                          alt={property.name}
+                          fill
+                          unoptimized
+                          className="object-cover group-hover:scale-105 transition-transform duration-300"
+                          sizes="(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+                          <MapPin className="w-8 h-8 text-gray-400" />
+                        </div>
+                      )}
+                      {searchCriteria && property.availability && (
+                        <div className="absolute top-3 right-3">
+                          <Badge
+                            variant={property.availability.available ? "default" : "destructive"}
+                            className={property.availability.available ? "bg-green-600" : ""}
+                          >
+                            {property.availability.available ? (
+                              <>
+                                <CheckCircle className="w-3 h-3 mr-1" />
+                                Available
+                              </>
+                            ) : (
+                              <>
+                                <XCircle className="w-3 h-3 mr-1" />
+                                Unavailable
+                              </>
+                            )}
+                          </Badge>
+                        </div>
+                      )}
                     </div>
-                  </CardHeader>
 
-                  <CardContent className="pt-0">
-                    <div className="space-y-3">
-                      {/* Property details */}
-                      <div className="flex items-center gap-4 text-sm text-gray-600">
-                        {property.bedroomsNumber && (
-                          <div className="flex items-center gap-1">
-                            <Calendar className="w-4 h-4" />
-                            <span>{property.bedroomsNumber} bed</span>
-                          </div>
-                        )}
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-lg line-clamp-1">{property.name}</CardTitle>
+                      <div className="flex items-center gap-2 text-gray-600">
+                        <MapPin className="w-4 h-4" />
+                        <span className="text-sm line-clamp-1">{property.address}</span>
+                      </div>
+                    </CardHeader>
+
+                    <CardContent className="pt-0">
+                      <div className="space-y-3">
+                        {/* Property details */}
+                        <div className="flex items-center gap-4 text-sm text-gray-600">
+                          {property.bedroomsNumber && (
+                            <div className="flex items-center gap-1">
+                              <Calendar className="w-4 h-4" />
+                              <span>{property.bedroomsNumber} bed</span>
+                            </div>
+                          )}
                         {property.personCapacity && (
                           <div className="flex items-center gap-1">
                             <Users className="w-4 h-4" />
@@ -316,7 +323,8 @@ export default function HomeClient() {
                     </div>
                   </CardContent>
                 </Card>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

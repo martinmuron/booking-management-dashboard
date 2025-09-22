@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
-import { hostAwayService } from '@/services/hostaway.service';
+import { hostAwayService, type HostAwayListing } from '@/services/hostaway.service';
 
 // Cache properties for 10 minutes to improve mobile performance
-let cachedProperties: any = null;
+let cachedProperties: HostAwayListing[] | null = null;
 let cacheTimestamp: number = 0;
 const CACHE_DURATION = 10 * 60 * 1000; // 10 minutes in milliseconds
 
@@ -20,7 +20,7 @@ export async function GET() {
     }
 
     console.log('🔄 Cache miss or expired, fetching fresh properties data');
-    const properties = await hostAwayService.getListings();
+    const properties: HostAwayListing[] = await hostAwayService.getListings();
     
     // Update cache
     cachedProperties = properties;

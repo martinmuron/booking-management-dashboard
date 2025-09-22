@@ -247,7 +247,7 @@ export default function AboutPage() {
                   Prague, Czech Republic
                 </div>
                 <p className="text-gray-600 text-sm">
-                  Born in the 80s, we're two Brits living long-term in Prague. We renovate old properties 
+                  Born in the 80s, we&apos;re two Brits living long-term in Prague. We renovate old properties 
                   throughout Prague and are always looking for exciting projects. In our spare time 
                   we enjoy food and travel across Europe and beyond.
                 </p>
@@ -319,7 +319,7 @@ export default function AboutPage() {
                       <Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
                     ))}
                   </div>
-                  <p className="text-gray-600 mb-4 text-sm line-clamp-4">"{testimonial.text}"</p>
+                  <p className="text-gray-600 mb-4 text-sm line-clamp-4">&ldquo;{testimonial.text}&rdquo;</p>
                   <div className="flex justify-between items-center text-xs">
                     <div>
                       <div className="font-semibold text-black">{testimonial.name}</div>

@@ -2,6 +2,15 @@ import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import CheckinClient from './CheckinClient';
 
+interface VirtualKey {
+  id: string;
+  keyType: string;
+  nukiKeyId: string;
+  isActive: boolean;
+  createdAt: string;
+  deactivatedAt?: string;
+}
+
 interface BookingData {
   id: string;
   propertyName: string;
@@ -14,7 +23,7 @@ interface BookingData {
   cityTaxAmount: number;
   cityTaxPerPerson: number;
   universalKeypadCode?: string;
-  virtualKeys?: any[];
+  virtualKeys?: VirtualKey[];
 }
 
 async function getBookingByToken(token: string): Promise<BookingData | null> {

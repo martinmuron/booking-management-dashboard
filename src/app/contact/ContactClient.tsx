@@ -71,7 +71,7 @@ export default function ContactClient() {
           <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-6" />
           <h1 className="text-3xl font-bold mb-4">Thank You!</h1>
           <p className="text-muted-foreground mb-8">
-            We've received your message and will get back to you as soon as possible.
+            We&apos;ve received your message and will get back to you as soon as possible.
           </p>
           <Link href="/">
             <Button>
@@ -95,7 +95,7 @@ export default function ContactClient() {
           </div>
           <h1 className="text-4xl font-bold mb-4">Get in Touch</h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Have questions about our properties or need assistance? We're here to help make your Prague experience perfect.
+            Have questions about our properties or need assistance? We&apos;re here to help make your Prague experience perfect.
           </p>
         </div>
 
@@ -169,7 +169,7 @@ export default function ContactClient() {
               <CardHeader>
                 <CardTitle>Send us a Message</CardTitle>
                 <CardDescription>
-                  Fill out the form below and we'll get back to you as soon as possible.
+                  Fill out the form below and we&apos;ll get back to you as soon as possible.
                 </CardDescription>
               </CardHeader>
               <CardContent>

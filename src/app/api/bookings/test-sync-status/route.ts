@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
       }, { status: 404 });
     }
     
-    console.log('📋 Reservation custom fields:', (reservation as any).customFieldValues);
+    console.log('📋 Reservation custom fields:', reservation.customFieldValues);
     
     // Test the sync
     const syncResult = await bookingService.syncSpecificReservation(reservation);
@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
         id: reservation.id,
         guestName: reservation.guestName,
         checkInDate: reservation.arrivalDate,
-        customFields: (reservation as any).customFieldValues || []
+        customFields: reservation.customFieldValues || []
       },
       syncResult
     });

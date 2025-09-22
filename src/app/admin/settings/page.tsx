@@ -53,7 +53,7 @@ export default function AdminSettingsPage() {
       } else {
         setSyncStatus(`❌ Sync failed: ${data.error || 'Unknown error'}`);
       }
-    } catch (error) {
+    } catch {
       setSyncStatus('❌ Network error: Unable to sync with HostAway');
     } finally {
       setSyncing(false);

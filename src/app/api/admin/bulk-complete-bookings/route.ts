@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/database';
 
 // POST /api/admin/bulk-complete-bookings - Bulk update past bookings to COMPLETED status
-export async function POST(request: NextRequest) {
+export async function POST() {
   try {
     console.log('🔄 Starting bulk completion of past bookings...');
 

@@ -200,6 +200,7 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
   const [loading, setLoading] = useState(!initialBooking);
   const [booking, setBooking] = useState<BookingData | null>(initialBooking || null);
   const [error, setError] = useState<string | null>(null);
+  const [fatalError, setFatalError] = useState<string | null>(null);
   const [guests, setGuests] = useState<Guest[]>([]);
   const [guestErrors, setGuestErrors] = useState<Record<string, GuestErrors>>({});
   const [paymentCompleted, setPaymentCompleted] = useState(false);
@@ -329,12 +330,18 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
               setGuests([fallbackGuest]);
               setGuestErrors({ [fallbackGuest.id]: {} });
             }
+            setError(null);
+            setFatalError(null);
           } else {
-            setError(data.error || 'Failed to load booking');
+            const message = data.error || 'Failed to load booking';
+            setError(message);
+            setFatalError(message);
           }
         } catch (err) {
           console.error('Failed to fetch booking details', err);
-          setError('Network error: Unable to load booking details');
+          const message = 'Network error: Unable to load booking details';
+          setError(message);
+          setFatalError(message);
         } finally {
           setLoading(false);
         }
@@ -367,6 +374,8 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
 
       setGuests([defaultGuest]);
       setGuestErrors({ [defaultGuest.id]: {} });
+      setError(null);
+      setFatalError(null);
     }
   }, [bookingToken, initialBooking]);
 
@@ -582,6 +591,18 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
     [guests, nights]
   );
 
+  const isGuestTaxInfoComplete = useMemo(() => {
+    return guests.every(guest => {
+      return (
+        sanitizeString(guest.dateOfBirth) &&
+        sanitizeString(guest.residenceCity) &&
+        sanitizeString(guest.residenceCountry)
+      );
+    });
+  }, [guests]);
+
+  const canInitiatePayment = cityTaxAmount > 0 && isGuestTaxInfoComplete;
+
   useEffect(() => {
     if (cityTaxAmount === 0) {
       setPaymentCompleted(true);
@@ -621,6 +642,10 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
   };
 
   const initiatePayment = () => {
+    if (!canInitiatePayment) {
+      setError('Please complete guest details (date of birth and city/country of residence) before paying the city tax.');
+      return;
+    }
     setShowPaymentForm(true);
     setError(null);
   };
@@ -695,52 +720,27 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="flex items-center space-x-2">
-          <Loader2 className="h-8 w-8 animate-spin" />
-          <span>Loading your booking...</span>
-        </div>
-      </div>
-    );
-  }
+  const firstName = booking?.guestLeaderName.split(' ')[0] || 'Guest';
 
-  if (error || !booking) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <AlertCircle className="h-5 w-5 text-red-500" />
-              Check-in Error
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              {error || 'Booking not found. Please check your check-in link.'}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  const firstName = booking.guestLeaderName.split(' ')[0] || 'Guest';
-
-  const aroundAddress = booking.propertyAddress || booking.roomNumber || booking.propertyName || 'Prague, Czechia';
-  const aroundCategories = [
-    { id: 'all', label: 'Highlights', query: aroundAddress },
-    { id: 'food', label: 'Food & Drinks', query: `restaurants near ${aroundAddress}` },
-    { id: 'coffee', label: 'Coffee & Cafés', query: `coffee near ${aroundAddress}` },
-    { id: 'attractions', label: 'Attractions', query: `tourist attractions near ${aroundAddress}` }
-  ];
-  const DEFAULT_AROUND_CATEGORY = aroundCategories[0].id;
+  const aroundAddress = booking?.propertyAddress || booking?.roomNumber || booking?.propertyName || 'Prague, Czechia';
+  const aroundCategories = useMemo(
+    () => [
+      { id: 'all', label: 'Highlights', query: aroundAddress },
+      { id: 'food', label: 'Food & Drinks', query: `restaurants near ${aroundAddress}` },
+      { id: 'coffee', label: 'Coffee & Cafés', query: `coffee near ${aroundAddress}` },
+      { id: 'attractions', label: 'Attractions', query: `tourist attractions near ${aroundAddress}` }
+    ],
+    [aroundAddress]
+  );
+  const DEFAULT_AROUND_CATEGORY = aroundCategories[0]?.id ?? 'all';
   const [selectedAroundCategory, setSelectedAroundCategory] = useState<string>(DEFAULT_AROUND_CATEGORY);
   useEffect(() => {
     setSelectedAroundCategory(DEFAULT_AROUND_CATEGORY);
-  }, [aroundAddress]);
-  const selectedAround = aroundCategories.find(category => category.id === selectedAroundCategory) || aroundCategories[0];
+  }, [DEFAULT_AROUND_CATEGORY]);
+  const selectedAround = useMemo(
+    () => aroundCategories.find(category => category.id === selectedAroundCategory) || aroundCategories[0],
+    [aroundCategories, selectedAroundCategory]
+  );
   const mapsQuery = encodeURIComponent(selectedAround.query);
   const mapsEmbedUrl = `https://maps.google.com/maps?q=${mapsQuery}&t=&z=14&ie=UTF8&iwloc=&output=embed`;
   const mapsExternalUrl = `https://www.google.com/maps/search/?api=1&query=${mapsQuery}`;
@@ -754,6 +754,37 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
     { id: 'around-you', label: 'Around You', icon: Navigation },
     { id: 'virtual-keys', label: 'Virtual Keys', icon: Key }
   ];
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="flex items-center space-x-2">
+          <Loader2 className="h-8 w-8 animate-spin" />
+          <span>Loading your booking...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (fatalError || !booking) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-red-500" />
+              Check-in Error
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">
+              {fatalError || 'Booking not found. Please check your check-in link.'}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -1233,6 +1264,11 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
                         <p className="text-sm text-muted-foreground">
                           Total tax amount: <strong>{cityTaxAmount} CZK</strong>
                         </p>
+                        {!isGuestTaxInfoComplete && (
+                          <p className="text-xs text-amber-600">
+                            Please enter date of birth and residence city/country for each guest before paying the city tax.
+                          </p>
+                        )}
                         {showPaymentForm ? (
                           <StripePayment
                             amount={cityTaxAmount}
@@ -1242,7 +1278,7 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
                             onError={handlePaymentError}
                           />
                         ) : (
-                          <Button onClick={initiatePayment} disabled={cityTaxAmount === 0}>
+                          <Button onClick={initiatePayment} disabled={!canInitiatePayment}>
                             Pay Prague City Tax ({cityTaxAmount} CZK)
                           </Button>
                         )}

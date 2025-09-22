@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/database';
 
 // POST /api/admin/complete-all-past-bookings - Mark ALL past bookings as COMPLETED regardless of current status
-export async function POST(request: NextRequest) {
+export async function POST() {
   try {
     console.log('🔄 Starting comprehensive completion of ALL past bookings...');
 

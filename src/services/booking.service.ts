@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { prisma } from '@/lib/database';
-import { hostAwayService, type HostAwayReservation } from './hostaway.service';
+import { hostAwayService, type HostAwayReservation, type HostAwayCustomField } from './hostaway.service';
 import { ubyPortService } from './ubyport.service';
 
 interface BookingData {
@@ -17,6 +17,19 @@ interface BookingData {
   checkInToken: string;
   status: 'PENDING' | 'CHECKED_IN' | 'PAYMENT_PENDING' | 'PAYMENT_COMPLETED' | 'KEYS_DISTRIBUTED' | 'COMPLETED';
 }
+
+type BookingUpdateData = {
+  updatedAt: Date;
+  propertyName?: string;
+  guestLeaderName?: string;
+  guestLeaderEmail?: string;
+  guestLeaderPhone?: string | null;
+  checkInDate?: Date;
+  checkOutDate?: Date;
+  numberOfGuests?: number;
+  roomNumber?: string | null;
+  status?: BookingData['status'];
+};
 
 class BookingService {
   
@@ -42,19 +55,19 @@ class BookingService {
    * Extract existing check-in status from HostAway custom fields
    * Maps checkin.io status to our platform status
    */
-  private extractCheckInStatusFromCustomFields(reservation: HostAwayReservation & { customFieldValues?: any[] }): {
+  private extractCheckInStatusFromCustomFields(reservation: HostAwayReservation): {
     status: 'PENDING' | 'CHECKED_IN' | 'PAYMENT_PENDING' | 'PAYMENT_COMPLETED' | 'KEYS_DISTRIBUTED' | 'COMPLETED';
     hasExistingCheckInLink: boolean;
     existingCheckInUrl?: string;
   } {
-    const customFields = reservation.customFieldValues || [];
-    
+    const customFields: HostAwayCustomField[] = reservation.customFieldValues || [];
+
     // Look for existing check-in status (field ID 60179)
-    const statusField = customFields.find(field => field.customFieldId === 60179);
+    const statusField = customFields.find((field) => field.customFieldId === 60179);
     const checkInStatus = statusField?.value;
-    
+
     // Look for existing check-in URL (field ID 60175)
-    const urlField = customFields.find(field => field.customFieldId === 60175);
+    const urlField = customFields.find((field) => field.customFieldId === 60175);
     const existingCheckInUrl = urlField?.value;
     
     console.log(`🔍 [CHECK-IN STATUS] Reservation ${reservation.id} - Status: ${checkInStatus}, Has URL: ${!!existingCheckInUrl}`);
@@ -109,7 +122,7 @@ class BookingService {
   /**
    * Prepare UbyPort export data when guest completes check-in (but don't submit yet)
    */
-  private async prepareUbyPortExportOnCheckIn(bookingId: string, previousStatus?: string): Promise<void> {
+  private async prepareUbyPortExportOnCheckIn(bookingId: string): Promise<void> {
     try {
       // Check if UbyPort credentials are configured
       const credentials = {
@@ -396,7 +409,7 @@ class BookingService {
           });
 
           // Extract existing check-in status from HostAway custom fields
-          const checkInInfo = this.extractCheckInStatusFromCustomFields(reservation as HostAwayReservation & { customFieldValues?: any[] });
+          const checkInInfo = this.extractCheckInStatusFromCustomFields(reservation);
           
           const checkInToken = existingBooking?.checkInToken ?? await this.generateCheckInToken();
 
@@ -441,7 +454,7 @@ class BookingService {
             if (hasHostAwayChanges || shouldUpdateStatus) {
               console.log(`🔍 [SYNC DEBUG] Updating booking ${existingBooking.id} with ${hasHostAwayChanges ? 'HostAway data' : ''}${hasHostAwayChanges && shouldUpdateStatus ? ' and ' : ''}${shouldUpdateStatus ? 'check-in status' : ''}`);
               
-              const updateData: any = {
+              const updateData: BookingUpdateData = {
                 updatedAt: new Date()
               };
               
@@ -474,7 +487,7 @@ class BookingService {
               
               // Prepare UbyPort export data if status changed to CHECKED_IN (submit on check-in night)
               if (shouldUpdateStatus && updateData.status === 'CHECKED_IN') {
-                await this.prepareUbyPortExportOnCheckIn(updatedBooking.id, existingBooking.status);
+                await this.prepareUbyPortExportOnCheckIn(updatedBooking.id);
               }
               
               // Skip HostAway check-in link update to prevent email flooding
@@ -710,7 +723,7 @@ class BookingService {
       });
 
       // Extract existing check-in status from HostAway custom fields
-      const checkInInfo = this.extractCheckInStatusFromCustomFields(reservation as HostAwayReservation & { customFieldValues?: any[] });
+      const checkInInfo = this.extractCheckInStatusFromCustomFields(reservation);
       
       const checkInToken = existingBooking?.checkInToken ?? await this.generateCheckInToken();
 
@@ -753,7 +766,7 @@ class BookingService {
         if (hasHostAwayChanges || shouldUpdateStatus) {
           console.log(`🔍 [SINGLE SYNC] Updating booking ${existingBooking.id} with ${hasHostAwayChanges ? 'HostAway data' : ''}${hasHostAwayChanges && shouldUpdateStatus ? ' and ' : ''}${shouldUpdateStatus ? 'check-in status' : ''}`);
           
-          const updateData: any = {
+          const updateData: BookingUpdateData = {
             updatedAt: new Date()
           };
           
@@ -786,7 +799,7 @@ class BookingService {
           
           // Prepare UbyPort export data if status changed to CHECKED_IN (submit on check-in night)
           if (shouldUpdateStatus && updateData.status === 'CHECKED_IN') {
-            await this.prepareUbyPortExportOnCheckIn(updatedBooking.id, existingBooking.status);
+            await this.prepareUbyPortExportOnCheckIn(updatedBooking.id);
           }
           
           // Skip HostAway check-in link update to prevent email flooding

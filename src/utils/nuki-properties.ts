@@ -38,7 +38,7 @@ export const NUKI_AUTHORIZED_PROPERTIES = [
  * @returns true if property should show access codes, false otherwise
  */
 export function hasNukiAccess(propertyName: string): boolean {
-  return NUKI_AUTHORIZED_PROPERTIES.includes(propertyName as any);
+  return NUKI_AUTHORIZED_PROPERTIES.some((authorizedName) => authorizedName === propertyName);
 }
 
 /**

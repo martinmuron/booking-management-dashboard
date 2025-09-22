@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { nukiApiService } from '@/services/nuki-api.service';
 import { VirtualKeyService } from '@/services/virtual-key.service';
 import { prisma } from '@/lib/database';
-import { VirtualKeyType } from '@/types';
 
 // POST /api/virtual-keys - Generate virtual keys for a booking
 export async function POST(request: NextRequest) {

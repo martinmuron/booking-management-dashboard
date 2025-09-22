@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { hostAwayService } from '@/services/hostaway.service';
+import { NextResponse } from 'next/server';
+import { hostAwayService, type HostAwayReservation, type HostAwayCustomField } from '@/services/hostaway.service';
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     console.log('🔍 Checking HostAway custom field data...');
 
@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
       offset: 0
     });
 
-    const reservations = Array.isArray(reservationsResponse)
+    const reservations: HostAwayReservation[] = Array.isArray(reservationsResponse)
       ? reservationsResponse
       : reservationsResponse.data || [];
 
@@ -25,19 +25,24 @@ export async function GET(request: NextRequest) {
       // Get full reservation details with custom fields
       const fullReservation = await hostAwayService.getReservationById(reservation.id);
 
-      const result = {
+      const result: {
+        reservationId: number;
+        guestName: string;
+        customFieldValues: HostAwayCustomField[];
+        nickJennyField: HostAwayCustomField | null;
+      } = {
         reservationId: reservation.id,
         guestName: reservation.guestName || `${reservation.guestFirstName} ${reservation.guestLastName}`,
-        customFieldValues: (fullReservation as any)?.customFieldValues || [],
-        nickJennyField: null as any
+        customFieldValues: fullReservation?.customFieldValues || [],
+        nickJennyField: null
       };
 
-      if ((fullReservation as any)?.customFieldValues) {
-        const customFieldValues = (fullReservation as any).customFieldValues;
+      const customFieldValues = fullReservation?.customFieldValues;
+      if (customFieldValues) {
         console.log('📋 Custom fields found:', customFieldValues.length);
 
         // Look for field 81717 (Nick Jenny field)
-        const nickJennyField = customFieldValues.find((field: any) =>
+        const nickJennyField = customFieldValues.find((field: HostAwayCustomField) =>
           field.customFieldId === 81717 || field.id === 81717
         );
 
@@ -52,7 +57,7 @@ export async function GET(request: NextRequest) {
 
         // Show all custom fields for debugging
         console.log('📋 All custom fields:');
-        customFieldValues.forEach((field: any) => {
+        customFieldValues.forEach((field: HostAwayCustomField) => {
           console.log(`   Field ${field.customFieldId || field.id}: "${field.value}"`);
         });
       } else {
