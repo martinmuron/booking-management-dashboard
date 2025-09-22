@@ -306,19 +306,11 @@ export default function HomeClient() {
 
                       {/* Action buttons */}
                       <div className="flex gap-2">
-                        <Link href={`/property/${property.id}`} className="flex-1">
+                        <Link href={`/property/${property.id}`} className="w-full">
                           <Button variant="outline" size="sm" className="w-full">
                             View Details
                           </Button>
                         </Link>
-                        {property.airbnbListingUrl && (
-                          <a href={property.airbnbListingUrl} target="_blank" rel="noopener noreferrer" className="flex-1">
-                            <Button size="sm" className="w-full bg-black hover:bg-gray-800 text-white">
-                              Book Now
-                              <ArrowRight className="w-3 h-3 ml-1" />
-                            </Button>
-                          </a>
-                        )}
                       </div>
                     </div>
                   </CardContent>

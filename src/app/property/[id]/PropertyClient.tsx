@@ -204,46 +204,6 @@ export default function PropertyClient({ initialProperty }: PropertyClientProps)
                   </div>
                 )}
 
-                {/* Booking Links */}
-                <div className="space-y-3">
-                  <h3 className="font-semibold">Book Now</h3>
-                  {property.airbnbListingUrl && (
-                    <a
-                      href={property.airbnbListingUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="block"
-                    >
-                      <Button className="w-full" variant="default">
-                        Book on Airbnb
-                      </Button>
-                    </a>
-                  )}
-                  {property.vrboListingUrl && (
-                    <a
-                      href={property.vrboListingUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="block"
-                    >
-                      <Button className="w-full" variant="outline">
-                        Book on VRBO
-                      </Button>
-                    </a>
-                  )}
-                  {property.expediaListingUrl && (
-                    <a
-                      href={property.expediaListingUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="block"
-                    >
-                      <Button className="w-full" variant="outline">
-                        Book on Expedia
-                      </Button>
-                    </a>
-                  )}
-                </div>
 
                 {/* Amenities */}
                 {property.listingAmenities && property.listingAmenities.length > 0 && (

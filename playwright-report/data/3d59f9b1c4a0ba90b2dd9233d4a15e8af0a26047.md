@@ -1,0 +1,1752 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - banner [ref=e4]:
+      - generic [ref=e6]:
+        - generic [ref=e7]:
+          - generic [ref=e8]: Nick & Jenny
+          - generic [ref=e9]: Your Prague Host
+        - generic [ref=e10]:
+          - link "About Us" [ref=e11] [cursor=pointer]:
+            - /url: /about
+            - button "About Us" [ref=e12]
+          - link "Contact" [ref=e13] [cursor=pointer]:
+            - /url: /contact
+            - button "Contact" [ref=e14]
+    - generic [ref=e16]:
+      - heading "Experience Prague Like a Local" [level=1] [ref=e17]:
+        - text: Experience Prague
+        - generic [ref=e18]: Like a Local
+      - paragraph [ref=e19]: Thoughtfully renovated apartments in the heart of Prague. Modern amenities, prime locations, and exceptional hospitality for your perfect stay.
+      - generic [ref=e20]:
+        - generic [ref=e21]:
+          - generic [ref=e23]: "62"
+          - generic [ref=e24]: Premium Properties
+        - generic [ref=e25]:
+          - generic [ref=e27]: 1,499+
+          - generic [ref=e28]: Happy Guests
+        - generic [ref=e29]:
+          - generic [ref=e31]: "48.9"
+          - generic [ref=e32]: Average Rating
+        - generic [ref=e33]:
+          - generic [ref=e35]: 23/7
+          - generic [ref=e36]: Guest Support
+      - generic [ref=e39]:
+        - generic [ref=e40]:
+          - generic [ref=e41]: Check-in
+          - generic [ref=e42]:
+            - img
+            - textbox "Select date" [ref=e45]
+        - generic [ref=e46]:
+          - generic [ref=e47]: Check-out
+          - generic [ref=e48]:
+            - img
+            - textbox "Select date" [ref=e51]
+        - generic [ref=e52]:
+          - generic [ref=e53]: Guests
+          - combobox [ref=e54]:
+            - generic [ref=e55]:
+              - img
+              - generic: 2 guests
+            - img
+        - generic [ref=e56]:
+          - button "Search" [disabled]:
+            - img
+            - text: Search
+    - generic [ref=e58]:
+      - heading "Our Properties" [level=2] [ref=e60]
+      - generic [ref=e61]:
+        - generic [ref=e62]:
+          - img "Old Town 1 Bedroom Oasis with AC and Double Shower" [ref=e64]
+          - generic [ref=e65]:
+            - generic [ref=e66]: Old Town 1 Bedroom Oasis with AC and Double Shower
+            - generic [ref=e67]:
+              - img [ref=e68]
+              - generic [ref=e71]: Karoliny Světlé 1019/5
+          - generic [ref=e73]:
+            - generic [ref=e74]:
+              - generic [ref=e75]:
+                - img [ref=e76]
+                - generic [ref=e78]: 1 bed
+              - generic [ref=e79]:
+                - img [ref=e80]
+                - generic [ref=e85]: 4 guests
+            - generic [ref=e86]:
+              - generic [ref=e87]: EUR 150
+              - generic [ref=e88]: / night
+            - generic [ref=e89]:
+              - link "View Details" [ref=e90] [cursor=pointer]:
+                - /url: /property/271429
+                - button "View Details" [ref=e91]
+              - link "Book Now" [ref=e92] [cursor=pointer]:
+                - /url: https://www.airbnb.com/rooms/19723704
+                - button "Book Now" [ref=e93]:
+                  - text: Book Now
+                  - img
+        - generic [ref=e94]:
+          - img "Great Terrace in Big, Central Flat" [ref=e96]
+          - generic [ref=e97]:
+            - generic [ref=e98]: Great Terrace in Big, Central Flat
+            - generic [ref=e99]:
+              - img [ref=e100]
+              - generic [ref=e103]: Husitská 232/59
+          - generic [ref=e105]:
+            - generic [ref=e106]:
+              - generic [ref=e107]:
+                - img [ref=e108]
+                - generic [ref=e110]: 3 bed
+              - generic [ref=e111]:
+                - img [ref=e112]
+                - generic [ref=e117]: 8 guests
+            - generic [ref=e118]:
+              - generic [ref=e119]: EUR 200
+              - generic [ref=e120]: / night
+            - generic [ref=e121]:
+              - link "View Details" [ref=e122] [cursor=pointer]:
+                - /url: /property/271430
+                - button "View Details" [ref=e123]
+              - link "Book Now" [ref=e124] [cursor=pointer]:
+                - /url: https://www.airbnb.com/rooms/12464359
+                - button "Book Now" [ref=e125]:
+                  - text: Book Now
+                  - img
+        - generic [ref=e126]:
+          - img "Central designer studio by beautiful park & church" [ref=e128]
+          - generic [ref=e129]:
+            - generic [ref=e130]: Central designer studio by beautiful park & church
+            - generic [ref=e131]:
+              - img [ref=e132]
+              - generic [ref=e135]: Pernerova 326/18
+          - generic [ref=e137]:
+            - generic [ref=e138]:
+              - generic [ref=e139]:
+                - img [ref=e140]
+                - generic [ref=e142]: 1 bed
+              - generic [ref=e143]:
+                - img [ref=e144]
+                - generic [ref=e149]: 4 guests
+            - generic [ref=e150]:
+              - generic [ref=e151]: EUR 200
+              - generic [ref=e152]: / night
+            - generic [ref=e153]:
+              - link "View Details" [ref=e154] [cursor=pointer]:
+                - /url: /property/271432
+                - button "View Details" [ref=e155]
+              - link "Book Now" [ref=e156] [cursor=pointer]:
+                - /url: https://www.airbnb.com/rooms/24068499
+                - button "Book Now" [ref=e157]:
+                  - text: Book Now
+                  - img
+        - generic [ref=e158]:
+          - img "Charming, modern, 1-bed flat by Museum of Prague" [ref=e160]
+          - generic [ref=e161]:
+            - generic [ref=e162]: Charming, modern, 1-bed flat by Museum of Prague
+            - generic [ref=e163]:
+              - img [ref=e164]
+              - generic [ref=e167]: Křižíkova 255/7
+          - generic [ref=e169]:
+            - generic [ref=e170]:
+              - generic [ref=e171]:
+                - img [ref=e172]
+                - generic [ref=e174]: 1 bed
+              - generic [ref=e175]:
+                - img [ref=e176]
+                - generic [ref=e181]: 4 guests
+            - generic [ref=e182]:
+              - generic [ref=e183]: EUR 157
+              - generic [ref=e184]: / night
+            - generic [ref=e185]:
+              - link "View Details" [ref=e186] [cursor=pointer]:
+                - /url: /property/271433
+                - button "View Details" [ref=e187]
+              - link "Book Now" [ref=e188] [cursor=pointer]:
+                - /url: https://www.airbnb.com/rooms/30574366
+                - button "Book Now" [ref=e189]:
+                  - text: Book Now
+                  - img
+        - generic [ref=e190]:
+          - img "Stylish one bed apartment by Namesti Miru" [ref=e192]
+          - generic [ref=e193]:
+            - generic [ref=e194]: Stylish one bed apartment by Namesti Miru
+            - generic [ref=e195]:
+              - img [ref=e196]
+              - generic [ref=e199]: Korunní 727/7
+          - generic [ref=e201]:
+            - generic [ref=e202]:
+              - generic [ref=e203]:
+                - img [ref=e204]
+                - generic [ref=e206]: 1 bed
+              - generic [ref=e207]:
+                - img [ref=e208]
+                - generic [ref=e213]: 4 guests
+            - generic [ref=e214]:
+              - generic [ref=e215]: EUR 120
+              - generic [ref=e216]: / night
+            - generic [ref=e217]:
+              - link "View Details" [ref=e218] [cursor=pointer]:
+                - /url: /property/271434
+                - button "View Details" [ref=e219]
+              - link "Book Now" [ref=e220] [cursor=pointer]:
+                - /url: https://www.airbnb.com/rooms/34863711
+                - button "Book Now" [ref=e221]:
+                  - text: Book Now
+                  - img
+        - generic [ref=e222]:
+          - img "Newly renovated 1-bed apartment at Charles Bridge" [ref=e224]
+          - generic [ref=e225]:
+            - generic [ref=e226]: Newly renovated 1-bed apartment at Charles Bridge
+            - generic [ref=e227]:
+              - img [ref=e228]
+              - generic [ref=e231]: Karlova 163/30
+          - generic [ref=e233]:
+            - generic [ref=e234]:
+              - generic [ref=e235]:
+                - img [ref=e236]
+                - generic [ref=e238]: 1 bed
+              - generic [ref=e239]:
+                - img [ref=e240]
+                - generic [ref=e245]: 4 guests
+            - generic [ref=e246]:
+              - generic [ref=e247]: EUR 500
+              - generic [ref=e248]: / night
+            - generic [ref=e249]:
+              - link "View Details" [ref=e250] [cursor=pointer]:
+                - /url: /property/271435
+                - button "View Details" [ref=e251]
+              - link "Book Now" [ref=e252] [cursor=pointer]:
+                - /url: https://www.airbnb.com/rooms/26728596
+                - button "Book Now" [ref=e253]:
+                  - text: Book Now
+                  - img
+        - generic [ref=e254]:
+          - img "Bright, Spacious Apartment in the Historic Centre" [ref=e256]
+          - generic [ref=e257]:
+            - generic [ref=e258]: Bright, Spacious Apartment in the Historic Centre
+            - generic [ref=e259]:
+              - img [ref=e260]
+              - generic [ref=e263]: Krakovská 584/1
+          - generic [ref=e265]:
+            - generic [ref=e266]:
+              - generic [ref=e267]:
+                - img [ref=e268]
+                - generic [ref=e270]: 2 bed
+              - generic [ref=e271]:
+                - img [ref=e272]
+                - generic [ref=e277]: 7 guests
+            - generic [ref=e278]:
+              - generic [ref=e279]: EUR 500
+              - generic [ref=e280]: / night
+            - generic [ref=e281]:
+              - link "View Details" [ref=e282] [cursor=pointer]:
+                - /url: /property/271436
+                - button "View Details" [ref=e283]
+              - link "Book Now" [ref=e284] [cursor=pointer]:
+                - /url: https://www.airbnb.com/rooms/17859870
+                - button "Book Now" [ref=e285]:
+                  - text: Book Now
+                  - img
+        - generic [ref=e286]:
+          - img "Elegant, modern, 2-bed flat by Museum of Prague" [ref=e288]
+          - generic [ref=e289]:
+            - generic [ref=e290]: Elegant, modern, 2-bed flat by Museum of Prague
+            - generic [ref=e291]:
+              - img [ref=e292]
+              - generic [ref=e295]: Krizikova 255/7
+          - generic [ref=e297]:
+            - generic [ref=e298]:
+              - generic [ref=e299]:
+                - img [ref=e300]
+                - generic [ref=e302]: 2 bed
+              - generic [ref=e303]:
+                - img [ref=e304]
+                - generic [ref=e309]: 6 guests
+            - generic [ref=e310]:
+              - generic [ref=e311]: EUR 500
+              - generic [ref=e312]: / night
+            - generic [ref=e313]:
+              - link "View Details" [ref=e314] [cursor=pointer]:
+                - /url: /property/271438
+                - button "View Details" [ref=e315]
+              - link "Book Now" [ref=e316] [cursor=pointer]:
+                - /url: https://www.airbnb.com/rooms/30588907
+                - button "Book Now" [ref=e317]:
+                  - text: Book Now
+                  - img
+        - generic [ref=e318]:
+          - img "Stylish, unique 2 bedroom flat w/balcony in Letna" [ref=e320]
+          - generic [ref=e321]:
+            - generic [ref=e322]: Stylish, unique 2 bedroom flat w/balcony in Letna
+            - generic [ref=e323]:
+              - img [ref=e324]
+              - generic [ref=e327]: Heřmanova 1088/8,
+          - generic [ref=e329]:
+            - generic [ref=e330]:
+              - generic [ref=e331]:
+                - img [ref=e332]
+                - generic [ref=e334]: 2 bed
+              - generic [ref=e335]:
+                - img [ref=e336]
+                - generic [ref=e341]: 6 guests
+            - generic [ref=e342]:
+              - generic [ref=e343]: EUR 500
+              - generic [ref=e344]: / night
+            - generic [ref=e345]:
+              - link "View Details" [ref=e346] [cursor=pointer]:
+                - /url: /property/271439
+                - button "View Details" [ref=e347]
+              - link "Book Now" [ref=e348] [cursor=pointer]:
+                - /url: https://www.airbnb.com/rooms/24055825
+                - button "Book Now" [ref=e349]:
+                  - text: Book Now
+                  - img
+        - generic [ref=e350]:
+          - img "Cozy, retro-styled flat in beautiful Zizkov" [ref=e352]
+          - generic [ref=e353]:
+            - generic [ref=e354]: Cozy, retro-styled flat in beautiful Zizkov
+            - generic [ref=e355]:
+              - img [ref=e356]
+              - generic [ref=e359]: Vlkova 526/5 1
+          - generic [ref=e361]:
+            - generic [ref=e362]:
+              - generic [ref=e363]:
+                - img [ref=e364]
+                - generic [ref=e366]: 1 bed
+              - generic [ref=e367]:
+                - img [ref=e368]
+                - generic [ref=e373]: 5 guests
+            - generic [ref=e374]:
+              - generic [ref=e375]: EUR 500
+              - generic [ref=e376]: / night
+            - generic [ref=e377]:
+              - link "View Details" [ref=e378] [cursor=pointer]:
+                - /url: /property/271441
+                - button "View Details" [ref=e379]
+              - link "Book Now" [ref=e380] [cursor=pointer]:
+                - /url: https://www.airbnb.com/rooms/39626630
+                - button "Book Now" [ref=e381]:
+                  - text: Book Now
+                  - img
+        - generic [ref=e382]:
+          - img "New petite studio in bohemian suburb" [ref=e384]
+          - generic [ref=e385]:
+            - generic [ref=e386]: New petite studio in bohemian suburb
+            - generic [ref=e387]:
+              - img [ref=e388]
+              - generic [ref=e391]: Moskevská 5
+          - generic [ref=e393]:
+            - generic [ref=e394]:
+              - generic [ref=e395]:
+                - img [ref=e396]
+                - generic [ref=e398]: 1 bed
+              - generic [ref=e399]:
+                - img [ref=e400]
+                - generic [ref=e405]: 3 guests
+            - generic [ref=e406]:
+              - generic [ref=e407]: EUR 100
+              - generic [ref=e408]: / night
+            - generic [ref=e409]:
+              - link "View Details" [ref=e410] [cursor=pointer]:
+                - /url: /property/271442
+                - button "View Details" [ref=e411]
+              - link "Book Now" [ref=e412] [cursor=pointer]:
+                - /url: https://www.airbnb.com/rooms/696114465547420133
+                - button "Book Now" [ref=e413]:
+                  - text: Book Now
+                  - img
+        - generic [ref=e414]:
+          - img "Huge 3-Bed Duplex w Sauna, Jacuzzi, Terrace & AC" [ref=e416]
+          - generic [ref=e417]:
+            - generic [ref=e418]: Huge 3-Bed Duplex w Sauna, Jacuzzi, Terrace & AC
+            - generic [ref=e419]:
+              - img [ref=e420]
+              - generic [ref=e423]: Karoliny Světlé 1019/5
+          - generic [ref=e425]:
+            - generic [ref=e426]:
+              - generic [ref=e427]:
+                - img [ref=e428]
+                - generic [ref=e430]: 3 bed
+              - generic [ref=e431]:
+                - img [ref=e432]
+                - generic [ref=e437]: 8 guests
+            - generic [ref=e438]:
+              - generic [ref=e439]: EUR 500
+              - generic [ref=e440]: / night
+            - generic [ref=e441]:
+              - link "View Details" [ref=e442] [cursor=pointer]:
+                - /url: /property/271443
+                - button "View Details" [ref=e443]
+              - link "Book Now" [ref=e444] [cursor=pointer]:
+                - /url: https://www.airbnb.com/rooms/22395480
+                - button "Book Now" [ref=e445]:
+                  - text: Book Now
+                  - img
+        - generic [ref=e446]:
+          - img "Central, Spacious, Modern 5 Bedrm duplex w/Balcony" [ref=e448]
+          - generic [ref=e449]:
+            - generic [ref=e450]: Central, Spacious, Modern 5 Bedrm duplex w/Balcony
+            - generic [ref=e451]:
+              - img [ref=e452]
+              - generic [ref=e455]: Řehořova 6
+          - generic [ref=e457]:
+            - generic [ref=e458]:
+              - generic [ref=e459]:
+                - img [ref=e460]
+                - generic [ref=e462]: 5 bed
+              - generic [ref=e463]:
+                - img [ref=e464]
+                - generic [ref=e469]: 8 guests
+            - generic [ref=e470]:
+              - generic [ref=e471]: EUR 500
+              - generic [ref=e472]: / night
+            - generic [ref=e473]:
+              - link "View Details" [ref=e474] [cursor=pointer]:
+                - /url: /property/271444
+                - button "View Details" [ref=e475]
+              - link "Book Now" [ref=e476] [cursor=pointer]:
+                - /url: https://www.airbnb.com/rooms/22381562
+                - button "Book Now" [ref=e477]:
+                  - text: Book Now
+                  - img
+        - generic [ref=e478]:
+          - img "Modern studio with excellent transport links" [ref=e480]
+          - generic [ref=e481]:
+            - generic [ref=e482]: Modern studio with excellent transport links
+            - generic [ref=e483]:
+              - img [ref=e484]
+              - generic [ref=e487]: Moskevská 5
+          - generic [ref=e489]:
+            - generic [ref=e490]:
+              - generic [ref=e491]:
+                - img [ref=e492]
+                - generic [ref=e494]: 1 bed
+              - generic [ref=e495]:
+                - img [ref=e496]
+                - generic [ref=e501]: 3 guests
+            - generic [ref=e502]:
+              - generic [ref=e503]: EUR 100
+              - generic [ref=e504]: / night
+            - generic [ref=e505]:
+              - link "View Details" [ref=e506] [cursor=pointer]:
+                - /url: /property/271445
+                - button "View Details" [ref=e507]
+              - link "Book Now" [ref=e508] [cursor=pointer]:
+                - /url: https://www.airbnb.com/rooms/696184735159228759
+                - button "Book Now" [ref=e509]:
+                  - text: Book Now
+                  - img
+        - generic [ref=e510]:
+          - img "Cozy Old Town Stay - 1-bedroom apartment" [ref=e512]
+          - generic [ref=e513]:
+            - generic [ref=e514]: Cozy Old Town Stay - 1-bedroom apartment
+            - generic [ref=e515]:
+              - img [ref=e516]
+              - generic [ref=e519]: Konviktská 997/13 3
+          - generic [ref=e521]:
+            - generic [ref=e522]:
+              - generic [ref=e523]:
+                - img [ref=e524]
+                - generic [ref=e526]: 1 bed
+              - generic [ref=e527]:
+                - img [ref=e528]
+                - generic [ref=e533]: 2 guests
+            - generic [ref=e534]:
+              - generic [ref=e535]: EUR 500
+              - generic [ref=e536]: / night
+            - generic [ref=e537]:
+              - link "View Details" [ref=e538] [cursor=pointer]:
+                - /url: /property/271446
+                - button "View Details" [ref=e539]
+              - link "Book Now" [ref=e540] [cursor=pointer]:
+                - /url: https://www.airbnb.com/rooms/731145117048291115
+                - button "Book Now" [ref=e541]:
+                  - text: Book Now
+                  - img
+        - generic [ref=e542]:
+          - img "3 bed modern family house in Mikulov" [ref=e544]
+          - generic [ref=e545]:
+            - generic [ref=e546]: 3 bed modern family house in Mikulov
+            - generic [ref=e547]:
+              - img [ref=e548]
+              - generic [ref=e551]: Bezručova 67
+          - generic [ref=e553]:
+            - generic [ref=e554]:
+              - generic [ref=e555]:
+                - img [ref=e556]
+                - generic [ref=e558]: 3 bed
+              - generic [ref=e559]:
+                - img [ref=e560]
+                - generic [ref=e565]: 8 guests
+            - generic [ref=e566]:
+              - generic [ref=e567]: EUR 500
+              - generic [ref=e568]: / night
+            - generic [ref=e569]:
+              - link "View Details" [ref=e570] [cursor=pointer]:
+                - /url: /property/271447
+                - button "View Details" [ref=e571]
+              - link "Book Now" [ref=e572] [cursor=pointer]:
+                - /url: https://www.airbnb.com/rooms/42822057
+                - button "Book Now" [ref=e573]:
+                  - text: Book Now
+                  - img
+        - generic [ref=e574]:
+          - img "Smart studio in Žižkov near tram (104)" [ref=e576]
+          - generic [ref=e577]:
+            - generic [ref=e578]: Smart studio in Žižkov near tram (104)
+            - generic [ref=e579]:
+              - img [ref=e580]
+              - generic [ref=e583]: Prokopova 9
+          - generic [ref=e585]:
+            - generic [ref=e586]:
+              - generic [ref=e587]:
+                - img [ref=e588]
+                - generic [ref=e590]: 1 bed
+              - generic [ref=e591]:
+                - img [ref=e592]
+                - generic [ref=e597]: 4 guests
+            - generic [ref=e598]:
+              - generic [ref=e599]: EUR 120
+              - generic [ref=e600]: / night
+            - generic [ref=e601]:
+              - link "View Details" [ref=e602] [cursor=pointer]:
+                - /url: /property/271448
+                - button "View Details" [ref=e603]
+              - link "Book Now" [ref=e604] [cursor=pointer]:
+                - /url: https://www.airbnb.com/rooms/880963478925542030
+                - button "Book Now" [ref=e605]:
+                  - text: Book Now
+                  - img
+        - generic [ref=e606]:
+          - img "Classic Old town stay" [ref=e608]
+          - generic [ref=e609]:
+            - generic [ref=e610]: Classic Old town stay
+            - generic [ref=e611]:
+              - img [ref=e612]
+              - generic [ref=e615]: Konviktská 997/13
+          - generic [ref=e617]:
+            - generic [ref=e618]:
+              - generic [ref=e619]:
+                - img [ref=e620]
+                - generic [ref=e622]: 1 bed
+              - generic [ref=e623]:
+                - img [ref=e624]
+                - generic [ref=e629]: 4 guests
+            - generic [ref=e630]:
+              - generic [ref=e631]: EUR 500
+              - generic [ref=e632]: / night
+            - generic [ref=e633]:
+              - link "View Details" [ref=e634] [cursor=pointer]:
+                - /url: /property/271449
+                - button "View Details" [ref=e635]
+              - link "Book Now" [ref=e636] [cursor=pointer]:
+                - /url: https://www.airbnb.com/rooms/765788225136110407
+                - button "Book Now" [ref=e637]:
+                  - text: Book Now
+                  - img
+        - generic [ref=e638]:
+          - img "Charming apartment for two in uptown" [ref=e640]
+          - generic [ref=e641]:
+            - generic [ref=e642]: Charming apartment for two in uptown
+            - generic [ref=e643]:
+              - img [ref=e644]
+              - generic [ref=e647]: Perucká 2481/5
+          - generic [ref=e649]:
+            - generic [ref=e650]:
+              - generic [ref=e651]:
+                - img [ref=e652]
+                - generic [ref=e654]: 1 bed
+              - generic [ref=e655]:
+                - img [ref=e656]
+                - generic [ref=e661]: 2 guests
+            - generic [ref=e662]:
+              - generic [ref=e663]: EUR 500
+              - generic [ref=e664]: / night
+            - generic [ref=e665]:
+              - link "View Details" [ref=e666] [cursor=pointer]:
+                - /url: /property/271450
+                - button "View Details" [ref=e667]
+              - link "Book Now" [ref=e668] [cursor=pointer]:
+                - /url: https://www.airbnb.com/rooms/51315038
+                - button "Book Now" [ref=e669]:
+                  - text: Book Now
+                  - img
+        - generic [ref=e670]:
+          - img "Comfy studio in Žižkov near tram (204)" [ref=e672]
+          - generic [ref=e673]:
+            - generic [ref=e674]: Comfy studio in Žižkov near tram (204)
+            - generic [ref=e675]:
+              - img [ref=e676]
+              - generic [ref=e679]: Prokopova 9
+          - generic [ref=e681]:
+            - generic [ref=e682]:
+              - generic [ref=e683]:
+                - img [ref=e684]
+                - generic [ref=e686]: 1 bed
+              - generic [ref=e687]:
+                - img [ref=e688]
+                - generic [ref=e693]: 4 guests
+            - generic [ref=e694]:
+              - generic [ref=e695]: EUR 100
+              - generic [ref=e696]: / night
+            - generic [ref=e697]:
+              - link "View Details" [ref=e698] [cursor=pointer]:
+                - /url: /property/271451
+                - button "View Details" [ref=e699]
+              - link "Book Now" [ref=e700] [cursor=pointer]:
+                - /url: https://www.airbnb.com/rooms/881004821465786777
+                - button "Book Now" [ref=e701]:
+                  - text: Book Now
+                  - img
+        - generic [ref=e702]:
+          - img "Cozy studio in Prague´s favorite neighborhood" [ref=e704]
+          - generic [ref=e705]:
+            - generic [ref=e706]: Cozy studio in Prague´s favorite neighborhood
+            - generic [ref=e707]:
+              - img [ref=e708]
+              - generic [ref=e711]: Moskevská 413/5
+          - generic [ref=e713]:
+            - generic [ref=e714]:
+              - generic [ref=e715]:
+                - img [ref=e716]
+                - generic [ref=e718]: 1 bed
+              - generic [ref=e719]:
+                - img [ref=e720]
+                - generic [ref=e725]: 2 guests
+            - generic [ref=e726]:
+              - generic [ref=e727]: EUR 100
+              - generic [ref=e728]: / night
+            - generic [ref=e729]:
+              - link "View Details" [ref=e730] [cursor=pointer]:
+                - /url: /property/271452
+                - button "View Details" [ref=e731]
+              - link "Book Now" [ref=e732] [cursor=pointer]:
+                - /url: https://www.airbnb.com/rooms/842638067868425713
+                - button "Book Now" [ref=e733]:
+                  - text: Book Now
+                  - img
+        - generic [ref=e734]:
+          - img "Flat by Zizkov (201)" [ref=e736]
+          - generic [ref=e737]:
+            - generic [ref=e738]: Flat by Zizkov (201)
+            - generic [ref=e739]:
+              - img [ref=e740]
+              - generic [ref=e743]: Prokopova 9
+          - generic [ref=e745]:
+            - generic [ref=e746]:
+              - generic [ref=e747]:
+                - img [ref=e748]
+                - generic [ref=e750]: 2 bed
+              - generic [ref=e751]:
+                - img [ref=e752]
+                - generic [ref=e757]: 7 guests
+            - generic [ref=e758]:
+              - generic [ref=e759]: EUR 500
+              - generic [ref=e760]: / night
+            - generic [ref=e761]:
+              - link "View Details" [ref=e762] [cursor=pointer]:
+                - /url: /property/271453
+                - button "View Details" [ref=e763]
+              - link "Book Now" [ref=e764] [cursor=pointer]:
+                - /url: https://www.airbnb.com/rooms/883271721398033031
+                - button "Book Now" [ref=e765]:
+                  - text: Book Now
+                  - img
+        - generic [ref=e766]:
+          - img "Flat in Zizkov (202)" [ref=e768]
+          - generic [ref=e769]:
+            - generic [ref=e770]: Flat in Zizkov (202)
+            - generic [ref=e771]:
+              - img [ref=e772]
+              - generic [ref=e775]: Prokopova 9
+          - generic [ref=e777]:
+            - generic [ref=e778]:
+              - generic [ref=e779]:
+                - img [ref=e780]
+                - generic [ref=e782]: 2 bed
+              - generic [ref=e783]:
+                - img [ref=e784]
+                - generic [ref=e789]: 8 guests
+            - generic [ref=e790]:
+              - generic [ref=e791]: EUR 100
+              - generic [ref=e792]: / night
+            - generic [ref=e793]:
+              - link "View Details" [ref=e794] [cursor=pointer]:
+                - /url: /property/271455
+                - button "View Details" [ref=e795]
+              - link "Book Now" [ref=e796] [cursor=pointer]:
+                - /url: https://www.airbnb.com/rooms/883280123964736233
+                - button "Book Now" [ref=e797]:
+                  - text: Book Now
+                  - img
+        - generic [ref=e798]:
+          - img "Flat in Zizkov (102)" [ref=e800]
+          - generic [ref=e801]:
+            - generic [ref=e802]: Flat in Zizkov (102)
+            - generic [ref=e803]:
+              - img [ref=e804]
+              - generic [ref=e807]: Prokopova 9
+          - generic [ref=e809]:
+            - generic [ref=e810]:
+              - generic [ref=e811]:
+                - img [ref=e812]
+                - generic [ref=e814]: 2 bed
+              - generic [ref=e815]:
+                - img [ref=e816]
+                - generic [ref=e821]: 8 guests
+            - generic [ref=e822]:
+              - generic [ref=e823]: EUR 80
+              - generic [ref=e824]: / night
+            - generic [ref=e825]:
+              - link "View Details" [ref=e826] [cursor=pointer]:
+                - /url: /property/271456
+                - button "View Details" [ref=e827]
+              - link "Book Now" [ref=e828] [cursor=pointer]:
+                - /url: https://www.airbnb.com/rooms/886254260892834293
+                - button "Book Now" [ref=e829]:
+                  - text: Book Now
+                  - img
+        - generic [ref=e830]:
+          - img "8 bed flat with great location (203)" [ref=e832]
+          - generic [ref=e833]:
+            - generic [ref=e834]: 8 bed flat with great location (203)
+            - generic [ref=e835]:
+              - img [ref=e836]
+              - generic [ref=e839]: Prokopova 9
+          - generic [ref=e841]:
+            - generic [ref=e842]:
+              - generic [ref=e843]:
+                - img [ref=e844]
+                - generic [ref=e846]: 2 bed
+              - generic [ref=e847]:
+                - img [ref=e848]
+                - generic [ref=e853]: 8 guests
+            - generic [ref=e854]:
+              - generic [ref=e855]: EUR 100
+              - generic [ref=e856]: / night
+            - generic [ref=e857]:
+              - link "View Details" [ref=e858] [cursor=pointer]:
+                - /url: /property/271457
+                - button "View Details" [ref=e859]
+              - link "Book Now" [ref=e860] [cursor=pointer]:
+                - /url: https://www.airbnb.com/rooms/883283248173046817
+                - button "Book Now" [ref=e861]:
+                  - text: Book Now
+                  - img
+        - generic [ref=e862]:
+          - img "Sunny studio with terrace by tram (604)" [ref=e864]
+          - generic [ref=e865]:
+            - generic [ref=e866]: Sunny studio with terrace by tram (604)
+            - generic [ref=e867]:
+              - img [ref=e868]
+              - generic [ref=e871]: Prokopova 9
+          - generic [ref=e873]:
+            - generic [ref=e874]:
+              - generic [ref=e875]:
+                - img [ref=e876]
+                - generic [ref=e878]: 1 bed
+              - generic [ref=e879]:
+                - img [ref=e880]
+                - generic [ref=e885]: 2 guests
+            - generic [ref=e886]:
+              - generic [ref=e887]: EUR 80
+              - generic [ref=e888]: / night
+            - generic [ref=e889]:
+              - link "View Details" [ref=e890] [cursor=pointer]:
+                - /url: /property/271458
+                - button "View Details" [ref=e891]
+              - link "Book Now" [ref=e892] [cursor=pointer]:
+                - /url: https://www.airbnb.com/rooms/887750341284749969
+                - button "Book Now" [ref=e893]:
+                  - text: Book Now
+                  - img
+        - generic [ref=e894]:
+          - img "Apartment in Zizkov (301)" [ref=e896]
+          - generic [ref=e897]:
+            - generic [ref=e898]: Apartment in Zizkov (301)
+            - generic [ref=e899]:
+              - img [ref=e900]
+              - generic [ref=e903]: Prokopova 9
+          - generic [ref=e905]:
+            - generic [ref=e906]:
+              - generic [ref=e907]:
+                - img [ref=e908]
+                - generic [ref=e910]: 2 bed
+              - generic [ref=e911]:
+                - img [ref=e912]
+                - generic [ref=e917]: 7 guests
+            - generic [ref=e918]:
+              - generic [ref=e919]: EUR 120
+              - generic [ref=e920]: / night
+            - generic [ref=e921]:
+              - link "View Details" [ref=e922] [cursor=pointer]:
+                - /url: /property/271459
+                - button "View Details" [ref=e923]
+              - link "Book Now" [ref=e924] [cursor=pointer]:
+                - /url: https://www.airbnb.com/rooms/891794016661706266
+                - button "Book Now" [ref=e925]:
+                  - text: Book Now
+                  - img
+        - generic [ref=e926]:
+          - img "Apartment in Zizkov (302)" [ref=e928]
+          - generic [ref=e929]:
+            - generic [ref=e930]: Apartment in Zizkov (302)
+            - generic [ref=e931]:
+              - img [ref=e932]
+              - generic [ref=e935]: Prokopova 9
+          - generic [ref=e937]:
+            - generic [ref=e938]:
+              - generic [ref=e939]:
+                - img [ref=e940]
+                - generic [ref=e942]: 2 bed
+              - generic [ref=e943]:
+                - img [ref=e944]
+                - generic [ref=e949]: 8 guests
+            - generic [ref=e950]:
+              - generic [ref=e951]: EUR 120
+              - generic [ref=e952]: / night
+            - generic [ref=e953]:
+              - link "View Details" [ref=e954] [cursor=pointer]:
+                - /url: /property/271460
+                - button "View Details" [ref=e955]
+              - link "Book Now" [ref=e956] [cursor=pointer]:
+                - /url: https://www.airbnb.com/rooms/891813420813401637
+                - button "Book Now" [ref=e957]:
+                  - text: Book Now
+                  - img
+        - generic [ref=e958]:
+          - img "Bright 2 bed with big terrace by tram" [ref=e960]
+          - generic [ref=e961]:
+            - generic [ref=e962]: Bright 2 bed with big terrace by tram
+            - generic [ref=e963]:
+              - img [ref=e964]
+              - generic [ref=e967]: Prokopova 9
+          - generic [ref=e969]:
+            - generic [ref=e970]:
+              - generic [ref=e971]:
+                - img [ref=e972]
+                - generic [ref=e974]: 2 bed
+              - generic [ref=e975]:
+                - img [ref=e976]
+                - generic [ref=e981]: 4 guests
+            - generic [ref=e982]:
+              - generic [ref=e983]: EUR 120
+              - generic [ref=e984]: / night
+            - generic [ref=e985]:
+              - link "View Details" [ref=e986] [cursor=pointer]:
+                - /url: /property/271462
+                - button "View Details" [ref=e987]
+              - link "Book Now" [ref=e988] [cursor=pointer]:
+                - /url: https://www.airbnb.com/rooms/888329469244217487
+                - button "Book Now" [ref=e989]:
+                  - text: Book Now
+                  - img
+        - generic [ref=e990]:
+          - img "Flat in Zizkov (103)" [ref=e992]
+          - generic [ref=e993]:
+            - generic [ref=e994]: Flat in Zizkov (103)
+            - generic [ref=e995]:
+              - img [ref=e996]
+              - generic [ref=e999]: Prokopova 9
+          - generic [ref=e1001]:
+            - generic [ref=e1002]:
+              - generic [ref=e1003]:
+                - img [ref=e1004]
+                - generic [ref=e1006]: 2 bed
+              - generic [ref=e1007]:
+                - img [ref=e1008]
+                - generic [ref=e1013]: 8 guests
+            - generic [ref=e1014]:
+              - generic [ref=e1015]: EUR 100
+              - generic [ref=e1016]: / night
+            - generic [ref=e1017]:
+              - link "View Details" [ref=e1018] [cursor=pointer]:
+                - /url: /property/271463
+                - button "View Details" [ref=e1019]
+              - link "Book Now" [ref=e1020] [cursor=pointer]:
+                - /url: https://www.airbnb.com/rooms/888420461342052313
+                - button "Book Now" [ref=e1021]:
+                  - text: Book Now
+                  - img
+        - generic [ref=e1022]:
+          - img "Apartment in Zizkov (401)" [ref=e1024]
+          - generic [ref=e1025]:
+            - generic [ref=e1026]: Apartment in Zizkov (401)
+            - generic [ref=e1027]:
+              - img [ref=e1028]
+              - generic [ref=e1031]: Prokopova 9
+          - generic [ref=e1033]:
+            - generic [ref=e1034]:
+              - generic [ref=e1035]:
+                - img [ref=e1036]
+                - generic [ref=e1038]: 2 bed
+              - generic [ref=e1039]:
+                - img [ref=e1040]
+                - generic [ref=e1045]: 7 guests
+            - generic [ref=e1046]:
+              - generic [ref=e1047]: EUR 100
+              - generic [ref=e1048]: / night
+            - generic [ref=e1049]:
+              - link "View Details" [ref=e1050] [cursor=pointer]:
+                - /url: /property/271464
+                - button "View Details" [ref=e1051]
+              - link "Book Now" [ref=e1052] [cursor=pointer]:
+                - /url: https://www.airbnb.com/rooms/891860435478080426
+                - button "Book Now" [ref=e1053]:
+                  - text: Book Now
+                  - img
+        - generic [ref=e1054]:
+          - img "8 bed apartment in Zizkov (402)" [ref=e1056]
+          - generic [ref=e1057]:
+            - generic [ref=e1058]: 8 bed apartment in Zizkov (402)
+            - generic [ref=e1059]:
+              - img [ref=e1060]
+              - generic [ref=e1063]: Prokopova 9
+          - generic [ref=e1065]:
+            - generic [ref=e1066]:
+              - generic [ref=e1067]:
+                - img [ref=e1068]
+                - generic [ref=e1070]: 2 bed
+              - generic [ref=e1071]:
+                - img [ref=e1072]
+                - generic [ref=e1077]: 8 guests
+            - generic [ref=e1078]:
+              - generic [ref=e1079]: EUR 120
+              - generic [ref=e1080]: / night
+            - generic [ref=e1081]:
+              - link "View Details" [ref=e1082] [cursor=pointer]:
+                - /url: /property/271465
+                - button "View Details" [ref=e1083]
+              - link "Book Now" [ref=e1084] [cursor=pointer]:
+                - /url: https://www.airbnb.com/rooms/892540859133444463
+                - button "Book Now" [ref=e1085]:
+                  - text: Book Now
+                  - img
+        - generic [ref=e1086]:
+          - img "Flat in Zizkov (303)" [ref=e1088]
+          - generic [ref=e1089]:
+            - generic [ref=e1090]: Flat in Zizkov (303)
+            - generic [ref=e1091]:
+              - img [ref=e1092]
+              - generic [ref=e1095]: Prokopova 9
+          - generic [ref=e1097]:
+            - generic [ref=e1098]:
+              - generic [ref=e1099]:
+                - img [ref=e1100]
+                - generic [ref=e1102]: 2 bed
+              - generic [ref=e1103]:
+                - img [ref=e1104]
+                - generic [ref=e1109]: 8 guests
+            - generic [ref=e1110]:
+              - generic [ref=e1111]: EUR 120
+              - generic [ref=e1112]: / night
+            - generic [ref=e1113]:
+              - link "View Details" [ref=e1114] [cursor=pointer]:
+                - /url: /property/271466
+                - button "View Details" [ref=e1115]
+              - link "Book Now" [ref=e1116] [cursor=pointer]:
+                - /url: https://www.airbnb.com/rooms/891836526408319023
+                - button "Book Now" [ref=e1117]:
+                  - text: Book Now
+                  - img
+        - generic [ref=e1118]:
+          - img "Apartment in Zizkov with *Free Underground Parking * (501)" [ref=e1120]
+          - generic [ref=e1121]:
+            - generic [ref=e1122]: Apartment in Zizkov with *Free Underground Parking * (501)
+            - generic [ref=e1123]:
+              - img [ref=e1124]
+              - generic [ref=e1127]: Prokopova 9
+          - generic [ref=e1129]:
+            - generic [ref=e1130]:
+              - generic [ref=e1131]:
+                - img [ref=e1132]
+                - generic [ref=e1134]: 2 bed
+              - generic [ref=e1135]:
+                - img [ref=e1136]
+                - generic [ref=e1141]: 7 guests
+            - generic [ref=e1142]:
+              - generic [ref=e1143]: EUR 100
+              - generic [ref=e1144]: / night
+            - generic [ref=e1145]:
+              - link "View Details" [ref=e1146] [cursor=pointer]:
+                - /url: /property/271467
+                - button "View Details" [ref=e1147]
+              - link "Book Now" [ref=e1148] [cursor=pointer]:
+                - /url: https://www.airbnb.com/rooms/892563107102896798
+                - button "Book Now" [ref=e1149]:
+                  - text: Book Now
+                  - img
+        - generic [ref=e1150]:
+          - img "Flat in Zizkov (101)" [ref=e1152]
+          - generic [ref=e1153]:
+            - generic [ref=e1154]: Flat in Zizkov (101)
+            - generic [ref=e1155]:
+              - img [ref=e1156]
+              - generic [ref=e1159]: Prokopova 9
+          - generic [ref=e1161]:
+            - generic [ref=e1162]:
+              - generic [ref=e1163]:
+                - img [ref=e1164]
+                - generic [ref=e1166]: 2 bed
+              - generic [ref=e1167]:
+                - img [ref=e1168]
+                - generic [ref=e1173]: 7 guests
+            - generic [ref=e1174]:
+              - generic [ref=e1175]: EUR 100
+              - generic [ref=e1176]: / night
+            - generic [ref=e1177]:
+              - link "View Details" [ref=e1178] [cursor=pointer]:
+                - /url: /property/271468
+                - button "View Details" [ref=e1179]
+              - link "Book Now" [ref=e1180] [cursor=pointer]:
+                - /url: https://www.airbnb.com/rooms/892800205489093206
+                - button "Book Now" [ref=e1181]:
+                  - text: Book Now
+                  - img
+        - generic [ref=e1182]:
+          - img "Apartment in Zizkov (502)" [ref=e1184]
+          - generic [ref=e1185]:
+            - generic [ref=e1186]: Apartment in Zizkov (502)
+            - generic [ref=e1187]:
+              - img [ref=e1188]
+              - generic [ref=e1191]: Prokopova 9
+          - generic [ref=e1193]:
+            - generic [ref=e1194]:
+              - generic [ref=e1195]:
+                - img [ref=e1196]
+                - generic [ref=e1198]: 2 bed
+              - generic [ref=e1199]:
+                - img [ref=e1200]
+                - generic [ref=e1205]: 7 guests
+            - generic [ref=e1206]:
+              - generic [ref=e1207]: EUR 100
+              - generic [ref=e1208]: / night
+            - generic [ref=e1209]:
+              - link "View Details" [ref=e1210] [cursor=pointer]:
+                - /url: /property/271469
+                - button "View Details" [ref=e1211]
+              - link "Book Now" [ref=e1212] [cursor=pointer]:
+                - /url: https://www.airbnb.com/rooms/893167922926463220
+                - button "Book Now" [ref=e1213]:
+                  - text: Book Now
+                  - img
+        - generic [ref=e1214]:
+          - img "Modern studio with balcony, TV" [ref=e1216]
+          - generic [ref=e1217]:
+            - generic [ref=e1218]: Modern studio with balcony, TV
+            - generic [ref=e1219]:
+              - img [ref=e1220]
+              - generic [ref=e1223]: Prokopova 9
+          - generic [ref=e1225]:
+            - generic [ref=e1226]:
+              - generic [ref=e1227]:
+                - img [ref=e1228]
+                - generic [ref=e1230]: 1 bed
+              - generic [ref=e1231]:
+                - img [ref=e1232]
+                - generic [ref=e1237]: 4 guests
+            - generic [ref=e1238]:
+              - generic [ref=e1239]: EUR 100
+              - generic [ref=e1240]: / night
+            - generic [ref=e1241]:
+              - link "View Details" [ref=e1242] [cursor=pointer]:
+                - /url: /property/271470
+                - button "View Details" [ref=e1243]
+              - link "Book Now" [ref=e1244] [cursor=pointer]:
+                - /url: https://www.airbnb.com/rooms/899083180544795740
+                - button "Book Now" [ref=e1245]:
+                  - text: Book Now
+                  - img
+        - generic [ref=e1246]:
+          - img "Flat in Zizkov (503)" [ref=e1248]
+          - generic [ref=e1249]:
+            - generic [ref=e1250]: Flat in Zizkov (503)
+            - generic [ref=e1251]:
+              - img [ref=e1252]
+              - generic [ref=e1255]: Prokopova 9
+          - generic [ref=e1257]:
+            - generic [ref=e1258]:
+              - generic [ref=e1259]:
+                - img [ref=e1260]
+                - generic [ref=e1262]: 2 bed
+              - generic [ref=e1263]:
+                - img [ref=e1264]
+                - generic [ref=e1269]: 8 guests
+            - generic [ref=e1270]:
+              - generic [ref=e1271]: EUR 120
+              - generic [ref=e1272]: / night
+            - generic [ref=e1273]:
+              - link "View Details" [ref=e1274] [cursor=pointer]:
+                - /url: /property/271471
+                - button "View Details" [ref=e1275]
+              - link "Book Now" [ref=e1276] [cursor=pointer]:
+                - /url: https://www.airbnb.com/rooms/893225058560917260
+                - button "Book Now" [ref=e1277]:
+                  - text: Book Now
+                  - img
+        - generic [ref=e1278]:
+          - img "Fun bright studio with flat screen TV" [ref=e1280]
+          - generic [ref=e1281]:
+            - generic [ref=e1282]: Fun bright studio with flat screen TV
+            - generic [ref=e1283]:
+              - img [ref=e1284]
+              - generic [ref=e1287]: Prokopova 9
+          - generic [ref=e1289]:
+            - generic [ref=e1290]:
+              - generic [ref=e1291]:
+                - img [ref=e1292]
+                - generic [ref=e1294]: 1 bed
+              - generic [ref=e1295]:
+                - img [ref=e1296]
+                - generic [ref=e1301]: 4 guests
+            - generic [ref=e1302]:
+              - generic [ref=e1303]: EUR 90
+              - generic [ref=e1304]: / night
+            - generic [ref=e1305]:
+              - link "View Details" [ref=e1306] [cursor=pointer]:
+                - /url: /property/271472
+                - button "View Details" [ref=e1307]
+              - link "Book Now" [ref=e1308] [cursor=pointer]:
+                - /url: https://www.airbnb.com/rooms/924561177986743782
+                - button "Book Now" [ref=e1309]:
+                  - text: Book Now
+                  - img
+        - generic [ref=e1310]:
+          - img "Modern, bright studio in a great location" [ref=e1312]
+          - generic [ref=e1313]:
+            - generic [ref=e1314]: Modern, bright studio in a great location
+            - generic [ref=e1315]:
+              - img [ref=e1316]
+              - generic [ref=e1319]: 9 Prokopova
+          - generic [ref=e1321]:
+            - generic [ref=e1322]:
+              - generic [ref=e1323]:
+                - img [ref=e1324]
+                - generic [ref=e1326]: 1 bed
+              - generic [ref=e1327]:
+                - img [ref=e1328]
+                - generic [ref=e1333]: 4 guests
+            - generic [ref=e1334]:
+              - generic [ref=e1335]: EUR 90
+              - generic [ref=e1336]: / night
+            - generic [ref=e1337]:
+              - link "View Details" [ref=e1338] [cursor=pointer]:
+                - /url: /property/271473
+                - button "View Details" [ref=e1339]
+              - link "Book Now" [ref=e1340] [cursor=pointer]:
+                - /url: https://www.airbnb.com/rooms/924547464839547985
+                - button "Book Now" [ref=e1341]:
+                  - text: Book Now
+                  - img
+        - generic [ref=e1342]:
+          - img "8 bed flat in great location" [ref=e1344]
+          - generic [ref=e1345]:
+            - generic [ref=e1346]: 8 bed flat in great location
+            - generic [ref=e1347]:
+              - img [ref=e1348]
+              - generic [ref=e1351]: Prokopova 9
+          - generic [ref=e1353]:
+            - generic [ref=e1354]:
+              - generic [ref=e1355]:
+                - img [ref=e1356]
+                - generic [ref=e1358]: 2 bed
+              - generic [ref=e1359]:
+                - img [ref=e1360]
+                - generic [ref=e1365]: 8 guests
+            - generic [ref=e1366]:
+              - generic [ref=e1367]: EUR 100
+              - generic [ref=e1368]: / night
+            - generic [ref=e1369]:
+              - link "View Details" [ref=e1370] [cursor=pointer]:
+                - /url: /property/271474
+                - button "View Details" [ref=e1371]
+              - link "Book Now" [ref=e1372] [cursor=pointer]:
+                - /url: https://www.airbnb.com/rooms/904087526220016740
+                - button "Book Now" [ref=e1373]:
+                  - text: Book Now
+                  - img
+        - generic [ref=e1374]:
+          - img "Spacious, Light Studio Apartment in Vinohrady" [ref=e1376]
+          - generic [ref=e1377]:
+            - generic [ref=e1378]: Spacious, Light Studio Apartment in Vinohrady
+            - generic [ref=e1379]:
+              - img [ref=e1380]
+              - generic [ref=e1383]: Korunní 7
+          - generic [ref=e1385]:
+            - generic [ref=e1386]:
+              - generic [ref=e1387]:
+                - img [ref=e1388]
+                - generic [ref=e1390]: 1 bed
+              - generic [ref=e1391]:
+                - img [ref=e1392]
+                - generic [ref=e1397]: 4 guests
+            - generic [ref=e1398]:
+              - generic [ref=e1399]: EUR 61
+              - generic [ref=e1400]: / night
+            - link "View Details" [ref=e1402] [cursor=pointer]:
+              - /url: /property/271475
+              - button "View Details" [ref=e1403]
+        - generic [ref=e1404]:
+          - img "Modern studio with balcony + TV" [ref=e1406]
+          - generic [ref=e1407]:
+            - generic [ref=e1408]: Modern studio with balcony + TV
+            - generic [ref=e1409]:
+              - img [ref=e1410]
+              - generic [ref=e1413]: Prokopova 9
+          - generic [ref=e1415]:
+            - generic [ref=e1416]:
+              - generic [ref=e1417]:
+                - img [ref=e1418]
+                - generic [ref=e1420]: 1 bed
+              - generic [ref=e1421]:
+                - img [ref=e1422]
+                - generic [ref=e1427]: 4 guests
+            - generic [ref=e1428]:
+              - generic [ref=e1429]: EUR 100
+              - generic [ref=e1430]: / night
+            - generic [ref=e1431]:
+              - link "View Details" [ref=e1432] [cursor=pointer]:
+                - /url: /property/271476
+                - button "View Details" [ref=e1433]
+              - link "Book Now" [ref=e1434] [cursor=pointer]:
+                - /url: https://www.airbnb.com/rooms/899123292214395180
+                - button "Book Now" [ref=e1435]:
+                  - text: Book Now
+                  - img
+        - generic [ref=e1436]:
+          - img "Cozy and simple well located studio" [ref=e1438]
+          - generic [ref=e1439]:
+            - generic [ref=e1440]: Cozy and simple well located studio
+            - generic [ref=e1441]:
+              - img [ref=e1442]
+              - generic [ref=e1445]: Moskevská 413/5
+          - generic [ref=e1447]:
+            - generic [ref=e1448]:
+              - generic [ref=e1449]:
+                - img [ref=e1450]
+                - generic [ref=e1452]: 1 bed
+              - generic [ref=e1453]:
+                - img [ref=e1454]
+                - generic [ref=e1459]: 2 guests
+            - generic [ref=e1460]:
+              - generic [ref=e1461]: EUR 100
+              - generic [ref=e1462]: / night
+            - generic [ref=e1463]:
+              - link "View Details" [ref=e1464] [cursor=pointer]:
+                - /url: /property/271477
+                - button "View Details" [ref=e1465]
+              - link "Book Now" [ref=e1466] [cursor=pointer]:
+                - /url: https://www.airbnb.com/rooms/1102059440339654380
+                - button "Book Now" [ref=e1467]:
+                  - text: Book Now
+                  - img
+        - generic [ref=e1468]:
+          - img "Prague Panorama Loft" [ref=e1470]
+          - generic [ref=e1471]:
+            - generic [ref=e1472]: Prague Panorama Loft
+            - generic [ref=e1473]:
+              - img [ref=e1474]
+              - generic [ref=e1477]: Malá Štěpánská 1928/11
+          - generic [ref=e1479]:
+            - generic [ref=e1480]:
+              - generic [ref=e1481]:
+                - img [ref=e1482]
+                - generic [ref=e1484]: 3 bed
+              - generic [ref=e1485]:
+                - img [ref=e1486]
+                - generic [ref=e1491]: 6 guests
+            - generic [ref=e1492]:
+              - generic [ref=e1493]: EUR 180
+              - generic [ref=e1494]: / night
+            - generic [ref=e1495]:
+              - link "View Details" [ref=e1496] [cursor=pointer]:
+                - /url: /property/271478
+                - button "View Details" [ref=e1497]
+              - link "Book Now" [ref=e1498] [cursor=pointer]:
+                - /url: https://www.airbnb.com/rooms/1046267975575763976
+                - button "Book Now" [ref=e1499]:
+                  - text: Book Now
+                  - img
+        - generic [ref=e1500]:
+          - img "Skyline Nest on Borivojova" [ref=e1502]
+          - generic [ref=e1503]:
+            - generic [ref=e1504]: Skyline Nest on Borivojova
+            - generic [ref=e1505]:
+              - img [ref=e1506]
+              - generic [ref=e1509]: Bořivojova 748/73
+          - generic [ref=e1511]:
+            - generic [ref=e1512]:
+              - generic [ref=e1513]:
+                - img [ref=e1514]
+                - generic [ref=e1516]: 2 bed
+              - generic [ref=e1517]:
+                - img [ref=e1518]
+                - generic [ref=e1523]: 6 guests
+            - generic [ref=e1524]:
+              - generic [ref=e1525]: EUR 120
+              - generic [ref=e1526]: / night
+            - generic [ref=e1527]:
+              - link "View Details" [ref=e1528] [cursor=pointer]:
+                - /url: /property/271479
+                - button "View Details" [ref=e1529]
+              - link "Book Now" [ref=e1530] [cursor=pointer]:
+                - /url: https://www.airbnb.com/rooms/1053633119686496315
+                - button "Book Now" [ref=e1531]:
+                  - text: Book Now
+                  - img
+        - generic [ref=e1532]:
+          - img "Chic+Contemporary Zizkov Studio" [ref=e1534]
+          - generic [ref=e1535]:
+            - generic [ref=e1536]: Chic+Contemporary Zizkov Studio
+            - generic [ref=e1537]:
+              - img [ref=e1538]
+              - generic [ref=e1541]: Prokopova 197/9
+          - generic [ref=e1543]:
+            - generic [ref=e1544]:
+              - generic [ref=e1545]:
+                - img [ref=e1546]
+                - generic [ref=e1548]: 1 bed
+              - generic [ref=e1549]:
+                - img [ref=e1550]
+                - generic [ref=e1555]: 4 guests
+            - generic [ref=e1556]:
+              - generic [ref=e1557]: EUR 80
+              - generic [ref=e1558]: / night
+            - generic [ref=e1559]:
+              - link "View Details" [ref=e1560] [cursor=pointer]:
+                - /url: /property/271480
+                - button "View Details" [ref=e1561]
+              - link "Book Now" [ref=e1562] [cursor=pointer]:
+                - /url: https://www.airbnb.com/rooms/1139153025099910106
+                - button "Book Now" [ref=e1563]:
+                  - text: Book Now
+                  - img
+        - generic [ref=e1564]:
+          - img "Cozy apartment in hipster area" [ref=e1566]
+          - generic [ref=e1567]:
+            - generic [ref=e1568]: Cozy apartment in hipster area
+            - generic [ref=e1569]:
+              - img [ref=e1570]
+              - generic [ref=e1573]: Schnirchova 2
+          - generic [ref=e1575]:
+            - generic [ref=e1576]:
+              - generic [ref=e1577]:
+                - img [ref=e1578]
+                - generic [ref=e1580]: 1 bed
+              - generic [ref=e1581]:
+                - img [ref=e1582]
+                - generic [ref=e1587]: 4 guests
+            - generic [ref=e1588]:
+              - generic [ref=e1589]: EUR 100
+              - generic [ref=e1590]: / night
+            - generic [ref=e1591]:
+              - link "View Details" [ref=e1592] [cursor=pointer]:
+                - /url: /property/271481
+                - button "View Details" [ref=e1593]
+              - link "Book Now" [ref=e1594] [cursor=pointer]:
+                - /url: https://www.airbnb.com/rooms/1039725205369188996
+                - button "Book Now" [ref=e1595]:
+                  - text: Book Now
+                  - img
+        - generic [ref=e1596]:
+          - img "Prague Urban Oasis Loft" [ref=e1598]
+          - generic [ref=e1599]:
+            - generic [ref=e1600]: Prague Urban Oasis Loft
+            - generic [ref=e1601]:
+              - img [ref=e1602]
+              - generic [ref=e1605]: Malá Štěpánská 1928/11
+          - generic [ref=e1607]:
+            - generic [ref=e1608]:
+              - generic [ref=e1609]:
+                - img [ref=e1610]
+                - generic [ref=e1612]: 3 bed
+              - generic [ref=e1613]:
+                - img [ref=e1614]
+                - generic [ref=e1619]: 6 guests
+            - generic [ref=e1620]:
+              - generic [ref=e1621]: EUR 200
+              - generic [ref=e1622]: / night
+            - generic [ref=e1623]:
+              - link "View Details" [ref=e1624] [cursor=pointer]:
+                - /url: /property/271482
+                - button "View Details" [ref=e1625]
+              - link "Book Now" [ref=e1626] [cursor=pointer]:
+                - /url: https://www.airbnb.com/rooms/1048593620489398693
+                - button "Book Now" [ref=e1627]:
+                  - text: Book Now
+                  - img
+        - generic [ref=e1628]:
+          - img "Museum Quarter Elegance Suite" [ref=e1630]
+          - generic [ref=e1631]:
+            - generic [ref=e1632]: Museum Quarter Elegance Suite
+            - generic [ref=e1633]:
+              - img [ref=e1634]
+              - generic [ref=e1637]: Vinohradská 403/17
+          - generic [ref=e1639]:
+            - generic [ref=e1640]:
+              - generic [ref=e1641]:
+                - img [ref=e1642]
+                - generic [ref=e1644]: 3 bed
+              - generic [ref=e1645]:
+                - img [ref=e1646]
+                - generic [ref=e1651]: 6 guests
+            - generic [ref=e1652]:
+              - generic [ref=e1653]: EUR 163
+              - generic [ref=e1654]: / night
+            - generic [ref=e1655]:
+              - link "View Details" [ref=e1656] [cursor=pointer]:
+                - /url: /property/271485
+                - button "View Details" [ref=e1657]
+              - link "Book Now" [ref=e1658] [cursor=pointer]:
+                - /url: https://www.airbnb.com/rooms/1048229941519377351
+                - button "Book Now" [ref=e1659]:
+                  - text: Book Now
+                  - img
+        - generic [ref=e1660]:
+          - img "Central Riverside Duplex loft" [ref=e1662]
+          - generic [ref=e1663]:
+            - generic [ref=e1664]: Central Riverside Duplex loft
+            - generic [ref=e1665]:
+              - img [ref=e1666]
+              - generic [ref=e1669]: Masarykovo nábřeží 30
+          - generic [ref=e1671]:
+            - generic [ref=e1672]:
+              - generic [ref=e1673]:
+                - img [ref=e1674]
+                - generic [ref=e1676]: 2 bed
+              - generic [ref=e1677]:
+                - img [ref=e1678]
+                - generic [ref=e1683]: 6 guests
+            - generic [ref=e1684]:
+              - generic [ref=e1685]: EUR 300
+              - generic [ref=e1686]: / night
+            - generic [ref=e1687]:
+              - link "View Details" [ref=e1688] [cursor=pointer]:
+                - /url: /property/271487
+                - button "View Details" [ref=e1689]
+              - link "Book Now" [ref=e1690] [cursor=pointer]:
+                - /url: https://www.airbnb.com/rooms/1141117733992556019
+                - button "Book Now" [ref=e1691]:
+                  - text: Book Now
+                  - img
+        - generic [ref=e1692]:
+          - img "Spacious studio with free parking" [ref=e1694]
+          - generic [ref=e1695]:
+            - generic [ref=e1696]: Spacious studio with free parking
+            - generic [ref=e1697]:
+              - img [ref=e1698]
+              - generic [ref=e1701]: U Průhonu 1624/1a, 170 00 Praha 7-Holešovice, Czechia
+          - generic [ref=e1703]:
+            - generic [ref=e1704]:
+              - generic [ref=e1705]:
+                - img [ref=e1706]
+                - generic [ref=e1708]: 1 bed
+              - generic [ref=e1709]:
+                - img [ref=e1710]
+                - generic [ref=e1715]: 2 guests
+            - generic [ref=e1716]:
+              - generic [ref=e1717]: EUR 52
+              - generic [ref=e1718]: / night
+            - generic [ref=e1719]:
+              - link "View Details" [ref=e1720] [cursor=pointer]:
+                - /url: /property/271494
+                - button "View Details" [ref=e1721]
+              - link "Book Now" [ref=e1722] [cursor=pointer]:
+                - /url: https://www.airbnb.com/rooms/1150635248662242244
+                - button "Book Now" [ref=e1723]:
+                  - text: Book Now
+                  - img
+        - generic [ref=e1724]:
+          - img "Small studio in hipster neighborhood" [ref=e1726]
+          - generic [ref=e1727]:
+            - generic [ref=e1728]: Small studio in hipster neighborhood
+            - generic [ref=e1729]:
+              - img [ref=e1730]
+              - generic [ref=e1733]: Sevastopolská 337/11 13
+          - generic [ref=e1735]:
+            - generic [ref=e1736]:
+              - generic [ref=e1737]:
+                - img [ref=e1738]
+                - generic [ref=e1740]: 1 bed
+              - generic [ref=e1741]:
+                - img [ref=e1742]
+                - generic [ref=e1747]: 2 guests
+            - generic [ref=e1748]:
+              - generic [ref=e1749]: EUR 81
+              - generic [ref=e1750]: / night
+            - generic [ref=e1751]:
+              - link "View Details" [ref=e1752] [cursor=pointer]:
+                - /url: /property/271495
+                - button "View Details" [ref=e1753]
+              - link "Book Now" [ref=e1754] [cursor=pointer]:
+                - /url: https://www.airbnb.com/rooms/1150669643402920351
+                - button "Book Now" [ref=e1755]:
+                  - text: Book Now
+                  - img
+        - generic [ref=e1756]:
+          - img "Cozy and sunny apartment in uptown" [ref=e1758]
+          - generic [ref=e1759]:
+            - generic [ref=e1760]: Cozy and sunny apartment in uptown
+            - generic [ref=e1761]:
+              - img [ref=e1762]
+              - generic [ref=e1765]: Krásova 1027/9
+          - generic [ref=e1767]:
+            - generic [ref=e1768]:
+              - generic [ref=e1769]:
+                - img [ref=e1770]
+                - generic [ref=e1772]: 1 bed
+              - generic [ref=e1773]:
+                - img [ref=e1774]
+                - generic [ref=e1779]: 4 guests
+            - generic [ref=e1780]:
+              - generic [ref=e1781]: EUR 80
+              - generic [ref=e1782]: / night
+            - generic [ref=e1783]:
+              - link "View Details" [ref=e1784] [cursor=pointer]:
+                - /url: /property/272166
+                - button "View Details" [ref=e1785]
+              - link "Book Now" [ref=e1786] [cursor=pointer]:
+                - /url: https://www.airbnb.com/rooms/51137114
+                - button "Book Now" [ref=e1787]:
+                  - text: Book Now
+                  - img
+        - generic [ref=e1788]:
+          - img "Prokopova 602" [ref=e1790]
+          - generic [ref=e1791]:
+            - generic [ref=e1792]: Prokopova 602
+            - generic [ref=e1793]:
+              - img [ref=e1794]
+              - generic [ref=e1797]: Prokopova 197/9, 130 00 Praha 3-Žižkov, Czechia
+          - generic [ref=e1799]:
+            - generic [ref=e1800]:
+              - generic [ref=e1801]:
+                - img [ref=e1802]
+                - generic [ref=e1804]: 3 bed
+              - generic [ref=e1805]:
+                - img [ref=e1806]
+                - generic [ref=e1811]: 8 guests
+            - generic [ref=e1812]:
+              - generic [ref=e1813]: EUR 150
+              - generic [ref=e1814]: / night
+            - generic [ref=e1815]:
+              - link "View Details" [ref=e1816] [cursor=pointer]:
+                - /url: /property/273351
+                - button "View Details" [ref=e1817]
+              - link "Book Now" [ref=e1818] [cursor=pointer]:
+                - /url: https://www.airbnb.com/rooms/1175977316738556546
+                - button "Book Now" [ref=e1819]:
+                  - text: Book Now
+                  - img
+        - generic [ref=e1820]:
+          - img "Big 4-bedroom flat, terrace with great Vítkov view" [ref=e1822]
+          - generic [ref=e1823]:
+            - generic [ref=e1824]: Big 4-bedroom flat, terrace with great Vítkov view
+            - generic [ref=e1825]:
+              - img [ref=e1826]
+              - generic [ref=e1829]: Bořivojova 885/50, 130 00 Praha 3-Žižkov, Czechia
+          - generic [ref=e1831]:
+            - generic [ref=e1832]:
+              - generic [ref=e1833]:
+                - img [ref=e1834]
+                - generic [ref=e1836]: 4 bed
+              - generic [ref=e1837]:
+                - img [ref=e1838]
+                - generic [ref=e1843]: 12 guests
+            - generic [ref=e1844]:
+              - generic [ref=e1845]: EUR 200
+              - generic [ref=e1846]: / night
+            - link "View Details" [ref=e1848] [cursor=pointer]:
+              - /url: /property/273353
+              - button "View Details" [ref=e1849]
+        - generic [ref=e1850]:
+          - img "Riverside Gem w/ Balcony View" [ref=e1852]
+          - generic [ref=e1853]:
+            - generic [ref=e1854]: Riverside Gem w/ Balcony View
+            - generic [ref=e1855]:
+              - img [ref=e1856]
+              - generic [ref=e1859]: Masarykovo nábřeží 236/30 1, 1st Floor
+          - generic [ref=e1861]:
+            - generic [ref=e1862]:
+              - generic [ref=e1863]:
+                - img [ref=e1864]
+                - generic [ref=e1866]: 2 bed
+              - generic [ref=e1867]:
+                - img [ref=e1868]
+                - generic [ref=e1873]: 6 guests
+            - generic [ref=e1874]:
+              - generic [ref=e1875]: EUR 300
+              - generic [ref=e1876]: / night
+            - generic [ref=e1877]:
+              - link "View Details" [ref=e1878] [cursor=pointer]:
+                - /url: /property/325023
+                - button "View Details" [ref=e1879]
+              - link "Book Now" [ref=e1880] [cursor=pointer]:
+                - /url: https://www.airbnb.com/rooms/1283946782759742146
+                - button "Book Now" [ref=e1881]:
+                  - text: Book Now
+                  - img
+        - generic [ref=e1882]:
+          - img "Chlumova 7" [ref=e1884]
+          - generic [ref=e1885]:
+            - generic [ref=e1886]: Chlumova 7
+            - generic [ref=e1887]:
+              - img [ref=e1888]
+              - generic [ref=e1891]: Chlumova 307/3, 130 00 Praha 3-Žižkov, Czechia
+          - generic [ref=e1893]:
+            - generic [ref=e1894]:
+              - generic [ref=e1895]:
+                - img [ref=e1896]
+                - generic [ref=e1898]: 1 bed
+              - generic [ref=e1899]:
+                - img [ref=e1900]
+                - generic [ref=e1905]: 4 guests
+            - generic [ref=e1906]:
+              - generic [ref=e1907]: EUR 120
+              - generic [ref=e1908]: / night
+            - generic [ref=e1909]:
+              - link "View Details" [ref=e1910] [cursor=pointer]:
+                - /url: /property/360453
+                - button "View Details" [ref=e1911]
+              - link "Book Now" [ref=e1912] [cursor=pointer]:
+                - /url: https://www.airbnb.com/rooms/1355029581138942045
+                - button "Book Now" [ref=e1913]:
+                  - text: Book Now
+                  - img
+        - generic [ref=e1914]:
+          - img [ref=e1917]
+          - generic [ref=e1920]:
+            - generic [ref=e1921]: Betlemske
+            - generic [ref=e1922]:
+              - img [ref=e1923]
+              - generic [ref=e1926]: Betlemske Namesti
+          - generic [ref=e1928]:
+            - generic [ref=e1930]:
+              - img [ref=e1931]
+              - generic [ref=e1936]: 10 guests
+            - generic [ref=e1937]:
+              - generic [ref=e1938]: EUR 270
+              - generic [ref=e1939]: / night
+            - link "View Details" [ref=e1941] [cursor=pointer]:
+              - /url: /property/366442
+              - button "View Details" [ref=e1942]
+        - generic [ref=e1943]:
+          - img "Elegant & Spacious 4BR Loft in Charming Vinohrady" [ref=e1945]
+          - generic [ref=e1946]:
+            - generic [ref=e1947]: Elegant & Spacious 4BR Loft in Charming Vinohrady
+            - generic [ref=e1948]:
+              - img [ref=e1949]
+              - generic [ref=e1952]: Šumavská 925/28
+          - generic [ref=e1954]:
+            - generic [ref=e1955]:
+              - generic [ref=e1956]:
+                - img [ref=e1957]
+                - generic [ref=e1959]: 4 bed
+              - generic [ref=e1960]:
+                - img [ref=e1961]
+                - generic [ref=e1966]: 8 guests
+            - generic [ref=e1967]:
+              - generic [ref=e1968]: EUR 157
+              - generic [ref=e1969]: / night
+            - generic [ref=e1970]:
+              - link "View Details" [ref=e1971] [cursor=pointer]:
+                - /url: /property/372348
+                - button "View Details" [ref=e1972]
+              - link "Book Now" [ref=e1973] [cursor=pointer]:
+                - /url: https://www.airbnb.com/rooms/1361585260525278882
+                - button "Book Now" [ref=e1974]:
+                  - text: Book Now
+                  - img
+        - generic [ref=e1975]:
+          - img "Bright and airy apartment in unique suburb" [ref=e1977]
+          - generic [ref=e1978]:
+            - generic [ref=e1979]: Bright and airy apartment in unique suburb
+            - generic [ref=e1980]:
+              - img [ref=e1981]
+              - generic [ref=e1984]: Husitská 63
+          - generic [ref=e1986]:
+            - generic [ref=e1987]:
+              - generic [ref=e1988]:
+                - img [ref=e1989]
+                - generic [ref=e1991]: 2 bed
+              - generic [ref=e1992]:
+                - img [ref=e1993]
+                - generic [ref=e1998]: 4 guests
+            - generic [ref=e1999]:
+              - generic [ref=e2000]: EUR 60
+              - generic [ref=e2001]: / night
+            - generic [ref=e2002]:
+              - link "View Details" [ref=e2003] [cursor=pointer]:
+                - /url: /property/391114
+                - button "View Details" [ref=e2004]
+              - link "Book Now" [ref=e2005] [cursor=pointer]:
+                - /url: https://www.airbnb.com/rooms/50164626
+                - button "Book Now" [ref=e2006]:
+                  - text: Book Now
+                  - img
+        - generic [ref=e2007]:
+          - img "The Old Bakery @ Sobechleby" [ref=e2009]
+          - generic [ref=e2010]:
+            - generic [ref=e2011]: The Old Bakery @ Sobechleby
+            - generic [ref=e2012]:
+              - img [ref=e2013]
+              - generic [ref=e2016]: Soběchleby 35 35
+          - generic [ref=e2018]:
+            - generic [ref=e2019]:
+              - generic [ref=e2020]:
+                - img [ref=e2021]
+                - generic [ref=e2023]: 4 bed
+              - generic [ref=e2024]:
+                - img [ref=e2025]
+                - generic [ref=e2030]: 8 guests
+            - generic [ref=e2031]:
+              - generic [ref=e2032]: CZK 5000
+              - generic [ref=e2033]: / night
+            - generic [ref=e2034]:
+              - link "View Details" [ref=e2035] [cursor=pointer]:
+                - /url: /property/399884
+                - button "View Details" [ref=e2036]
+              - link "Book Now" [ref=e2037] [cursor=pointer]:
+                - /url: https://www.airbnb.com/rooms/1392485340292814713
+                - button "Book Now" [ref=e2038]:
+                  - text: Book Now
+                  - img
+        - generic [ref=e2039]:
+          - img [ref=e2042]
+          - generic [ref=e2045]:
+            - generic [ref=e2046]: Betlemske 2
+            - generic [ref=e2047]:
+              - img [ref=e2048]
+              - generic [ref=e2051]: Betlémské nám. 351/6, Staré Město, 110 00 Praha-Praha 1, Czechia
+          - generic [ref=e2053]:
+            - generic [ref=e2055]:
+              - img [ref=e2056]
+              - generic [ref=e2061]: 10 guests
+            - generic [ref=e2062]:
+              - generic [ref=e2063]: EUR 270
+              - generic [ref=e2064]: / night
+            - link "View Details" [ref=e2066] [cursor=pointer]:
+              - /url: /property/407955
+              - button "View Details" [ref=e2067]
+    - contentinfo [ref=e2068]:
+      - generic [ref=e2069]:
+        - generic [ref=e2070]:
+          - generic [ref=e2071]:
+            - generic [ref=e2072]:
+              - generic [ref=e2073]: Nick & Jenny
+              - generic [ref=e2074]: Your Prague Host
+            - paragraph [ref=e2075]: Two Brits renovating beautiful properties across Prague, creating exceptional experiences for our guests.
+          - generic [ref=e2076]:
+            - heading "Quick Links" [level=3] [ref=e2077]
+            - generic [ref=e2078]:
+              - link "About Us" [ref=e2079] [cursor=pointer]:
+                - /url: /about
+              - link "Contact" [ref=e2080] [cursor=pointer]:
+                - /url: /contact
+          - generic [ref=e2081]:
+            - heading "Contact" [level=3] [ref=e2082]
+            - generic [ref=e2083]:
+              - paragraph [ref=e2084]: Prague, Czech Republic
+              - paragraph [ref=e2085]: hello@nickandjenny.cz
+        - paragraph [ref=e2087]: © 2024 Nick & Jenny. All rights reserved.
+  - alert [ref=e2088]
+```
