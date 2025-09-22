@@ -133,9 +133,10 @@ export default function PropertyClient({ initialProperty }: PropertyClientProps)
                     src={property.thumbnailUrl}
                     alt={property.name}
                     fill
-                    unoptimized
                     className="object-cover group-hover:scale-105 transition-transform duration-300"
                     sizes="(min-width: 1024px) 66vw, 100vw"
+                    quality={80}
+                    priority
                   />
                   <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300" />
                 </div>
@@ -154,9 +155,10 @@ export default function PropertyClient({ initialProperty }: PropertyClientProps)
                         src={image.url}
                         alt={image.caption || `${property.name} - Image ${index + 1}`}
                         fill
-                        unoptimized
                         className="object-cover group-hover:scale-105 transition-transform duration-300"
                         sizes="(min-width: 768px) 33vw, 50vw"
+                        quality={75}
+                        loading="lazy"
                       />
                       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300" />
                     </div>

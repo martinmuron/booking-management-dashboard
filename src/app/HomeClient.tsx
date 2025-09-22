@@ -235,9 +235,10 @@ export default function HomeClient() {
                           src={imageUrl}
                           alt={property.name}
                           fill
-                          unoptimized
                           className="object-cover group-hover:scale-105 transition-transform duration-300"
                           sizes="(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw"
+                          quality={75}
+                          loading="lazy"
                         />
                       ) : (
                         <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
