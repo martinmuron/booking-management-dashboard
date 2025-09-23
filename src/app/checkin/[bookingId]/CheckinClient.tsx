@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import StripePayment from "@/components/ui/stripe-payment";
+import { hasNukiAccess } from "@/utils/nuki-properties";
 import {
   Calendar,
   Users,
@@ -815,15 +816,15 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
   const mapsEmbedUrl = `https://maps.google.com/maps?q=${mapsQuery}&t=&z=14&ie=UTF8&iwloc=&output=embed`;
   const mapsExternalUrl = `https://www.google.com/maps/search/?api=1&query=${mapsQuery}`;
 
-  const hasDigitalKeys = Boolean(
-    booking?.universalKeypadCode || (booking?.virtualKeys && booking.virtualKeys.length > 0)
-  );
+  const propertyHasNuki = booking ? hasNukiAccess(booking.propertyName) : false;
 
   const navigationItems = [
     { id: 'booking-details', label: 'Booking Details', icon: MapPin },
     { id: 'guest-registration', label: 'Guest Registration', icon: User },
     { id: 'city-tax', label: 'City Tax Payment', icon: CreditCard },
-    { id: 'virtual-keys', label: hasDigitalKeys ? 'Access Codes' : 'Door Access Info', icon: Key },
+    ...(propertyHasNuki
+      ? [{ id: 'virtual-keys', label: 'Access Codes', icon: Key }]
+      : []),
     { id: 'arrival', label: 'Arrival Instructions', icon: Home },
     { id: 'appliances', label: 'Appliances & WiFi', icon: Wifi },
     { id: 'around-you', label: 'Around You', icon: Navigation }
@@ -1420,25 +1421,22 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
                 </Card>
               </div>
 
-              {/* Access Codes / Door Access */}
-              <div ref={virtualKeysRef}>
-                <Card className="mb-6">
-                  <CardHeader>
-                    <CardTitle className="flex items-center">
-                      <Key className="mr-2 h-5 w-5" />
-                      {hasDigitalKeys ? 'Your Access Code' : 'Door Access Information'}
-                    </CardTitle>
-                    <CardDescription>
-                      {hasDigitalKeys
-                        ? booking?.universalKeypadCode
+              {propertyHasNuki && (
+                <div ref={virtualKeysRef}>
+                  <Card className="mb-6">
+                    <CardHeader>
+                      <CardTitle className="flex items-center">
+                        <Key className="mr-2 h-5 w-5" />
+                        Your Access Code
+                      </CardTitle>
+                      <CardDescription>
+                        {booking?.universalKeypadCode
                           ? 'Use this universal keypad code to access the property.'
-                          : 'Digital keys appear here once check-in is complete.'
-                        : 'This property uses traditional keys or onsite access. See below for details.'}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {hasDigitalKeys ? (
-                      booking?.universalKeypadCode ? (
+                          : 'Digital keys appear here once check-in is complete.'}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      {booking?.universalKeypadCode ? (
                         <div className="space-y-6">
                           <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-6 text-center">
                             <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
@@ -1477,28 +1475,16 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
                           <p className="text-sm text-muted-foreground mb-4">
                             Your digital keys will be activated automatically once check-in is completed. We will send a confirmation email with the code.
                           </p>
-                          <Badge className="bg-blue-100 text-blue-800">
-                            <Clock className="h-3 w-3 mr-1" />
-                            Awaiting Completion
-                          </Badge>
-                        </div>
-                      )
-                    ) : (
-                      <div className="bg-muted p-6 rounded-lg text-center">
-                        <Key className="mx-auto h-12 w-12 text-muted-foreground mb-3" />
-                        <h4 className="font-medium mb-2">Physical Key Collection</h4>
-                        <p className="text-sm text-muted-foreground mb-4">
-                          This property uses physical keys or onsite access. After you complete your check-in, detailed arrival instructions—including how to collect your keys—will be sent to your email.
-                        </p>
-                        <Badge className="bg-blue-100 text-blue-800">
-                          <Clock className="h-3 w-3 mr-1" />
-                          Instructions Sent After Check-In
-                        </Badge>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </div>
+                      <Badge className="bg-blue-100 text-blue-800">
+                        <Clock className="h-3 w-3 mr-1" />
+                        Awaiting Completion
+                      </Badge>
+                    </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
 
               {/* Arrival Instructions */}
               <div ref={arrivalRef}>
