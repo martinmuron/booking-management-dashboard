@@ -1,3 +1,5 @@
+import httpntlm from 'httpntlm';
+
 import { prisma } from '@/lib/database';
 import type { Booking as PrismaBooking, Guest as PrismaGuest, UbyPortExport as PrismaUbyPortExport } from '@prisma/client';
 import { UbyPortStatus } from '@prisma/client';
@@ -80,10 +82,20 @@ type PendingExport = PrismaUbyPortExport & {
 class UbyPortService {
 
   private getApiUrl(): string {
-    const isProduction = process.env.NODE_ENV === 'production';
-    return isProduction 
-      ? 'https://ubyport.pcr.cz/ws_uby/ws_uby.svc'
-      : 'https://ubyport.pcr.cz/ws_uby_test/ws_uby.svc';
+    // UbyPort 2.0 endpoint - try different variations
+    const baseUrl = 'https://ubyport.policie.cz';
+
+    // Try most likely paths for UbyPort 2.0
+    const endpointVariations = [
+      '/ws_uby/ws_uby.svc',
+      '/ws_uby.svc',
+      '/WS_UBY/WS_UBY.svc',
+      '/ws_uby',
+      '/WS_UBY'
+    ];
+
+    // For now, try the original path first
+    return `${baseUrl}/ws_uby/ws_uby.svc`;
   }
 
   private getAuthCode(): string {
@@ -96,6 +108,79 @@ class UbyPortService {
       username: process.env.UBYPORT_USERNAME || '',
       password: process.env.UBYPORT_PASSWORD || ''
     };
+  }
+
+  private async sendSoapRequest(soapAction: string, soapEnvelope: string): Promise<{ statusCode: number; body: string }>
+  {
+    const credentials = this.getCredentials();
+    if (!credentials.username || !credentials.password) {
+      throw new Error('UbyPort credentials not configured');
+    }
+
+    const domain = process.env.UBYPORT_DOMAIN || 'EXRESORTMV';
+    const workstation = process.env.UBYPORT_WORKSTATION || '';
+
+    console.log(`🔐 Using credentials: ${credentials.username} with domain: ${domain}`);
+
+    // Try httpntlm first
+    try {
+      return await new Promise((resolve, reject) => {
+        httpntlm.post(
+          {
+            url: this.getApiUrl(),
+            username: credentials.username,
+            password: credentials.password,
+            domain,
+            workstation,
+            headers: {
+              'Content-Type': 'text/xml; charset=utf-8',
+              'SOAPAction': soapAction,
+              'User-Agent': 'UbyPort-Client/1.0'
+            },
+            body: soapEnvelope
+          },
+          (err: Error | null, res?: { statusCode?: number; body?: string }) => {
+            if (err) {
+              reject(err);
+              return;
+            }
+
+            if (!res) {
+              reject(new Error('Empty response from UbyPort API'));
+              return;
+            }
+
+            resolve({
+              statusCode: res.statusCode ?? 0,
+              body: res.body ?? ''
+            });
+          }
+        );
+      });
+    } catch (ntlmError) {
+      console.log('🔄 NTLM failed, trying basic auth fallback:', ntlmError);
+
+      // Fallback to basic authentication if NTLM fails
+      const basicAuth = Buffer.from(`${domain}\\${credentials.username}:${credentials.password}`).toString('base64');
+
+      const response = await fetch(this.getApiUrl(), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'text/xml; charset=utf-8',
+          'SOAPAction': soapAction,
+          'Authorization': `Basic ${basicAuth}`,
+          'User-Agent': 'UbyPort-Client/1.0'
+        },
+        body: soapEnvelope
+      });
+
+      const responseText = await response.text();
+
+      return {
+        statusCode: response.status,
+        body: responseText
+      };
+    }
   }
 
   private getAccommodationInfo(): UbyPortSoapAccommodationList {
@@ -243,25 +328,19 @@ class UbyPortService {
   </soap:Body>
 </soap:Envelope>`;
 
-      // Submit to UbyPort SOAP API with NTLM authentication
-      const response = await fetch(this.getApiUrl(), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'text/xml; charset=utf-8',
-          'SOAPAction': 'http://UBY.pcr.cz/WS_UBY/IWS_UBY/ZapisUbytovane',
-          'Authorization': `Basic ${Buffer.from(`${credentials.username}:${credentials.password}`).toString('base64')}`
-        },
-        body: soapEnvelope
-      });
+      const ntlmResponse = await this.sendSoapRequest(
+        'http://UBY.pcr.cz/WS_UBY/IWS_UBY/ZapisUbytovane',
+        soapEnvelope
+      );
 
-      if (!response.ok) {
+      if (ntlmResponse.statusCode !== 200) {
         return {
           success: false,
-          error: `HTTP error ${response.status}: ${response.statusText}`
+          error: `HTTP error ${ntlmResponse.statusCode}`
         };
       }
 
-      const responseText = await response.text();
+      const responseText = ntlmResponse.body;
       console.log('📨 UbyPort API response received');
 
       // Parse SOAP response (simplified parsing - in production you might want to use a proper XML parser)
@@ -325,30 +404,25 @@ class UbyPortService {
   </soap:Body>
 </soap:Envelope>`;
 
-      const response = await fetch(this.getApiUrl(), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'text/xml; charset=utf-8',
-          'SOAPAction': 'http://UBY.pcr.cz/WS_UBY/IWS_UBY/TestDostupnosti',
-          'Authorization': `Basic ${Buffer.from(`${credentials.username}:${credentials.password}`).toString('base64')}`
-        },
-        body: soapEnvelope
-      });
+      const ntlmResponse = await this.sendSoapRequest(
+        'http://UBY.pcr.cz/WS_UBY/IWS_UBY/TestDostupnosti',
+        soapEnvelope
+      );
 
-      if (response.ok) {
-        const responseText = await response.text();
-        const isSuccess = responseText.includes('<TestDostupnostiResult>true</TestDostupnostiResult>');
-        
-        return {
-          success: isSuccess,
-          message: isSuccess ? 'UbyPort API connection successful' : 'UbyPort API returned false'
-        };
-      } else {
+      if (ntlmResponse.statusCode !== 200) {
         return {
           success: false,
-          error: `HTTP error ${response.status}: ${response.statusText}`
+          error: `HTTP error ${ntlmResponse.statusCode}`
         };
       }
+
+      const responseText = ntlmResponse.body;
+      const isSuccess = responseText.includes('<TestDostupnostiResult>true</TestDostupnostiResult>');
+
+      return {
+        success: isSuccess,
+        message: isSuccess ? 'UbyPort API connection successful' : 'UbyPort API returned false'
+      };
 
     } catch (error) {
       console.error('❌ UbyPort API connection test failed:', error);

@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { ubyPortService } from '@/services/ubyport.service';
 
+export const runtime = 'nodejs';
+
 // GET /api/ubyport/test-connection - Test UbyPort API connection
 export async function GET() {
   try {
