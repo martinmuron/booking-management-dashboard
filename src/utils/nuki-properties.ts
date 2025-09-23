@@ -1,37 +1,56 @@
-// List of 28 authorized properties that should have NUKI access codes
-export const NUKI_AUTHORIZED_PROPERTIES = [
-  // Named properties
-  "Bořivojova 50",
-  "Řehořova",
-  "Sunny studio with terrace by tram (604)", // CRITICAL FIX: Has keypad code 143729
+// Normalised list of smart-lock codes discovered from the live Nuki account.
+// We rely on these codes instead of a brittle hard-coded property list so that
+// new “Ž###” style apartments are automatically supported.
+const NUKI_DEVICE_ROOM_CODES = new Set([
+  '001',
+  '004',
+  '101',
+  '102',
+  '103',
+  '104',
+  '201',
+  '202',
+  '203',
+  '204',
+  '301',
+  '302',
+  '303',
+  '304',
+  '401',
+  '402',
+  '403',
+  '404',
+  '501',
+  '502',
+  '503',
+  '504',
+  '601',
+  '602',
+  '604',
+]);
 
-  // Z-coded properties
-  "Ž001",
-  "Ž004",
-  "Ž101",
-  "Ž102",
-  "Ž103",
-  "Ž104",
-  "Ž201",
-  "Ž202",
-  "Ž203",
-  "Ž204",
-  "Ž301",
-  "Ž302",
-  "Ž303",
-  "Ž304",
-  "Ž401",
-  "Ž402",
-  "Ž403",
-  "Ž404",
-  "Ž501",
-  "Ž502",
-  "Ž503",
-  "Ž504",
-  "Ž601",
-  "Ž602",
-  "Ž604"
-] as const;
+// Named buildings / entrances that use Nuki access but don’t follow the “Ž###”
+// convention.
+const NUKI_SPECIAL_PROPERTY_NAMES = [
+  'bořivojova 50',
+  'borivojova 50',
+  'bořivojova 73',
+  'borivojova 73',
+  'řehořova',
+  'rehovorova',
+  'rehorova',
+];
+
+// Legacy constant required by admin tooling – we still expose a deterministic
+// list based on the smart-lock codes so existing pages keep working.
+const STATIC_NUKI_PROPERTY_LIST: readonly string[] = [
+  ...Array.from(NUKI_DEVICE_ROOM_CODES).map((code) => `Ž${code}`),
+  'Bořivojova 50',
+  'Bořivojova 73',
+  'Řehořova',
+];
+
+export const NUKI_AUTHORIZED_PROPERTIES = STATIC_NUKI_PROPERTY_LIST;
 
 /**
  * Normalize property name for fuzzy matching
@@ -40,10 +59,39 @@ export const NUKI_AUTHORIZED_PROPERTIES = [
  */
 function normalizePropertyName(name: string): string {
   return name
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
     .toLowerCase()
     .trim()
-    .replace(/[^\w\s]/g, '') // Remove special characters except spaces
-    .replace(/\s+/g, ' '); // Normalize whitespace
+    .replace(/[^a-z0-9\s]/g, '')
+    .replace(/\s+/g, ' ');
+}
+
+function extractRoomCodes(propertyName: string): string[] {
+  const codes = new Set<string>();
+
+  // Match explicit numeric patterns (e.g. “(604)”, “Room 604”, “Ž604”).
+  const explicitMatches = propertyName.match(/\b\d{3}\b/g);
+  if (explicitMatches) {
+    explicitMatches.forEach((match) => codes.add(match));
+  }
+
+  const normalized = normalizePropertyName(propertyName);
+
+  // Match strings like “z604”, “ž604”, “room604”.
+  const zMatches = normalized.match(/z(\d{3})/g);
+  if (zMatches) {
+    zMatches.map((match) => match.slice(1)).forEach((match) => codes.add(match));
+  }
+
+  const roomMatches = normalized.match(/room\s*(\d{3})/g);
+  if (roomMatches) {
+    roomMatches.map((match) => match.replace(/[^0-9]/g, '')).forEach((match) => {
+      if (match.length === 3) codes.add(match);
+    });
+  }
+
+  return Array.from(codes);
 }
 
 /**
@@ -53,53 +101,23 @@ function normalizePropertyName(name: string): string {
  * @returns true if property should show access codes, false otherwise
  */
 export function hasNukiAccess(propertyName: string): boolean {
-  // First try exact matching (fastest)
-  const exactMatch = (NUKI_AUTHORIZED_PROPERTIES as readonly string[]).some(
-    (authorizedName) => authorizedName === propertyName
-  );
+  const normalizedInput = normalizePropertyName(propertyName);
 
-  if (exactMatch) {
+  if (NUKI_SPECIAL_PROPERTY_NAMES.some((keyword) => normalizedInput.includes(keyword))) {
     return true;
   }
 
-  // Fallback to fuzzy matching for property name variations
-  const normalizedInput = normalizePropertyName(propertyName);
+  // Quickly accept properties whose original name matches the legacy list exactly.
+  if (STATIC_NUKI_PROPERTY_LIST.includes(propertyName)) {
+    return true;
+  }
 
-  return (NUKI_AUTHORIZED_PROPERTIES as readonly string[]).some((authorizedName) => {
-    const normalizedAuthorized = normalizePropertyName(authorizedName);
+  const roomCodes = extractRoomCodes(propertyName);
+  if (roomCodes.some((code) => NUKI_DEVICE_ROOM_CODES.has(code))) {
+    return true;
+  }
 
-    // Exact normalized match
-    if (normalizedInput === normalizedAuthorized) {
-      return true;
-    }
-
-    // Handle specific patterns that might cause mismatches
-
-    // Z-coded properties: handle various formats (Ž604, Z604, 604, etc.)
-    if (authorizedName.startsWith('Ž')) {
-      const zNumber = authorizedName.slice(1); // Remove Ž prefix
-      return (
-        normalizedInput.includes(zNumber) ||
-        normalizedInput.includes(`z${zNumber}`) ||
-        normalizedInput.includes(`room ${zNumber}`) ||
-        normalizedInput.endsWith(zNumber)
-      );
-    }
-
-    // Named properties: check for partial matches with high confidence
-    if (normalizedInput.length > 5 && normalizedAuthorized.length > 5) {
-      // Check if one contains the other (with substantial overlap)
-      const longerName = normalizedInput.length > normalizedAuthorized.length ? normalizedInput : normalizedAuthorized;
-      const shorterName = normalizedInput.length > normalizedAuthorized.length ? normalizedAuthorized : normalizedInput;
-
-      // Require at least 70% overlap for fuzzy matching
-      if (shorterName.length / longerName.length >= 0.7) {
-        return longerName.includes(shorterName) || shorterName.includes(longerName);
-      }
-    }
-
-    return false;
-  });
+  return false;
 }
 
 /**
