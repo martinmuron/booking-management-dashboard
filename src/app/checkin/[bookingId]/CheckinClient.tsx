@@ -794,6 +794,61 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
   const firstName = booking?.guestLeaderName.split(' ')[0] || 'Guest';
 
   const aroundAddress = booking?.propertyAddress || booking?.roomNumber || booking?.propertyName || 'Prague, Czechia';
+
+  const guestInfoCompleted = guests.every((guest) => {
+    const firstName = sanitizeString(guest.firstName);
+    const lastName = sanitizeString(guest.lastName);
+    const dateOfBirth = sanitizeString(guest.dateOfBirth);
+    const nationality = sanitizeIsoAlpha3(guest.nationality);
+    const residenceCountry = sanitizeIsoAlpha3(guest.residenceCountry);
+    const residenceCity = sanitizeString(guest.residenceCity);
+    const residenceAddress = sanitizeString(guest.residenceAddress);
+    const documentNumber = sanitizeDocumentNumber(guest.documentNumber);
+    const purposeOfStay = sanitizeString(guest.purposeOfStay);
+
+    return (
+      firstName && NAME_CHAR_REGEX.test(firstName) &&
+      lastName && NAME_CHAR_REGEX.test(lastName) &&
+      dateOfBirth && !Number.isNaN(new Date(dateOfBirth).getTime()) &&
+      nationality && ISO_ALPHA3_REGEX.test(nationality) &&
+      residenceCountry && ISO_ALPHA3_REGEX.test(residenceCountry) &&
+      residenceCity &&
+      residenceAddress &&
+      documentNumber && DOCUMENT_NUMBER_REGEX.test(documentNumber) &&
+      purposeOfStay && /^\d{2}$/.test(purposeOfStay)
+    );
+  });
+
+  const cityTaxCompleted = cityTaxAmount === 0 || Boolean(paymentIntentId);
+  const checkInTaskCompleted = checkInCompleted;
+
+  const tasks = [
+    {
+      id: 'guest-registration',
+      label: 'Guest Registration',
+      description: guestInfoCompleted ? 'Completed' : 'Action required',
+      completed: guestInfoCompleted,
+      target: 'guest-registration'
+    },
+    {
+      id: 'city-tax',
+      label: 'City Tax Payment',
+      description: cityTaxAmount === 0
+        ? 'No payment required'
+        : cityTaxCompleted ? 'Completed' : 'Awaiting payment',
+      completed: cityTaxCompleted,
+      target: 'city-tax'
+    },
+    {
+      id: 'check-in',
+      label: 'Check-in',
+      description: checkInTaskCompleted ? 'All done' : 'Pending',
+      completed: checkInTaskCompleted,
+      target: propertyHasNuki ? 'virtual-keys' : 'arrival'
+    }
+  ];
+
+  const allTasksCompleted = tasks.every((task) => task.completed);
   const aroundCategories = useMemo(
     () => [
       { id: 'all', label: 'Highlights', query: aroundAddress },
@@ -918,6 +973,55 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
                   </p>
                 </div>
               </div>
+
+              <Card className="mb-6">
+                <CardHeader>
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <CardTitle>Check-in Progress</CardTitle>
+                      <CardDescription>
+                        {allTasksCompleted
+                          ? 'Congratulations! Your check-in is complete.'
+                          : 'Complete the steps below to finish your check-in.'}
+                      </CardDescription>
+                    </div>
+                    {allTasksCompleted && (
+                      <Badge className="bg-green-100 text-green-800 border-green-300">
+                        <CheckCircle className="h-4 w-4 mr-1" />
+                        All Tasks Completed
+                      </Badge>
+                    )}
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid gap-3 md:grid-cols-3">
+                    {tasks.map((task) => (
+                      <button
+                        key={task.id}
+                        type="button"
+                        onClick={() => scrollToSection(task.target)}
+                        className={`flex w-full flex-col items-start rounded-xl border px-4 py-3 text-left transition-colors ${
+                          task.completed
+                            ? 'border-green-200 bg-green-50 hover:bg-green-100'
+                            : 'border-gray-200 bg-muted hover:bg-muted/80'
+                        }`}
+                      >
+                        <span className="flex items-center text-sm font-medium text-foreground">
+                          {task.completed ? (
+                            <CheckCircle className="mr-2 h-4 w-4 text-green-600" />
+                          ) : (
+                            <Clock className="mr-2 h-4 w-4 text-amber-500" />
+                          )}
+                          {task.label}
+                        </span>
+                        <span className={`mt-2 text-xs ${task.completed ? 'text-green-700' : 'text-muted-foreground'}`}>
+                          {task.description}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
 
               {successMessage && (
                 <Card className="mb-4 lg:mb-6 border-green-200">
