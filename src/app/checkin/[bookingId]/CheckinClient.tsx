@@ -164,18 +164,19 @@ const phoneCodes = [
 
 // Purpose of stay options (Czech Police official codes)
 const purposeOfStayOptions = [
-  { value: '00', label: '00 - ZDRAVOTNÍ (Medical)' },
-  { value: '01', label: '01 - TURISTICKÝ (Tourism)' },
-  { value: '02', label: '02 - OBCHODNÍ (Business)' },
-  { value: '03', label: '03 - SLUŽEBNÍ (Official business)' },
-  { value: '04', label: '04 - STUDIJNÍ (Study/Education)' },
-  { value: '05', label: '05 - PRACOVNÍ (Work)' },
-  { value: '06', label: '06 - KULTURNÍ (Cultural)' },
-  { value: '07', label: '07 - SPORTOVNÍ (Sports)' },
-  { value: '08', label: '08 - NÁVŠTĚVA PŘÍBUZNÝCH (Family visit)' },
-  { value: '09', label: '09 - TRANZITNÍ (Transit)' },
-  { value: '10', label: '10 - JINÝ (Other)' },
-  { value: '99', label: '99 - OSTATNÍ / JINÉ (Other/Unknown)' }
+  { value: '00', label: '00 - Zdravotní (Medical)' },
+  { value: '01', label: '01 - Turistický (Tourism)' },
+  { value: '02', label: '02 - Obchodní (Business)' },
+  { value: '03', label: '03 - Služební (Official business)' },
+  { value: '04', label: '04 - Studijní (Study/Education)' },
+  { value: '05', label: '05 - Pracovní (Work)' },
+  { value: '06', label: '06 - Kulturní (Cultural)' },
+  { value: '07', label: '07 - Sportovní (Sports)' },
+  { value: '08', label: '08 - Návštěva příbuzných (Family visit)' },
+  { value: '09', label: '09 - Tranzitní (Transit)' },
+  { value: '10', label: '10 - Jiný (Other)' },
+  { value: '93', label: '93 - ADS vízum pro občana Číny' },
+  { value: '99', label: '99 - Ostatní / jiné' },
 ];
 
 const sanitizeString = (value: string) => value?.trim() ?? '';
@@ -1261,21 +1262,22 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
                                 </div>
                                 <div>
                                   <Label htmlFor={`purposeOfStay-${guest.id}`}>Purpose of Stay *</Label>
-                                  <Select
+                                  <Input
+                                    id={`purposeOfStay-${guest.id}`}
                                     value={guest.purposeOfStay}
-                                    onValueChange={(value) => updateGuest(guest.id, 'purposeOfStay', value)}
-                                  >
-                                    <SelectTrigger aria-invalid={!!errors.purposeOfStay}>
-                                      <SelectValue placeholder="Select purpose" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      {purposeOfStayOptions.map(option => (
-                                        <SelectItem key={option.value} value={option.value}>
-                                          {option.label}
-                                        </SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
+                                    onChange={(e) => updateGuest(guest.id, 'purposeOfStay', e.target.value)}
+                                    placeholder="e.g. 01"
+                                    maxLength={2}
+                                    pattern="\\d{2}"
+                                    aria-invalid={!!errors.purposeOfStay}
+                                    className={`uppercase ${errors.purposeOfStay ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
+                                    list={`purpose-suggestions-${guest.id}`}
+                                  />
+                                  <datalist id={`purpose-suggestions-${guest.id}`}>
+                                    {purposeOfStayOptions.map(option => (
+                                      <option key={option.value} value={option.value}>{option.label}</option>
+                                    ))}
+                                  </datalist>
                                   {errors.purposeOfStay && (
                                     <p className="mt-1 text-xs text-red-600">{errors.purposeOfStay}</p>
                                   )}
