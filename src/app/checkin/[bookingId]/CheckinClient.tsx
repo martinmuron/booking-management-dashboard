@@ -811,6 +811,7 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
   const firstName = booking?.guestLeaderName.split(' ')[0] || 'Guest';
 
   const aroundAddress = booking?.propertyAddress || booking?.roomNumber || booking?.propertyName || 'Prague, Czechia';
+  const propertyHasNuki = booking ? hasNukiAccess(booking.propertyName) : false;
 
   const guestInfoCompleted = guests.every((guest) => {
     const firstName = sanitizeString(guest.firstName);
@@ -887,8 +888,6 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
   const mapsQuery = encodeURIComponent(selectedAround.query);
   const mapsEmbedUrl = `https://maps.google.com/maps?q=${mapsQuery}&t=&z=14&ie=UTF8&iwloc=&output=embed`;
   const mapsExternalUrl = `https://www.google.com/maps/search/?api=1&query=${mapsQuery}`;
-
-  const propertyHasNuki = booking ? hasNukiAccess(booking.propertyName) : false;
 
   const navigationItems = [
     { id: 'booking-details', label: 'Booking Details', icon: MapPin },
