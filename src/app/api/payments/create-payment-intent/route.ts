@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    const stripeError = error as Stripe.StripeError;
+    const stripeError = error as Stripe.errors.StripeError;
 
     console.error('Error creating payment intent:', {
       message: stripeError?.message,
