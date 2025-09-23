@@ -158,13 +158,13 @@ export default function HomeClient() {
             </div>
             <div className="text-center">
               <div className="text-3xl font-bold text-black mb-2">
-                <CountUpAnimation end={1500} suffix="+" />
+                <CountUpAnimation end={8000} suffix="+" />
               </div>
-              <div className="text-sm text-gray-600">Happy Guests</div>
+              <div className="text-sm text-gray-600">Happy Customers</div>
             </div>
             <div className="text-center">
               <div className="text-3xl font-bold text-black mb-2">
-                <CountUpAnimation end={49} suffix=".9" />
+                <CountUpAnimation end={94} suffix="/10" />
               </div>
               <div className="text-sm text-gray-600">Average Rating</div>
             </div>

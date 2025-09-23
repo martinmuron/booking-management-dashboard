@@ -367,20 +367,7 @@ export async function POST(request: NextRequest) {
         ...(leadGuest.phone ? { guestLeaderPhone: leadGuest.phone } : {}),
       }
     });
-    
-    // Save payment if provided
-    if (paymentIntentId) {
-      await prisma.payment.create({
-        data: {
-          bookingId: booking.id,
-          amount: 0, // Will be updated by Stripe webhook
-          currency: 'eur',
-          status: 'paid',
-          stripePaymentIntentId: paymentIntentId
-        }
-      });
-    }
-    
+
     return NextResponse.json({
       success: true,
       data: {
