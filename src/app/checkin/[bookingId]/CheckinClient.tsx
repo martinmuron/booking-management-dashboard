@@ -77,6 +77,14 @@ interface BookingData {
   cityTaxPerPerson: number;
   universalKeypadCode?: string;
   virtualKeys?: VirtualKey[];
+  status?: string;
+  payments?: Array<{
+    id: string;
+    status: string;
+    amount?: number;
+    stripePaymentIntentId?: string | null;
+    currency?: string;
+  }>;
 }
 
 interface CheckinClientProps {
@@ -205,13 +213,18 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
   const [fatalError, setFatalError] = useState<string | null>(null);
   const [guests, setGuests] = useState<Guest[]>([]);
   const [guestErrors, setGuestErrors] = useState<Record<string, GuestErrors>>({});
-  const [paymentCompleted, setPaymentCompleted] = useState(false);
-  const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
-  const [paymentIntentAmount, setPaymentIntentAmount] = useState<number | null>(null);
+  const existingPaidPayment = initialBooking?.payments?.find((payment) => payment.status?.toLowerCase() === 'paid');
+  const initialCheckInCompleted = Boolean(initialBooking?.status === 'CHECKED_IN' || existingPaidPayment);
+  const [paymentIntentId, setPaymentIntentId] = useState<string | null>(existingPaidPayment?.stripePaymentIntentId ?? null);
+  const [paymentIntentAmount, setPaymentIntentAmount] = useState<number | null>(existingPaidPayment?.amount ?? null);
   const [submitting, setSubmitting] = useState(false);
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [activeSection, setActiveSection] = useState('booking-details');
+  const [checkInCompleted, setCheckInCompleted] = useState(initialCheckInCompleted);
+  const [successMessage, setSuccessMessage] = useState<string | null>(
+    initialCheckInCompleted ? 'Check-in already completed.' : null
+  );
 
   // Refs for sections
   const bookingDetailsRef = useRef<HTMLDivElement>(null);
@@ -282,6 +295,15 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
           if (data.success) {
             const fetchedBooking = data.data.booking as BookingData & { guests?: ApiGuestPayload[] };
             setBooking(fetchedBooking);
+
+            const paidPayment = fetchedBooking.payments?.find(payment => payment.status?.toLowerCase() === 'paid');
+            const completed = Boolean(fetchedBooking.status === 'CHECKED_IN' || paidPayment);
+            setCheckInCompleted(completed);
+            setSuccessMessage(completed ? 'Check-in already completed.' : null);
+            if (paidPayment) {
+              setPaymentIntentId(paidPayment.stripePaymentIntentId ?? null);
+              setPaymentIntentAmount(paidPayment.amount ?? null);
+            }
 
             const fetchedGuests = ((fetchedBooking.guests || []) as ApiGuestPayload[]).map((guest, index) => ({
               id: guest.id || `${Date.now()}-${index}`,
@@ -606,8 +628,12 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
   const canInitiatePayment = cityTaxAmount > 0 && isGuestTaxInfoComplete;
 
   useEffect(() => {
+    if (checkInCompleted) {
+      setShowPaymentForm(false);
+      return;
+    }
+
     if (cityTaxAmount === 0) {
-      setPaymentCompleted(true);
       setPaymentIntentId(null);
       setPaymentIntentAmount(null);
       setShowPaymentForm(false);
@@ -615,57 +641,36 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
     }
 
     if (paymentIntentAmount === null) {
-      setPaymentCompleted(false);
       return;
     }
 
     if (paymentIntentAmount !== cityTaxAmount) {
-      setPaymentCompleted(false);
       setPaymentIntentId(null);
       setPaymentIntentAmount(null);
       setShowPaymentForm(false);
     }
-  }, [cityTaxAmount, paymentIntentAmount]);
+  }, [checkInCompleted, cityTaxAmount, paymentIntentAmount]);
 
-  const handlePaymentSuccess = (intentId: string, amountPaid: number) => {
+  const handlePaymentSuccess = async (intentId: string, amountPaid: number) => {
     setPaymentIntentId(intentId);
     setPaymentIntentAmount(amountPaid);
-    setPaymentCompleted(true);
     setShowPaymentForm(false);
     setError(null);
+
+    await finalizeCheckIn(intentId);
   };
 
   const handlePaymentError = (errorMessage: string) => {
     setError(`Payment failed: ${errorMessage}`);
+    setSuccessMessage(null);
     setShowPaymentForm(true);
     setPaymentIntentId(null);
     setPaymentIntentAmount(null);
-    setPaymentCompleted(false);
+    setCheckInCompleted(false);
   };
 
-  const initiatePayment = () => {
-    if (!canInitiatePayment) {
-      setError('Please complete guest details (date of birth and city/country of residence) before paying the city tax.');
-      return;
-    }
-    setShowPaymentForm(true);
-    setError(null);
-  };
-
-  const handleSubmit = async () => {
-    if (!paymentCompleted) {
-      setError('Please complete payment before submitting');
-      return;
-    }
-
-    const isValid = validateAllGuests(guests);
-
-    if (!isValid) {
-      setError('Please fix the highlighted guest details before submitting.');
-      return;
-    }
-
-    const normalizedGuests = guests.map((guest) => {
+  const buildNormalizedGuests = () => {
+    return guests.map((guest) => {
       const sanitizedNationality = sanitizeIsoAlpha3(guest.nationality);
       const sanitizedCitizenship = guest.citizenship ? sanitizeIsoAlpha3(guest.citizenship) : sanitizedNationality;
       const sanitizedResidenceCountry = sanitizeIsoAlpha3(guest.residenceCountry);
@@ -691,8 +696,34 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
         notes: sanitizeString(guest.notes)
       };
     });
+  };
+
+  const finalizeCheckIn = async (intentIdOverride?: string) => {
+    if (checkInCompleted) {
+      setSuccessMessage('Check-in already completed.');
+      return true;
+    }
+
+    setSuccessMessage(null);
+
+    const guestsValid = validateAllGuests(guests);
+    if (!guestsValid) {
+      setError('Please fix the highlighted guest details before completing check-in.');
+      return false;
+    }
+
+    const intentIdToUse = intentIdOverride ?? paymentIntentId;
+
+    if (cityTaxAmount > 0 && !intentIdToUse) {
+      setError('We could not locate your payment confirmation. Please try again.');
+      return false;
+    }
+
+    const normalizedGuests = buildNormalizedGuests();
 
     setSubmitting(true);
+    setError(null);
+
     try {
       const response = await fetch('/api/check-in', {
         method: 'POST',
@@ -702,24 +733,61 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
         body: JSON.stringify({
           token: bookingToken,
           guests: normalizedGuests,
-          paymentIntentId: paymentIntentId
+          paymentIntentId: intentIdToUse
         }),
       });
 
       const data = await response.json();
 
       if (data.success) {
-        alert('Check-in completed successfully!');
+        setSuccessMessage('Check-in completed successfully!');
         setError(null);
         setGuestErrors({});
-      } else {
-        setError(data.error || 'Failed to complete check-in');
+        setCheckInCompleted(true);
+        if (intentIdToUse) {
+          setPaymentIntentId(intentIdToUse);
+        }
+        setBooking((prev) => (prev ? { ...prev, status: 'CHECKED_IN' } : prev));
+        return true;
       }
-    } catch {
+
+      setError(data.error || 'Failed to complete check-in');
+      return false;
+    } catch (completionError) {
+      console.error('Failed to complete check-in:', completionError);
       setError('Failed to complete check-in. Please try again.');
+      return false;
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const initiatePayment = () => {
+    if (checkInCompleted) {
+      setSuccessMessage('Check-in already completed.');
+      return;
+    }
+
+    setSuccessMessage(null);
+
+    const guestsValid = validateAllGuests(guests);
+    if (!guestsValid) {
+      setError('Please fix the highlighted guest details before paying the city tax.');
+      return;
+    }
+
+    if (paymentIntentId && paymentIntentAmount === cityTaxAmount) {
+      void finalizeCheckIn(paymentIntentId);
+      return;
+    }
+
+    if (!canInitiatePayment) {
+      setError('Please complete guest details (date of birth and city/country of residence) before paying the city tax.');
+      return;
+    }
+
+    setShowPaymentForm(true);
+    setError(null);
   };
 
   const firstName = booking?.guestLeaderName.split(' ')[0] || 'Guest';
@@ -747,14 +815,18 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
   const mapsEmbedUrl = `https://maps.google.com/maps?q=${mapsQuery}&t=&z=14&ie=UTF8&iwloc=&output=embed`;
   const mapsExternalUrl = `https://www.google.com/maps/search/?api=1&query=${mapsQuery}`;
 
+  const hasDigitalKeys = Boolean(
+    booking?.universalKeypadCode || (booking?.virtualKeys && booking.virtualKeys.length > 0)
+  );
+
   const navigationItems = [
     { id: 'booking-details', label: 'Booking Details', icon: MapPin },
     { id: 'guest-registration', label: 'Guest Registration', icon: User },
     { id: 'city-tax', label: 'City Tax Payment', icon: CreditCard },
+    { id: 'virtual-keys', label: hasDigitalKeys ? 'Access Codes' : 'Door Access Info', icon: Key },
     { id: 'arrival', label: 'Arrival Instructions', icon: Home },
     { id: 'appliances', label: 'Appliances & WiFi', icon: Wifi },
-    { id: 'around-you', label: 'Around You', icon: Navigation },
-    { id: 'virtual-keys', label: 'Virtual Keys', icon: Key }
+    { id: 'around-you', label: 'Around You', icon: Navigation }
   ];
 
   if (loading) {
@@ -845,6 +917,17 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
                   </p>
                 </div>
               </div>
+
+              {successMessage && (
+                <Card className="mb-4 lg:mb-6 border-green-200">
+                  <CardContent className="pt-6">
+                    <div className="flex items-start space-x-2 text-green-600">
+                      <CheckCircle className="h-5 w-5 flex-shrink-0 mt-0.5" />
+                      <span className="text-sm lg:text-base">{successMessage}</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
 
               {error && (
                 <Card className="mb-4 lg:mb-6 border-red-200">
@@ -1261,7 +1344,19 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    {!paymentCompleted ? (
+                    {checkInCompleted ? (
+                      <div className="flex flex-col gap-2 text-green-600">
+                        <span className="inline-flex items-center">
+                          <CheckCircle className="h-5 w-5 mr-2" />
+                          Check-in completed. We look forward to welcoming you!
+                        </span>
+                        {cityTaxAmount > 0 && (
+                          <p className="text-xs text-muted-foreground">
+                            Payment reference: {paymentIntentId || 'Available via Stripe receipt'}
+                          </p>
+                        )}
+                      </div>
+                    ) : cityTaxAmount > 0 ? (
                       <div className="space-y-4">
                         <p className="text-sm text-muted-foreground">
                           Total tax amount: <strong>{cityTaxAmount} CZK</strong>
@@ -1278,21 +1373,127 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
                             guestCount={guests.length}
                             onSuccess={handlePaymentSuccess}
                             onError={handlePaymentError}
+                            buttonLabel="Pay City Tax & Complete Check-In"
                           />
                         ) : (
-                          <Button onClick={initiatePayment} disabled={!canInitiatePayment}>
-                            Pay Prague City Tax ({cityTaxAmount} CZK)
+                          <Button
+                            onClick={initiatePayment}
+                            disabled={!canInitiatePayment || submitting}
+                          >
+                            {submitting ? (
+                              <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Finalising Check-in...
+                              </>
+                            ) : (
+                              <>Pay City Tax & Complete Check-In ({cityTaxAmount} CZK)</>
+                            )}
                           </Button>
+                        )}
+                        {submitting && !showPaymentForm && (
+                          <p className="text-xs text-muted-foreground">
+                            Processing your check-in. Please wait...
+                          </p>
                         )}
                       </div>
                     ) : (
-                      <div className="flex items-center space-x-2 text-green-600">
-                        <CheckCircle className="h-5 w-5" />
-                        <span>
-                          {cityTaxAmount > 0
-                            ? 'City tax payment completed successfully!'
-                            : 'No city tax payment required.'}
-                        </span>
+                      <div className="space-y-4">
+                        <p className="text-sm text-muted-foreground">
+                          This stay has no city tax due. You can complete your check-in now.
+                        </p>
+                        <Button
+                          onClick={() => finalizeCheckIn()}
+                          disabled={submitting}
+                        >
+                          {submitting ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Completing Check-In...
+                            </>
+                          ) : (
+                            <>Complete Check-In</>
+                          )}
+                        </Button>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Access Codes / Door Access */}
+              <div ref={virtualKeysRef}>
+                <Card className="mb-6">
+                  <CardHeader>
+                    <CardTitle className="flex items-center">
+                      <Key className="mr-2 h-5 w-5" />
+                      {hasDigitalKeys ? 'Your Access Code' : 'Door Access Information'}
+                    </CardTitle>
+                    <CardDescription>
+                      {hasDigitalKeys
+                        ? booking?.universalKeypadCode
+                          ? 'Use this universal keypad code to access the property.'
+                          : 'Digital keys appear here once check-in is complete.'
+                        : 'This property uses traditional keys or onsite access. See below for details.'}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {hasDigitalKeys ? (
+                      booking?.universalKeypadCode ? (
+                        <div className="space-y-6">
+                          <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-6 text-center">
+                            <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
+                              <Key className="h-8 w-8 text-blue-600" />
+                            </div>
+                            <h3 className="text-lg font-semibold text-blue-900 mb-2">Your Universal Access Code</h3>
+                            <div className="text-4xl font-bold text-blue-800 font-mono mb-2 tracking-wider">
+                              {booking.universalKeypadCode}
+                            </div>
+                            <p className="text-sm text-blue-600 mb-4">
+                              Enter this code on every keypad to access the property.
+                            </p>
+                            <Badge className="bg-green-100 text-green-800 border-green-300">
+                              <CheckCircle className="h-3 w-3 mr-1" />
+                              Active Now
+                            </Badge>
+                          </div>
+
+                          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                            <h4 className="font-medium text-amber-900 mb-2 flex items-center">
+                              <AlertCircle className="h-4 w-4 mr-2" />
+                              How to Use Your Code
+                            </h4>
+                            <ol className="text-sm text-amber-800 space-y-1">
+                              <li>1. Wake the keypad and enter your 6-digit code: <span className="font-mono font-bold">{booking.universalKeypadCode}</span></li>
+                              <li>2. Press the unlock key or wait for the green confirmation light.</li>
+                              <li>3. Turn the handle to open the door.</li>
+                              <li>4. Lock the door when leaving by pressing the lock button.</li>
+                            </ol>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="bg-muted p-6 rounded-lg text-center">
+                          <Key className="mx-auto h-12 w-12 text-muted-foreground mb-3" />
+                          <h4 className="font-medium mb-2">Access Code Pending</h4>
+                          <p className="text-sm text-muted-foreground mb-4">
+                            Your digital keys will be activated automatically once check-in is completed. We will send a confirmation email with the code.
+                          </p>
+                          <Badge className="bg-blue-100 text-blue-800">
+                            <Clock className="h-3 w-3 mr-1" />
+                            Awaiting Completion
+                          </Badge>
+                        </div>
+                      )
+                    ) : (
+                      <div className="bg-muted p-6 rounded-lg text-center">
+                        <Key className="mx-auto h-12 w-12 text-muted-foreground mb-3" />
+                        <h4 className="font-medium mb-2">Physical Key Collection</h4>
+                        <p className="text-sm text-muted-foreground mb-4">
+                          This property uses physical keys or onsite access. After you complete your check-in, detailed arrival instructions—including how to collect your keys—will be sent to your email.
+                        </p>
+                        <Badge className="bg-blue-100 text-blue-800">
+                          <Clock className="h-3 w-3 mr-1" />
+                          Instructions Sent After Check-In
+                        </Badge>
                       </div>
                     )}
                   </CardContent>
@@ -1475,97 +1676,6 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
                 </Card>
               </div>
 
-              {/* Virtual Keys */}
-              <div ref={virtualKeysRef}>
-                <Card className="mb-6">
-                  <CardHeader>
-                    <CardTitle className="flex items-center">
-                      <Key className="mr-2 h-5 w-5" />
-                      Your Access Code
-                    </CardTitle>
-                    <CardDescription>
-                      {booking?.universalKeypadCode
-                        ? 'Your universal keypad code for all doors'
-                        : 'Digital keys will be available after check-in completion'
-                      }
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {booking?.universalKeypadCode ? (
-                      <div className="space-y-6">
-                        {/* Universal Code Display */}
-                        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-6 text-center">
-                          <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
-                            <Key className="h-8 w-8 text-blue-600" />
-                          </div>
-                          <h3 className="text-lg font-semibold text-blue-900 mb-2">Your Universal Access Code</h3>
-                          <div className="text-4xl font-bold text-blue-800 font-mono mb-2 tracking-wider">
-                            {booking.universalKeypadCode}
-                          </div>
-                          <p className="text-sm text-blue-600 mb-4">
-                            Use this code on all keypads to access your areas
-                          </p>
-                          <Badge className="bg-green-100 text-green-800 border-green-300">
-                            <CheckCircle className="h-3 w-3 mr-1" />
-                            Active Now
-                          </Badge>
-                        </div>
-
-                        {/* Instructions */}
-                        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-                          <h4 className="font-medium text-amber-900 mb-2 flex items-center">
-                            <AlertCircle className="h-4 w-4 mr-2" />
-                            How to Use Your Code
-                          </h4>
-                          <ol className="text-sm text-amber-800 space-y-1">
-                            <li>1. Find the keypad on the door</li>
-                            <li>2. Enter your 6-digit code: <span className="font-mono font-bold">{booking.universalKeypadCode}</span></li>
-                            <li>3. Press the unlock button or wait for auto-unlock</li>
-                            <li>4. Turn the handle to open the door</li>
-                          </ol>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="bg-muted p-6 rounded-lg text-center">
-                        <Key className="mx-auto h-12 w-12 text-muted-foreground mb-3" />
-                        <h4 className="font-medium mb-2">Access Code Not Yet Available</h4>
-                        <p className="text-sm text-muted-foreground mb-4">
-                          Your universal access code will be generated automatically once you complete
-                          the check-in process and payment.
-                        </p>
-                        <Badge className="bg-blue-100 text-blue-800">
-                          <Clock className="h-3 w-3 mr-1" />
-                          Pending Check-in Completion
-                        </Badge>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Submit Button */}
-              <Card>
-                <CardContent className="pt-6">
-                  <Button
-                    onClick={handleSubmit}
-                    disabled={submitting || !paymentCompleted}
-                    className="w-full"
-                    size="lg"
-                  >
-                    {submitting ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Completing Check-in...
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle className="mr-2 h-4 w-4" />
-                        Complete Check-in
-                      </>
-                    )}
-                  </Button>
-                </CardContent>
-              </Card>
             </div>
           </div>
         </div>

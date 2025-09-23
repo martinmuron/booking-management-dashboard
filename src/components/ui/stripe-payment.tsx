@@ -25,6 +25,7 @@ interface PaymentFormProps {
   guestCount: number;
   onSuccess: (paymentIntentId: string, amountPaid: number) => void;
   onError: (error: string) => void;
+  buttonLabel?: string;
 }
 
 const currencyFormatter = new Intl.NumberFormat('cs-CZ', {
@@ -33,7 +34,7 @@ const currencyFormatter = new Intl.NumberFormat('cs-CZ', {
   maximumFractionDigits: 2
 });
 
-function PaymentForm({ amount, bookingId, guestCount, onSuccess, onError }: PaymentFormProps) {
+function PaymentForm({ amount, bookingId, guestCount, onSuccess, onError, buttonLabel }: PaymentFormProps) {
   const stripe = useStripe();
   const elements = useElements();
   const [loading, setLoading] = useState(false);
@@ -120,7 +121,7 @@ function PaymentForm({ amount, bookingId, guestCount, onSuccess, onError }: Paym
             Processing Payment...
           </>
         ) : (
-          `Pay ${currencyFormatter.format(amount)}`
+          buttonLabel ?? `Pay ${currencyFormatter.format(amount)}`
         )}
       </Button>
     </form>
@@ -133,9 +134,10 @@ interface StripePaymentProps {
   guestCount: number;
   onSuccess: (paymentIntentId: string, amountPaid: number) => void;
   onError: (error: string) => void;
+  buttonLabel?: string;
 }
 
-export default function StripePayment({ amount, bookingId, guestCount, onSuccess, onError }: StripePaymentProps) {
+export default function StripePayment({ amount, bookingId, guestCount, onSuccess, onError, buttonLabel }: StripePaymentProps) {
   return (
     <Elements stripe={stripePromise}>
       <PaymentForm
@@ -144,6 +146,7 @@ export default function StripePayment({ amount, bookingId, guestCount, onSuccess
         guestCount={guestCount}
         onSuccess={onSuccess}
         onError={onError}
+        buttonLabel={buttonLabel}
       />
     </Elements>
   );
