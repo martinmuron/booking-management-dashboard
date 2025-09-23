@@ -15,9 +15,13 @@ export const config = {
   
   // Stripe configuration
   stripe: {
-    publishableKey: process.env.STRIPE_PUBLISHABLE_KEY!,
+    publishableKey: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+      || process.env.STRIPE_PUBLISHABLE_KEY!,
     secretKey: process.env.STRIPE_SECRET_KEY!,
-    webhookSecret: process.env.STRIPE_WEBHOOK_SECRET!,
+    webhookSecrets: {
+      snapshot: process.env.STRIPE_WEBHOOK_SECRET!,
+      thin: process.env.STRIPE_THIN_WEBHOOK_SECRET!,
+    },
   },
   
   // Email configuration
@@ -58,10 +62,17 @@ export const validateConfig = () => {
     'HOSTAWAY_ACCOUNT_ID',
     'NUKI_API_KEY',
     'NEXTAUTH_SECRET',
+    'STRIPE_SECRET_KEY',
+    'STRIPE_WEBHOOK_SECRET',
+    'STRIPE_THIN_WEBHOOK_SECRET',
   ];
   
   const missing = requiredEnvVars.filter(envVar => !process.env[envVar]);
   
+  if (!process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY && !process.env.STRIPE_PUBLISHABLE_KEY) {
+    missing.push('NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY|STRIPE_PUBLISHABLE_KEY');
+  }
+
   if (missing.length > 0) {
     throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
   }
