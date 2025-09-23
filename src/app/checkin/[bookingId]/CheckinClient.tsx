@@ -164,20 +164,36 @@ const phoneCodes = [
 
 // Purpose of stay options (Czech Police official codes)
 const purposeOfStayOptions = [
-  { value: '00', label: '00 - Zdravotní (Medical)' },
-  { value: '01', label: '01 - Turistický (Tourism)' },
-  { value: '02', label: '02 - Obchodní (Business)' },
-  { value: '03', label: '03 - Služební (Official business)' },
-  { value: '04', label: '04 - Studijní (Study/Education)' },
-  { value: '05', label: '05 - Pracovní (Work)' },
-  { value: '06', label: '06 - Kulturní (Cultural)' },
-  { value: '07', label: '07 - Sportovní (Sports)' },
-  { value: '08', label: '08 - Návštěva příbuzných (Family visit)' },
-  { value: '09', label: '09 - Tranzitní (Transit)' },
-  { value: '10', label: '10 - Jiný (Other)' },
-  { value: '93', label: '93 - ADS vízum pro občana Číny' },
-  { value: '99', label: '99 - Ostatní / jiné' },
+  { value: '00', label: 'Medical treatment', keywords: ['medical', 'health', 'doctor'] },
+  { value: '01', label: 'Tourism', keywords: ['tourism', 'holiday', 'vacation', 'travel'] },
+  { value: '02', label: 'Business', keywords: ['business', 'trade'] },
+  { value: '03', label: 'Official business', keywords: ['official', 'diplomatic'] },
+  { value: '04', label: 'Study / education', keywords: ['study', 'education', 'student'] },
+  { value: '05', label: 'Work', keywords: ['work', 'employment', 'job'] },
+  { value: '06', label: 'Cultural', keywords: ['cultural', 'culture'] },
+  { value: '07', label: 'Sports', keywords: ['sport', 'competition'] },
+  { value: '08', label: 'Family visit', keywords: ['family', 'relatives', 'visit'] },
+  { value: '09', label: 'Transit', keywords: ['transit', 'transfer'] },
+  { value: '10', label: 'Other (specified)', keywords: ['other'] },
+  { value: '11', label: 'Studies language course', keywords: ['language', 'course'] },
+  { value: '12', label: 'Internship / training', keywords: ['internship', 'training'] },
+  { value: '13', label: 'Caring for family member', keywords: ['care', 'family'] },
+  { value: '14', label: 'Medical escort', keywords: ['escort'] },
+  { value: '15', label: 'Religious', keywords: ['religion', 'religious'] },
+  { value: '16', label: 'Conference / congress', keywords: ['conference', 'congress'] },
+  { value: '18', label: 'Shopping', keywords: ['shopping'] },
+  { value: '19', label: 'Spa stay', keywords: ['spa', 'wellness'] },
+  { value: '20', label: 'Seaman', keywords: ['seaman', 'crew'] },
+  { value: '21', label: 'Training / course', keywords: ['training', 'course', 'workshop'] },
+  { value: '22', label: 'Volunteering', keywords: ['volunteer'] },
+  { value: '23', label: 'Seasonal work', keywords: ['seasonal'] },
+  { value: '24', label: 'Au pair', keywords: ['au', 'pair', 'aup'] },
+  { value: '25', label: 'Working holiday', keywords: ['working', 'holiday'] },
+  { value: '93', label: 'ADS visa for Chinese citizens', keywords: ['ads', 'china'] },
+  { value: '99', label: 'Other / unspecified', keywords: ['other', 'unspecified'] },
 ];
+
+const commonPurposeCodes = ['01', '05', '02', '08', '04', '09', '06', '07', '00', '03', '10', '99'];
 
 const sanitizeString = (value: string) => value?.trim() ?? '';
 
@@ -1262,22 +1278,52 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
                                 </div>
                                 <div>
                                   <Label htmlFor={`purposeOfStay-${guest.id}`}>Purpose of Stay *</Label>
-                                  <Input
-                                    id={`purposeOfStay-${guest.id}`}
-                                    value={guest.purposeOfStay}
-                                    onChange={(e) => updateGuest(guest.id, 'purposeOfStay', e.target.value)}
-                                    placeholder="e.g. 01"
-                                    maxLength={2}
-                                    pattern="\\d{2}"
-                                    aria-invalid={!!errors.purposeOfStay}
-                                    className={`uppercase ${errors.purposeOfStay ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
-                                    list={`purpose-suggestions-${guest.id}`}
-                                  />
-                                  <datalist id={`purpose-suggestions-${guest.id}`}>
-                                    {purposeOfStayOptions.map(option => (
-                                      <option key={option.value} value={option.value}>{option.label}</option>
-                                    ))}
-                                  </datalist>
+                                  <div className="space-y-2">
+                                    <div className="flex flex-wrap gap-2">
+                                      {purposeOfStayOptions
+                                        .filter(option => commonPurposeCodes.includes(option.value))
+                                        .map(option => {
+                                          const isActive = guest.purposeOfStay === option.value;
+                                          return (
+                                            <Button
+                                              key={`${guest.id}-${option.value}`}
+                                              type="button"
+                                              variant={isActive ? 'default' : 'outline'}
+                                              className={`h-8 px-3 text-xs ${isActive ? 'bg-blue-600 hover:bg-blue-600 text-white' : ''}`}
+                                              onClick={() => updateGuest(guest.id, 'purposeOfStay', option.value)}
+                                            >
+                                              {option.value} – {option.label}
+                                            </Button>
+                                          );
+                                        })}
+                                    </div>
+                                    <Input
+                                      id={`purposeOfStay-${guest.id}`}
+                                      value={guest.purposeOfStay}
+                                      onChange={(e) => updateGuest(guest.id, 'purposeOfStay', e.target.value)}
+                                      placeholder="Search or enter 2-digit code (e.g. 01, tourism)"
+                                      maxLength={2}
+                                      pattern="\\d{2}"
+                                      aria-invalid={!!errors.purposeOfStay}
+                                      className={`uppercase ${errors.purposeOfStay ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
+                                      list={`purpose-suggestions-${guest.id}`}
+                                    />
+                                    <datalist id={`purpose-suggestions-${guest.id}`}>
+                                      {purposeOfStayOptions.map(option => (
+                                        <option
+                                          key={option.value}
+                                          value={option.value}
+                                          label={`${option.value} – ${option.label}`}
+                                        >
+                                          {option.value} – {option.label}
+                                        </option>
+                                      ))}
+                                    </datalist>
+                                    <p className="text-xs text-muted-foreground">
+                                      Selecting one of the common choices above is easiest. You can also type the code number or keywords
+                                      (e.g. “tourism”, “work”, “ADS”) to find the official purpose.
+                                    </p>
+                                  </div>
                                   {errors.purposeOfStay && (
                                     <p className="mt-1 text-xs text-red-600">{errors.purposeOfStay}</p>
                                   )}
