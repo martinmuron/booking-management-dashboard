@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import type Stripe from 'stripe';
+
 import { stripe } from '@/lib/stripe-server';
 
 export async function POST(request: NextRequest) {
@@ -37,12 +39,23 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Error creating payment intent:', error);
-    
+    const stripeError = error as Stripe.StripeError;
+
+    console.error('Error creating payment intent:', {
+      message: stripeError?.message,
+      type: stripeError?.type,
+      code: stripeError?.code,
+      statusCode: stripeError?.statusCode,
+      detail: stripeError,
+    });
+
     return NextResponse.json(
-      { 
+      {
         error: 'Failed to create payment intent',
-        message: error instanceof Error ? error.message : 'Unknown error'
+        message: stripeError?.message || 'Unknown error',
+        type: stripeError?.type,
+        code: stripeError?.code,
+        statusCode: stripeError?.statusCode,
       },
       { status: 500 }
     );

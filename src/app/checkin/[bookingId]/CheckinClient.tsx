@@ -182,14 +182,16 @@ const formatDate = (dateString: string) => {
     weekday: 'long',
     year: 'numeric',
     month: 'long',
-    day: 'numeric'
+    day: 'numeric',
+    timeZone: 'Europe/Prague'
   });
 };
 
 const formatTime = (dateString: string) => {
   return new Date(dateString).toLocaleTimeString('en-US', {
     hour: '2-digit',
-    minute: '2-digit'
+    minute: '2-digit',
+    timeZone: 'Europe/Prague'
   });
 };
 
