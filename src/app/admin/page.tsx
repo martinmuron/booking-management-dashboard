@@ -308,14 +308,9 @@ export default function AdminDashboard() {
         <div className="max-w-7xl w-full mx-auto">
           {/* Header */}
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 md:gap-6">
-            <div>
-              <h1 className="text-3xl font-bold text-foreground mb-2">
-                Admin Dashboard
-              </h1>
-              <p className="text-muted-foreground">
-                Manage all bookings and guest information
-              </p>
-            </div>
+            <p className="text-muted-foreground">
+              Manage all bookings and guest information
+            </p>
           </div>
 
           {/* Filters */}
