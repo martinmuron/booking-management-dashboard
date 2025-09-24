@@ -201,6 +201,21 @@ const sanitizeIsoAlpha3 = (value: string) => sanitizeString(value).toUpperCase()
 
 const sanitizeDocumentNumber = (value: string) => sanitizeString(value).toUpperCase();
 
+const normalizeForMatch = (value: string) =>
+  value
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase();
+
+const shouldShowArrivalInstructions = (booking?: BookingData | null) => {
+  if (!booking) {
+    return false;
+  }
+
+  const fields = [booking.propertyName, booking.propertyAddress, booking.roomNumber];
+  return fields.some((field) => field && normalizeForMatch(field).includes('prokopova'));
+};
+
 type GuestErrors = Partial<Record<keyof Guest, string>>;
 
 const formatDate = (dateString: string) => {
@@ -812,6 +827,7 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
 
   const aroundAddress = booking?.propertyAddress || booking?.roomNumber || booking?.propertyName || 'Prague, Czechia';
   const propertyHasNuki = booking ? hasNukiAccess(booking.propertyName) : false;
+  const showArrivalInstructions = shouldShowArrivalInstructions(booking);
 
   const guestInfoCompleted = guests.every((guest) => {
     const firstName = sanitizeString(guest.firstName);
@@ -862,7 +878,7 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
       label: 'Check-in',
       description: checkInTaskCompleted ? 'All done' : 'Pending',
       completed: checkInTaskCompleted,
-      target: propertyHasNuki ? 'virtual-keys' : 'arrival'
+      target: propertyHasNuki ? 'virtual-keys' : showArrivalInstructions ? 'arrival' : 'appliances'
     }
   ];
 
@@ -893,10 +909,8 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
     { id: 'booking-details', label: 'Booking Details', icon: MapPin },
     { id: 'guest-registration', label: 'Guest Registration', icon: User },
     { id: 'city-tax', label: 'City Tax Payment', icon: CreditCard },
-    ...(propertyHasNuki
-      ? [{ id: 'virtual-keys', label: 'Access Codes', icon: Key }]
-      : []),
-    { id: 'arrival', label: 'Arrival Instructions', icon: Home },
+    ...(propertyHasNuki ? [{ id: 'virtual-keys', label: 'Access Codes', icon: Key }] : []),
+    ...(showArrivalInstructions ? [{ id: 'arrival', label: 'Arrival Instructions', icon: Home }] : []),
     { id: 'appliances', label: 'Appliances & WiFi', icon: Wifi },
     { id: 'around-you', label: 'Around You', icon: Navigation }
   ];
@@ -1637,68 +1651,69 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
                 </div>
               )}
 
-              {/* Arrival Instructions */}
-              <div ref={arrivalRef}>
-                <Card className="mb-6">
-                  <CardHeader>
-                    <CardTitle className="flex items-center">
-                      <Home className="mr-2 h-5 w-5" />
-                      Arrival Instructions
-                    </CardTitle>
-                    <CardDescription>
-                      Please refer to the attached videos for step-by-step guidance on how to access the building and your apartment.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div className="space-y-3">
-                        <div className="flex items-start gap-3">
-                          <span className="font-semibold text-sm">1.</span>
-                          <div>
-                            <p className="font-medium text-sm mb-1">Building Address:</p>
-                            <p className="text-sm text-muted-foreground">Prokopova 9, Praha 3</p>
-                            <a
-                              href="https://maps.app.goo.gl/u5SknAkE3UzwqJHQA"
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700 mt-1"
-                            >
-                              <Navigation className="h-3 w-3" />
-                              View on Google Maps
-                            </a>
+              {showArrivalInstructions && (
+                <div ref={arrivalRef}>
+                  <Card className="mb-6">
+                    <CardHeader>
+                      <CardTitle className="flex items-center">
+                        <Home className="mr-2 h-5 w-5" />
+                        Arrival Instructions
+                      </CardTitle>
+                      <CardDescription>
+                        Please refer to the attached videos for step-by-step guidance on how to access the building and your apartment.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        <div className="space-y-3">
+                          <div className="flex items-start gap-3">
+                            <span className="font-semibold text-sm">1.</span>
+                            <div>
+                              <p className="font-medium text-sm mb-1">Building Address:</p>
+                              <p className="text-sm text-muted-foreground">Prokopova 9, Praha 3</p>
+                              <a
+                                href="https://maps.app.goo.gl/u5SknAkE3UzwqJHQA"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700 mt-1"
+                              >
+                                <Navigation className="h-3 w-3" />
+                                View on Google Maps
+                              </a>
+                            </div>
+                          </div>
+
+                          <div className="flex items-start gap-3">
+                            <span className="font-semibold text-sm">2.</span>
+                            <div>
+                              <p className="font-medium text-sm mb-1">Building and Apartment Access:</p>
+                              <a
+                                href="https://www.canva.com/design/DAGn4TgtpAE/VD31ZY0LuhpOvtmhslAhcA/watch?utm_content=DAGn4TgtpAE&utm_campaign=designshare&utm_medium=link2&utm_source=uniquelinks&utlId=h56f84bb570"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700"
+                              >
+                                <Video className="h-3 w-3" />
+                                Entry Video Instructions
+                              </a>
+                              <p className="text-sm text-muted-foreground mt-2">
+                                Enter the access code provided to unlock the building entrance.
+                                When you arrive at your apartment, use the same code (in most cases) to unlock the door.
+                              </p>
+                            </div>
                           </div>
                         </div>
 
-                        <div className="flex items-start gap-3">
-                          <span className="font-semibold text-sm">2.</span>
-                          <div>
-                            <p className="font-medium text-sm mb-1">Building and Apartment Access:</p>
-                            <a
-                              href="https://www.canva.com/design/DAGn4TgtpAE/VD31ZY0LuhpOvtmhslAhcA/watch?utm_content=DAGn4TgtpAE&utm_campaign=designshare&utm_medium=link2&utm_source=uniquelinks&utlId=h56f84bb570"
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700"
-                            >
-                              <Video className="h-3 w-3" />
-                              Entry Video Instructions
-                            </a>
-                            <p className="text-sm text-muted-foreground mt-2">
-                              Enter the access code provided to unlock the building entrance.
-                              When you arrive at your apartment, use the same code (in most cases) to unlock the door.
-                            </p>
-                          </div>
+                        <div className="bg-blue-50 p-3 rounded-lg">
+                          <p className="text-sm text-blue-900">
+                            📎 Click the links above to watch the video with detailed instructions.
+                          </p>
                         </div>
                       </div>
-
-                      <div className="bg-blue-50 p-3 rounded-lg">
-                        <p className="text-sm text-blue-900">
-                          📎 Click the links above to watch the video with detailed instructions.
-                        </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
 
               {/* Appliances + WiFi */}
               <div ref={appliancesRef}>
