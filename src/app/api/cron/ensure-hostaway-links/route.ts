@@ -28,8 +28,8 @@ export async function POST(request: NextRequest) {
 
     const candidateBookings = await prisma.booking.findMany({
       where: {
-        hostAwayId: { not: null },
-        checkInToken: { not: null },
+        hostAwayId: { not: '' },
+        checkInToken: { not: '' },
         OR: [
           { createdAt: { gte: createdWindow } },
           { checkInDate: { lte: upcomingWindow } }
