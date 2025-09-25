@@ -118,6 +118,16 @@ model UbyPortExport {
   @@map("ubyport_exports")
 }
 
+model AdminCredential {
+  id           String   @id @default("primary")
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("admin_credentials")
+}
+
 enum BookingStatus {
   PENDING
   CONFIRMED

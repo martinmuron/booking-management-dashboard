@@ -1,16 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/database';
 import { nukiService } from '@/services/nuki.service';
-import { hostAwayService } from '@/services/hostaway.service';
-import { hasNukiAccess, NUKI_AUTHORIZED_PROPERTIES } from '@/utils/nuki-properties';
+import { NUKI_AUTHORIZED_PROPERTIES } from '@/utils/nuki-properties';
+import { resolveNukiPropertyCode } from '@/utils/nuki-resolver';
 import { VirtualKeyType } from '@/types';
-import type { Booking as BookingModel } from '@prisma/client';
+import type { Booking, Guest } from '@prisma/client';
 
 const DATE_TOLERANCE_MS = 48 * 60 * 60 * 1000; // 48 hours tolerance around stay dates
 
 type Params = {
   params: Promise<{ bookingId: string }>;
 };
+
+type BookingWithGuests = Booking & { guests: Guest[] };
 
 type NukiKeyMatch = {
   id: string;
@@ -21,6 +23,8 @@ type NukiKeyMatch = {
   allowedFromDate?: string;
   allowedUntilDate?: string;
   isActive: boolean;
+  similarity: number;
+  matchedGuest?: string;
 };
 
 type NukiAuthorization = Awaited<ReturnType<typeof nukiService.getAllAuthorizations>>[number] & {
@@ -43,18 +47,50 @@ function normalize(value: string): string {
     .trim();
 }
 
-function nameSimilarity(guestName: string, keyName: string): number {
-  const guestParts = normalize(guestName).split(' ').filter(part => part.length >= 3);
-  const keyParts = normalize(keyName).split(' ');
-  let matches = 0;
+function collectGuestNames(booking: BookingWithGuests): string[] {
+  const names = new Set<string>();
 
-  for (const guestPart of guestParts) {
-    if (guestPart && keyParts.some(part => part.includes(guestPart))) {
-      matches++;
+  if (booking.guestLeaderName) {
+    names.add(booking.guestLeaderName);
+  }
+
+  for (const guest of booking.guests ?? []) {
+    const fullName = `${guest.firstName ?? ''} ${guest.lastName ?? ''}`.trim();
+    if (fullName) {
+      names.add(fullName);
     }
   }
 
-  return matches;
+  return Array.from(names);
+}
+
+function evaluateNameSimilarity(guestNames: string[], keyName?: string): { score: number; matchedGuest?: string } {
+  if (!keyName || guestNames.length === 0) {
+    return { score: 0 };
+  }
+
+  const keyParts = normalize(keyName).split(' ').filter(Boolean);
+
+  let bestScore = 0;
+  let matchedGuest: string | undefined;
+
+  for (const guestName of guestNames) {
+    const guestParts = normalize(guestName).split(' ').filter(part => part.length >= 3);
+    if (guestParts.length === 0) {
+      continue;
+    }
+
+    const score = guestParts.reduce((acc, part) => (
+      keyParts.some(keyPart => keyPart.includes(part)) ? acc + 1 : acc
+    ), 0);
+
+    if (score > bestScore) {
+      bestScore = score;
+      matchedGuest = guestName;
+    }
+  }
+
+  return { score: bestScore, matchedGuest };
 }
 
 function mapDeviceToKeyType(deviceName: string | undefined): VirtualKeyType | null {
@@ -122,42 +158,10 @@ function overlapsStay(
   return keyFrom <= stayEnd && keyUntil >= stayStart;
 }
 
-async function resolveNukiPropertyCode(booking: BookingModel): Promise<string | null> {
-  if (booking.propertyName && hasNukiAccess(booking.propertyName)) {
-    return booking.propertyName;
-  }
-
-  if (!booking.hostAwayId) {
-    return null;
-  }
-
-  const reservationId = Number(booking.hostAwayId.replace(/[^0-9]/g, ''));
-  if (!reservationId) {
-    return null;
-  }
-
-  const [reservation, listings] = await Promise.all([
-    hostAwayService.getReservationById(reservationId),
-    hostAwayService.getListings()
-  ]);
-
-  if (!reservation?.listingMapId) {
-    return null;
-  }
-
-  const listing = listings.find(item => item.id === reservation.listingMapId);
-  const internalName = (listing?.internalListingName || listing?.name)?.trim();
-
-  if (internalName && hasNukiAccess(internalName)) {
-    return internalName;
-  }
-
-  return null;
-}
-
-async function fetchBooking(bookingId: string): Promise<BookingModel | null> {
+async function fetchBooking(bookingId: string): Promise<BookingWithGuests | null> {
   const booking = await prisma.booking.findUnique({
     where: { id: bookingId },
+    include: { guests: true },
   });
 
   if (booking) {
@@ -166,11 +170,12 @@ async function fetchBooking(bookingId: string): Promise<BookingModel | null> {
 
   return prisma.booking.findUnique({
     where: { hostAwayId: bookingId },
+    include: { guests: true },
   });
 }
 
 function buildResponsePayload(
-  booking: BookingModel,
+  booking: BookingWithGuests,
   propertyCode: string | null,
   matches: NukiKeyMatch[],
   universalCode: string | null
@@ -195,12 +200,14 @@ function buildResponsePayload(
     },
     existingKeys: matches.map(match => ({
       id: match.id,
+      code: match.code,
       device: match.device,
       keyType: match.keyType,
       name: match.name,
       isActive: match.isActive,
       allowedFromDate: match.allowedFromDate,
       allowedUntilDate: match.allowedUntilDate,
+      matchedGuest: match.matchedGuest,
     })),
     universalKeypadCode: universalCode,
     keysByType,
@@ -210,7 +217,7 @@ function buildResponsePayload(
 }
 
 async function matchNukiKeysToBooking(
-  booking: BookingModel,
+  booking: BookingWithGuests,
   propertyCode: string,
   smartlocks: Awaited<ReturnType<typeof nukiService.getAllDevices>>,
   authorizations: Awaited<ReturnType<typeof nukiService.getAllAuthorizations>>
@@ -223,11 +230,13 @@ async function matchNukiKeysToBooking(
   const checkIn = new Date(booking.checkInDate);
   const checkOut = new Date(booking.checkOutDate);
   const now = Date.now();
+  const guestNames = collectGuestNames(booking);
 
   const groupedByCode = new Map<string, Array<{
     auth: NukiAuthorization;
     deviceName: string;
     similarity: number;
+    matchedGuest?: string;
   }>>();
 
   for (const auth of authorizations) {
@@ -254,11 +263,11 @@ async function matchNukiKeysToBooking(
       continue;
     }
 
-    const similarity = auth.name ? nameSimilarity(booking.guestLeaderName, auth.name) : 0;
+    const { score, matchedGuest } = evaluateNameSimilarity(guestNames, auth.name ?? undefined);
 
     const codeKey = String(auth.code);
     const entries = groupedByCode.get(codeKey) ?? [];
-    entries.push({ auth, deviceName: deviceName || '', similarity });
+    entries.push({ auth, deviceName: deviceName || '', similarity: score, matchedGuest });
     groupedByCode.set(codeKey, entries);
   }
 
@@ -278,13 +287,16 @@ async function matchNukiKeysToBooking(
     });
 
     const hasNameMatch = bestEntry.similarity > 0;
-    const shouldInclude = hasNameMatch || groupedByCode.size === 1 || entries.length === 1;
 
-    if (!shouldInclude) {
+    if (!hasNameMatch) {
       continue;
     }
 
     for (const entry of entries) {
+      if (entry.similarity <= 0) {
+        continue;
+      }
+
       const keyType = mapDeviceToKeyType(entry.deviceName);
       if (!keyType) {
         continue;
@@ -304,11 +316,13 @@ async function matchNukiKeysToBooking(
         allowedFromDate: auth.allowedFromDate,
         allowedUntilDate: auth.allowedUntilDate,
         isActive,
+        similarity: entry.similarity,
+        matchedGuest: entry.matchedGuest,
       });
     }
   }
 
-  return matches;
+  return matches.sort((a, b) => b.similarity - a.similarity);
 }
 
 async function persistMatches(bookingId: string, matches: NukiKeyMatch[]) {
@@ -377,8 +391,14 @@ export async function GET(request: NextRequest, { params }: Params) {
 
     await persistMatches(booking.id, matches);
 
-    const codes = Array.from(new Set(matches.map(match => match.code)));
-    const primaryCode = codes[0] ?? null;
+    const primaryMatch = matches.reduce<NukiKeyMatch | null>((best, current) => {
+      if (!best || current.similarity > best.similarity) {
+        return current;
+      }
+      return best;
+    }, null);
+
+    const primaryCode = primaryMatch?.code ?? null;
 
     if (primaryCode && booking.universalKeypadCode !== primaryCode) {
       await prisma.booking.update({

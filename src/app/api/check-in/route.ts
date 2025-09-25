@@ -5,6 +5,7 @@ import { stripe } from '@/lib/stripe-server';
 import { calculateCityTaxForStay } from '@/lib/city-tax';
 import type { CityTaxGuestInput } from '@/lib/city-tax';
 import { z } from 'zod';
+import { ensureNukiKeysForBooking, EnsureNukiKeysResult } from '@/services/auto-key.service';
 
 const NAME_CHAR_REGEX = /^[A-Za-zÀ-ÖØ-öø-ÿ'\-\s]+$/u;
 const ISO_ALPHA3_REGEX = /^[A-Z]{3}$/;
@@ -368,14 +369,50 @@ export async function POST(request: NextRequest) {
       }
     });
 
+    let keyDistribution: EnsureNukiKeysResult | null = null;
+    try {
+      keyDistribution = await ensureNukiKeysForBooking(booking.id);
+    } catch (keyError) {
+      console.error('Failed to ensure NUKI keys during check-in:', keyError);
+    }
+
+    const refreshedBooking = await prisma.booking.findUnique({
+      where: { id: booking.id },
+      select: {
+        status: true,
+        universalKeypadCode: true,
+      },
+    });
+
+    const keySummary = keyDistribution
+      ? {
+          status: keyDistribution.status,
+          reason: 'reason' in keyDistribution ? keyDistribution.reason : undefined,
+          keyCount: 'keys' in keyDistribution ? keyDistribution.keys.length : undefined,
+          universalKeypadCode:
+            'universalKeypadCode' in keyDistribution
+              ? keyDistribution.universalKeypadCode
+              : refreshedBooking?.universalKeypadCode ?? null,
+          error: keyDistribution.status === 'failed' ? keyDistribution.error : undefined,
+        }
+      : null;
+
+    const responseMessage = keyDistribution?.status === 'created'
+      ? 'Check-in completed and digital keys generated'
+      : keyDistribution?.status === 'already'
+        ? 'Check-in completed; digital keys already prepared'
+        : 'Check-in completed successfully';
+
     return NextResponse.json({
       success: true,
       data: {
         bookingId: booking.id,
-        status: 'CHECKED_IN',
-        cityTaxAmount
+        status: refreshedBooking?.status ?? 'CHECKED_IN',
+        cityTaxAmount,
+        universalKeypadCode: refreshedBooking?.universalKeypadCode ?? null,
+        keyDistribution: keySummary,
       },
-      message: 'Check-in completed successfully'
+      message: responseMessage,
     });
   } catch (error) {
     console.error('Error completing check-in:', error);

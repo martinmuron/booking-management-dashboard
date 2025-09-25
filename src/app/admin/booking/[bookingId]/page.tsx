@@ -61,12 +61,14 @@ interface VirtualKey {
 
 interface ExistingKeySummary {
   id: string;
+  code: string;
   device: string;
   keyType: string;
   name: string;
   isActive: boolean;
   allowedFromDate?: string | null;
   allowedUntilDate?: string | null;
+  matchedGuest?: string;
 }
 
 interface ExistingKeysState {
@@ -482,9 +484,9 @@ export default function BookingAdminPage() {
             </CardContent>
           </Card>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="space-y-6">
             {/* Main Booking Info */}
-            <div className="lg:col-span-2 space-y-6">
+            <div className="space-y-6">
               {/* Checked-in Guests Summary */}
               <Card>
                 <CardHeader>
@@ -783,70 +785,87 @@ export default function BookingAdminPage() {
                     if (existingKeys.hasKeys) {
                       return (
                         <div className="space-y-4">
-                        {/* Universal Code Display */}
-                        {existingKeys.universalKeypadCode && (
-                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                            <div className="flex items-center justify-between">
+                          {existingKeys.universalKeypadCode && (
+                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                              <div className="flex items-start justify-between gap-4">
+                                <div>
+                                  <Label className="text-sm font-medium text-blue-900">Universal Keypad Code</Label>
+                                  <p className="text-2xl font-bold text-blue-800 font-mono">{existingKeys.universalKeypadCode}</p>
+                                  <p className="text-sm text-blue-600">Works on all {existingKeys.totalKeys} doors listed below</p>
+                                </div>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={async () => {
+                                    try {
+                                      await navigator.clipboard.writeText(existingKeys.universalKeypadCode ?? '');
+                                    } catch (err) {
+                                      console.error('Failed to copy keypad code', err);
+                                    }
+                                  }}
+                                >
+                                  Copy Code
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="grid grid-cols-1 gap-4">
+                            {existingKeys.existingKeys.map((key) => (
+                              <div key={key.id} className="border rounded-lg p-4 bg-muted/30">
+                                <div className="flex flex-wrap items-center justify-between gap-3">
+                                  <div>
+                                    <p className="text-sm text-muted-foreground">Door</p>
+                                    <p className="font-semibold text-base">{key.device}</p>
+                                  </div>
+                                  <Badge className={key.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-700'}>
+                                    {key.isActive ? 'Active' : 'Inactive'}
+                                  </Badge>
+                                </div>
+
+                                <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-sm">
+                                  <div>
+                                    <p className="text-muted-foreground">Key Type</p>
+                                    <p className="font-medium">{key.keyType}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-muted-foreground">Keypad Code</p>
+                                    <p className="font-mono text-lg font-semibold">{key.code}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-muted-foreground">Matched Guest</p>
+                                    <p className="font-medium">{key.matchedGuest || '—'}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-muted-foreground">Assigned Name (Nuki)</p>
+                                    <p className="font-medium">{key.name}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-muted-foreground">Valid From</p>
+                                    <p className="font-medium">{key.allowedFromDate ? new Date(key.allowedFromDate).toLocaleString() : '—'}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-muted-foreground">Valid Until</p>
+                                    <p className="font-medium">{key.allowedUntilDate ? new Date(key.allowedUntilDate).toLocaleString() : '—'}</p>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+
+                          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                            <div className="flex items-start space-x-3">
+                              <CheckCircle2 className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
                               <div>
-                                <Label className="text-sm font-medium text-blue-900">Universal Keypad Code</Label>
-                                <p className="text-2xl font-bold text-blue-800 font-mono">{existingKeys.universalKeypadCode}</p>
-                                <p className="text-sm text-blue-600">Works on all {existingKeys.totalKeys} doors below</p>
-                              </div>
-                              <div className="text-blue-600">
-                                <Key className="h-8 w-8" />
+                                <p className="text-sm font-medium text-green-900">Existing NUKI Keys Found</p>
+                                <p className="text-sm text-green-700">
+                                  {existingKeys.totalKeys} digital access key{existingKeys.totalKeys === 1 ? '' : 's'} are active for this stay.
+                                  Guests can use the universal keypad code on every door above.
+                                </p>
                               </div>
                             </div>
                           </div>
-                        )}
-
-                        {/* Existing Keys List */}
-                        <div className="overflow-x-auto">
-                          <Table>
-                            <TableHeader>
-                              <TableRow>
-                                <TableHead className="min-w-[140px]">Door/Device</TableHead>
-                                <TableHead className="min-w-[120px]">Guest Name</TableHead>
-                                <TableHead className="min-w-[100px]">Type</TableHead>
-                                <TableHead className="min-w-[80px]">Status</TableHead>
-                                <TableHead className="min-w-[120px]">Valid Until</TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {existingKeys.existingKeys.map((key, index) => (
-                                <TableRow key={index}>
-                                  <TableCell className="font-medium">{key.device}</TableCell>
-                                  <TableCell>{key.name}</TableCell>
-                                  <TableCell>
-                                    <Badge className="bg-blue-100 text-blue-800">
-                                      {key.keyType.replace('_', ' ')}
-                                    </Badge>
-                                  </TableCell>
-                                  <TableCell>
-                                    <Badge className={key.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
-                                      {key.isActive ? 'Active' : 'Inactive'}
-                                    </Badge>
-                                  </TableCell>
-                                  <TableCell>
-                                    {key.allowedUntilDate ? new Date(key.allowedUntilDate).toLocaleDateString() : '-'}
-                                  </TableCell>
-                                </TableRow>
-                              ))}
-                            </TableBody>
-                          </Table>
-                        </div>
-
-                        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                          <div className="flex items-start space-x-3">
-                            <CheckCircle2 className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
-                            <div>
-                              <p className="text-sm font-medium text-green-900">Existing NUKI Keys Found</p>
-                              <p className="text-sm text-green-700">
-                                {existingKeys.totalKeys} digital access keys are already active for this booking.
-                                Guest can use the universal keypad code on all doors.
-                              </p>
-                            </div>
-                          </div>
-                        </div>
                         </div>
                       );
                     }

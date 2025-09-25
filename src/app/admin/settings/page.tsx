@@ -10,10 +10,11 @@ import { AdminNav } from "@/components/admin/AdminNav";
 
 export default function AdminSettingsPage() {
   useAuth(); // Protect this page
-  const [email, setEmail] = useState("nick@investmentsolutions.cz");
-  const [password, setPassword] = useState("123456");
-  const [status, setStatus] = useState<string | null>(null);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [loading, setLoading] = useState(false);
+  const [credentialsLoading, setCredentialsLoading] = useState(true);
   
   // Webhook management state
   const [webhooks, setWebhooks] = useState<Array<{id: number; url: string; isEnabled: boolean}>>([]);
@@ -32,6 +33,30 @@ export default function AdminSettingsPage() {
     error?: string;
   }>>([]);
   const [logsLoading, setLogsLoading] = useState(false);
+
+  useEffect(() => {
+    const loadCredentials = async () => {
+      setCredentialsLoading(true);
+      try {
+        const response = await fetch('/api/admin/settings/credentials');
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+          throw new Error(data.error || 'Failed to load credentials');
+        }
+
+        setEmail(data.data?.email ?? '');
+        setStatusMessage(null);
+      } catch (error) {
+        console.error('Error loading admin credentials:', error);
+        setStatusMessage({ type: 'error', text: 'Failed to load current credentials' });
+      } finally {
+        setCredentialsLoading(false);
+      }
+    };
+
+    loadCredentials();
+  }, []);
 
   // Manual sync state
   const [syncing, setSyncing] = useState(false);
@@ -62,21 +87,31 @@ export default function AdminSettingsPage() {
 
   const save = async () => {
     setLoading(true);
-    setStatus(null);
+    setStatusMessage(null);
     try {
+      const payload: Record<string, string> = { email };
+      if (password.trim().length > 0) {
+        payload.password = password;
+      }
+
       const res = await fetch('/api/admin/settings/credentials', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify(payload)
       });
+
       const data = await res.json();
+
       if (!res.ok || !data.success) {
-        setStatus(data.error || 'Failed to save');
+        setStatusMessage({ type: 'error', text: data.error || 'Failed to save credentials' });
         return;
       }
-      setStatus('Saved');
-    } catch {
-      setStatus('Failed to save');
+
+      setStatusMessage({ type: 'success', text: data.message || 'Credentials saved' });
+      setPassword('');
+    } catch (error) {
+      console.error('Error saving admin credentials:', error);
+      setStatusMessage({ type: 'error', text: 'Failed to save credentials' });
     } finally {
       setLoading(false);
     }
@@ -224,14 +259,35 @@ export default function AdminSettingsPage() {
             <div className="space-y-4">
               <div>
                 <Label className="text-sm">Admin Email</Label>
-                <Input value={email} onChange={(e) => setEmail(e.target.value)} />
+                <Input
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  disabled={credentialsLoading || loading}
+                />
               </div>
               <div>
                 <Label className="text-sm">Admin Password</Label>
-                <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+                <Input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter a new password"
+                  disabled={credentialsLoading || loading}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Leave blank to keep the current password
+                </p>
               </div>
-              {status && <p className="text-sm text-green-600">{status}</p>}
-              <Button onClick={save} disabled={loading} className="w-full">
+              {statusMessage && (
+                <p
+                  className={`text-sm ${
+                    statusMessage.type === 'success' ? 'text-green-600' : 'text-red-600'
+                  }`}
+                >
+                  {statusMessage.text}
+                </p>
+              )}
+              <Button onClick={save} disabled={loading || credentialsLoading} className="w-full">
                 {loading ? 'Saving...' : 'Save Credentials'}
               </Button>
             </div>
@@ -450,4 +506,4 @@ export default function AdminSettingsPage() {
       </div>
     </div>
   );
-} 
+}

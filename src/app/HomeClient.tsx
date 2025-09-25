@@ -146,7 +146,7 @@ export default function HomeClient() {
             </div>
             <div className="text-center">
               <div className="text-3xl font-bold text-black mb-2">
-                <CountUpAnimation end={94} suffix="/10" />
+                <CountUpAnimation end={9.4} decimals={1} suffix="/10" />
               </div>
               <div className="text-sm text-gray-600">Average Rating</div>
             </div>
