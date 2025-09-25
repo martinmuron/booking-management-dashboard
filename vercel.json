@@ -7,6 +7,10 @@
     {
       "path": "/api/cron/checkout-completion",
       "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/nuki-precheck",
+      "schedule": "0 2 * * *"
     }
   ]
 }
