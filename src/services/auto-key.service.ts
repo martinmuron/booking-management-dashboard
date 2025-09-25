@@ -7,16 +7,7 @@ import type { VirtualKeyType } from '@/types';
 
 const KEY_GENERATION_STATUSES = new Set(['CHECKED_IN', 'PAYMENT_COMPLETED']);
 
-type PrismaClientLike = {
-  booking: {
-    findUnique: (args: Prisma.BookingFindUniqueArgs) => Promise<BookingWithRelations | null>;
-    update: (args: Prisma.BookingUpdateArgs) => Promise<BookingWithRelations>;
-  };
-  virtualKey: {
-    findMany: (args: Prisma.VirtualKeyFindManyArgs) => Promise<PrismaVirtualKey[]>;
-    createMany: (args: Prisma.VirtualKeyCreateManyArgs) => Promise<Prisma.BatchPayload>;
-  };
-};
+type PrismaClientLike = Pick<typeof prisma, 'booking' | 'virtualKey'>;
 
 type BookingWithRelations = Prisma.BookingGetPayload<{
   include: {
@@ -44,7 +35,7 @@ export async function ensureNukiKeysForBooking(
   bookingId: string,
   options: EnsureOptions = {}
 ): Promise<EnsureResult> {
-  const client = options.prismaClient ?? (prisma as PrismaClientLike);
+  const client: PrismaClientLike = options.prismaClient ?? prisma;
   const nukiApi = options.nukiApi ?? nukiApiService;
   const forceGeneration = options.force === true;
 
