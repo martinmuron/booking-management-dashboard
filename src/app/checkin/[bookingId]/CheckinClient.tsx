@@ -258,6 +258,14 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
   const [successMessage, setSuccessMessage] = useState<string | null>(
     initialCheckInCompleted ? 'Check-in already completed.' : null
   );
+  const draftLoadedRef = useRef(false);
+  const DRAFT_STORAGE_PREFIX = 'checkin-draft-';
+
+  const initialiseGuestErrors = (guestList: Guest[]) =>
+    guestList.reduce<Record<string, GuestErrors>>((acc, guest) => {
+      acc[guest.id] = {};
+      return acc;
+    }, {});
 
   // Refs for sections
   const bookingDetailsRef = useRef<HTMLDivElement>(null);
@@ -359,12 +367,10 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
             }));
 
             if (fetchedGuests.length > 0) {
+              draftLoadedRef.current = false;
               setGuests(fetchedGuests);
-              setGuestErrors(fetchedGuests.reduce<Record<string, GuestErrors>>((acc, guest) => {
-                acc[guest.id] = {};
-                return acc;
-              }, {}));
-            } else {
+              setGuestErrors(initialiseGuestErrors(fetchedGuests));
+            } else if (!draftLoadedRef.current) {
               const fallbackGuest: Guest = {
                 id: '1',
                 firstName: '',
@@ -385,7 +391,7 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
                 notes: ''
               };
               setGuests([fallbackGuest]);
-              setGuestErrors({ [fallbackGuest.id]: {} });
+              setGuestErrors(initialiseGuestErrors([fallbackGuest]));
             }
             setError(null);
             setFatalError(null);
@@ -683,6 +689,52 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
       setShowPaymentForm(false);
     }
   }, [checkInCompleted, cityTaxAmount, paymentIntentAmount]);
+
+  useEffect(() => {
+    if (!bookingToken || typeof window === 'undefined') {
+      return;
+    }
+
+    const storageKey = `${DRAFT_STORAGE_PREFIX}${bookingToken}`;
+
+    try {
+      const rawDraft = window.localStorage.getItem(storageKey);
+      if (!rawDraft) {
+        return;
+      }
+
+      const parsedDraft = JSON.parse(rawDraft);
+      if (!Array.isArray(parsedDraft) || parsedDraft.length === 0) {
+        return;
+      }
+
+      draftLoadedRef.current = true;
+      const draftGuests = parsedDraft as Guest[];
+      setGuests(draftGuests);
+      setGuestErrors(initialiseGuestErrors(draftGuests));
+    } catch (storageError) {
+      console.error('Failed to load saved check-in progress:', storageError);
+    }
+  }, [bookingToken]);
+
+  useEffect(() => {
+    if (!bookingToken || typeof window === 'undefined') {
+      return;
+    }
+
+    const storageKey = `${DRAFT_STORAGE_PREFIX}${bookingToken}`;
+
+    try {
+      if (checkInCompleted || guests.length === 0) {
+        window.localStorage.removeItem(storageKey);
+        return;
+      }
+
+      window.localStorage.setItem(storageKey, JSON.stringify(guests));
+    } catch (storageError) {
+      console.error('Failed to persist check-in progress:', storageError);
+    }
+  }, [bookingToken, guests, checkInCompleted]);
 
   const handlePaymentSuccess = async (intentId: string, amountPaid: number) => {
     setPaymentIntentId(intentId);
