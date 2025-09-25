@@ -7,8 +7,8 @@ import { Logo } from '@/components/Logo'
 import Link from 'next/link'
 
 export const metadata: Metadata = {
-  title: 'About Us | Nick & Jenny',
-  description: 'Learn about Nick & Jenny, two Brits renovating beautiful properties across Prague',
+  title: 'About Nick, Jenny & Team | Nick & Jenny',
+  description: 'Meet Nick, Jenny, and the dedicated team keeping every Prague property immaculate for guests.',
 }
 
 export default function AboutPage() {
@@ -197,11 +197,11 @@ export default function AboutPage() {
       <section className="py-16 bg-gradient-to-b from-gray-50 to-white">
         <div className="container mx-auto px-4 text-center">
           <h2 className="text-5xl font-bold text-black mb-6">
-            About Nick & Jenny
+            Nick, Jenny & Team
           </h2>
           <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
-            Two Brits living long-term in Prague, renovating old properties throughout Prague 
-            and creating exceptional accommodation experiences for our guests.
+            Two Brits living long-term in Prague supported by a talented crew who renovate, maintain, 
+            and care for every detail so your stay in this beautiful city feels effortless from arrival to departure.
           </p>
           
           {/* Stats */}
@@ -230,7 +230,7 @@ export default function AboutPage() {
           <div className="text-center mb-12">
             <h3 className="text-3xl font-bold text-black mb-4">Our Team</h3>
             <p className="text-gray-600 max-w-xl mx-auto">
-              Meet the people who make your stay exceptional
+              Meet the specialists who keep every stay organized, spotless, and running smoothly
             </p>
           </div>
           
@@ -254,39 +254,38 @@ export default function AboutPage() {
               </CardContent>
             </Card>
 
-            {/* Sue */}
+            {/* Guest Experience Team */}
             <Card className="group hover:shadow-lg transition-all duration-300 border-gray-200">
               <CardContent className="p-6 text-center">
                 <div className="w-20 h-20 bg-black rounded-full flex items-center justify-center text-white font-bold text-xl mb-4 mx-auto">
-                  S
+                  GE
                 </div>
-                <h3 className="font-semibold text-lg mb-2 text-black">Sue</h3>
+                <h3 className="font-semibold text-lg mb-2 text-black">Guest Experience Team</h3>
                 <div className="flex items-center justify-center gap-1 text-gray-500 text-sm mb-3">
                   <Users className="w-3 h-3" />
-                  Property Manager
+                  Concierge & Support
                 </div>
                 <p className="text-gray-600 text-sm">
-                  I am living long term in Prague with my dog Alik. I help manage the properties with 
-                  Jenny and Nick. I also help them raise my grandchild in my spare time! I will be 
-                  mainly contacting you to organise your check-in.
+                  A multilingual crew handles every question, coordinates arrivals, and keeps communication 
+                  flowing so guests feel supported before, during, and after their stay.
                 </p>
               </CardContent>
             </Card>
 
-            {/* Dominika */}
+            {/* Operations Team */}
             <Card className="group hover:shadow-lg transition-all duration-300 border-gray-200">
               <CardContent className="p-6 text-center">
                 <div className="w-20 h-20 bg-black rounded-full flex items-center justify-center text-white font-bold text-xl mb-4 mx-auto">
-                  D
+                  OT
                 </div>
-                <h3 className="font-semibold text-lg mb-2 text-black">Dominika</h3>
+                <h3 className="font-semibold text-lg mb-2 text-black">Operations Team</h3>
                 <div className="flex items-center justify-center gap-1 text-gray-500 text-sm mb-3">
                   <Users className="w-3 h-3" />
-                  Check-in Specialist
+                  Housekeeping & Maintenance
                 </div>
                 <p className="text-gray-600 text-sm">
-                  I work with Nick in the office and also help with checking guests in. I am Slovak 
-                  and living in Prague. I ensure every guest has a smooth arrival experience.
+                  Specialists in housekeeping, repairs, and staging keep every property spotless, organized, 
+                  and working perfectly for each new arrival.
                 </p>
               </CardContent>
             </Card>
