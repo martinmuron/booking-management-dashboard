@@ -216,6 +216,15 @@ const shouldShowArrivalInstructions = (booking?: BookingData | null) => {
   return fields.some((field) => field && normalizeForMatch(field).includes('prokopova'));
 };
 
+const shouldShowAppliancesInfo = (booking?: BookingData | null) => {
+  if (!booking) {
+    return false;
+  }
+
+  const fields = [booking.propertyName, booking.propertyAddress, booking.roomNumber];
+  return fields.some((field) => field && normalizeForMatch(field).includes('prokopova 9'));
+};
+
 type GuestErrors = Partial<Record<keyof Guest, string>>;
 
 const formatDate = (dateString: string) => {
@@ -880,6 +889,7 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
   const aroundAddress = booking?.propertyAddress || booking?.roomNumber || booking?.propertyName || 'Prague, Czechia';
   const propertyHasNuki = booking ? hasNukiAccess(booking.propertyName) : false;
   const showArrivalInstructions = shouldShowArrivalInstructions(booking);
+  const showAppliancesInfo = shouldShowAppliancesInfo(booking);
 
   const guestInfoCompleted = guests.every((guest) => {
     const firstName = sanitizeString(guest.firstName);
@@ -930,7 +940,13 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
       label: 'Check-in',
       description: checkInTaskCompleted ? 'All done' : 'Pending',
       completed: checkInTaskCompleted,
-      target: propertyHasNuki ? 'virtual-keys' : showArrivalInstructions ? 'arrival' : 'appliances'
+      target: propertyHasNuki
+        ? 'virtual-keys'
+        : showArrivalInstructions
+          ? 'arrival'
+          : showAppliancesInfo
+            ? 'appliances'
+            : 'around-you'
     }
   ];
 
@@ -963,7 +979,7 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
     { id: 'city-tax', label: 'City Tax Payment', icon: CreditCard },
     ...(propertyHasNuki ? [{ id: 'virtual-keys', label: 'Access Codes', icon: Key }] : []),
     ...(showArrivalInstructions ? [{ id: 'arrival', label: 'Arrival Instructions', icon: Home }] : []),
-    { id: 'appliances', label: 'Appliances & WiFi', icon: Wifi },
+    ...(showAppliancesInfo ? [{ id: 'appliances', label: 'Appliances & WiFi', icon: Wifi }] : []),
     { id: 'around-you', label: 'Around You', icon: Navigation }
   ];
 
@@ -1767,66 +1783,67 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
                 </div>
               )}
 
-              {/* Appliances + WiFi */}
-              <div ref={appliancesRef}>
-                <Card className="mb-6">
-                  <CardHeader>
-                    <CardTitle className="flex items-center">
-                      <Wifi className="mr-2 h-5 w-5" />
-                      Appliances + WiFi
-                    </CardTitle>
-                    <CardDescription>
-                      For info on how to use the appliances, click on the links below:
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="bg-muted p-4 rounded-lg">
-                          <h5 className="font-medium text-sm mb-2">🧺 Laundry Room</h5>
-                          <a
-                            href="https://www.canva.com/design/DAGn6WOlOo8/fbbNy2mwyb9rrEgGjvtnBA/watch?utm_content=DAGn6WOlOo8&utm_campaign=designshare&utm_medium=link2&utm_source=uniquelinks&utlId=h6be36fd300"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-sm text-blue-600 hover:text-blue-700"
-                          >
-                            Click here to see how to use the laundry facilities
-                          </a>
-                        </div>
-
-                        <div className="bg-muted p-4 rounded-lg">
-                          <h5 className="font-medium text-sm mb-2">🍳 Stove</h5>
-                          <a
-                            href="https://www.canva.com/design/DAGn6T3LDIE/8-WwGx9YdY-B_5C3_lAOIg/watch?utm_content=DAGn6T3LDIE&utm_campaign=designshare&utm_medium=link2&utm_source=uniquelinks&utlId=hd3fc76a88f"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-sm text-blue-600 hover:text-blue-700"
-                          >
-                            Click here for instructions on how to use the stove
-                          </a>
-                        </div>
-                      </div>
-
-                      <div className="bg-blue-50 p-4 rounded-lg">
-                        <h5 className="font-medium text-sm mb-2 flex items-center">
-                          <Wifi className="h-4 w-4 mr-2" />
-                          WiFi Connection
-                        </h5>
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <span className="text-xs text-gray-600">Network:</span>
-                            <p className="font-mono font-semibold">prokopka</p>
+              {showAppliancesInfo && (
+                <div ref={appliancesRef}>
+                  <Card className="mb-6">
+                    <CardHeader>
+                      <CardTitle className="flex items-center">
+                        <Wifi className="mr-2 h-5 w-5" />
+                        Appliances + WiFi
+                      </CardTitle>
+                      <CardDescription>
+                        For info on how to use the appliances, click on the links below:
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="bg-muted p-4 rounded-lg">
+                            <h5 className="font-medium text-sm mb-2">🧺 Laundry Room</h5>
+                            <a
+                              href="https://www.canva.com/design/DAGn6WOlOo8/fbbNy2mwyb9rrEgGjvtnBA/watch?utm_content=DAGn6WOlOo8&utm_campaign=designshare&utm_medium=link2&utm_source=uniquelinks&utlId=h6be36fd300"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-sm text-blue-600 hover:text-blue-700"
+                            >
+                              Click here to see how to use the laundry facilities
+                            </a>
                           </div>
-                          <div>
-                            <span className="text-xs text-gray-600">Password:</span>
-                            <p className="font-mono font-semibold">72727272</p>
+
+                          <div className="bg-muted p-4 rounded-lg">
+                            <h5 className="font-medium text-sm mb-2">🍳 Stove</h5>
+                            <a
+                              href="https://www.canva.com/design/DAGn6T3LDIE/8-WwGx9YdY-B_5C3_lAOIg/watch?utm_content=DAGn6T3LDIE&utm_campaign=designshare&utm_medium=link2&utm_source=uniquelinks&utlId=hd3fc76a88f"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-sm text-blue-600 hover:text-blue-700"
+                            >
+                              Click here for instructions on how to use the stove
+                            </a>
                           </div>
                         </div>
+
+                        <div className="bg-blue-50 p-4 rounded-lg">
+                          <h5 className="font-medium text-sm mb-2 flex items-center">
+                            <Wifi className="h-4 w-4 mr-2" />
+                            WiFi Connection
+                          </h5>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <span className="text-xs text-gray-600">Network:</span>
+                              <p className="font-mono font-semibold">prokopka</p>
+                            </div>
+                            <div>
+                              <span className="text-xs text-gray-600">Password:</span>
+                              <p className="font-mono font-semibold">72727272</p>
+                            </div>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
 
               {/* Around You */}
               <div ref={aroundRef}>
