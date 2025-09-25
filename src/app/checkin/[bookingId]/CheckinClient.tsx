@@ -904,6 +904,7 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
 
   const aroundAddress = booking?.propertyAddress || booking?.roomNumber || booking?.propertyName || 'Prague, Czechia';
   const propertyHasNuki = booking ? hasNukiAccess(booking.propertyName) : false;
+  const canShowGuestKeys = Boolean(booking && propertyHasNuki && booking.status && ['CHECKED_IN', 'KEYS_DISTRIBUTED'].includes(booking.status));
   const showArrivalInstructions = shouldShowArrivalInstructions(booking);
   const showAppliancesInfo = shouldShowAppliancesInfo(booking);
 
@@ -1685,7 +1686,7 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
-                      {booking?.universalKeypadCode ? (
+                      {canShowGuestKeys && booking?.universalKeypadCode ? (
                         <div className="space-y-6">
                           <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-6 text-center">
                             <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">

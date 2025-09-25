@@ -176,7 +176,7 @@ const calculateCheckInProgress = (booking: BookingData) => {
     { 
       id: 'checked_in', 
       label: 'Checked In', 
-      completed: booking.status === 'CHECKED_IN' || booking.status === 'COMPLETED',
+      completed: ['CHECKED_IN', 'KEYS_DISTRIBUTED', 'COMPLETED'].includes(booking.status),
       icon: Key 
     }
   ];

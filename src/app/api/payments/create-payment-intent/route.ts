@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import type Stripe from 'stripe';
 
 import { stripe } from '@/lib/stripe-server';
+import { prisma } from '@/lib/database';
 
 export async function POST(request: NextRequest) {
   try {
@@ -19,6 +20,39 @@ export async function POST(request: NextRequest) {
         { error: 'Missing required fields: amount and bookingId' },
         { status: 400 }
       );
+    }
+
+    const booking = await prisma.booking.findUnique({
+      where: { id: bookingId },
+      select: { status: true },
+    });
+
+    if (!booking) {
+      return NextResponse.json(
+        { error: 'Booking not found' },
+        { status: 404 }
+      );
+    }
+
+    if (booking.status === 'CANCELLED') {
+      return NextResponse.json(
+        { error: 'Booking is cancelled' },
+        { status: 400 }
+      );
+    }
+
+    if (booking.status === 'COMPLETED') {
+      return NextResponse.json(
+        { error: 'Booking is already completed' },
+        { status: 400 }
+      );
+    }
+
+    if (booking.status === 'PENDING' || booking.status === 'PAYMENT_PENDING') {
+      await prisma.booking.update({
+        where: { id: bookingId },
+        data: { status: 'PAYMENT_PENDING' },
+      });
     }
 
     // Create payment intent for city tax
