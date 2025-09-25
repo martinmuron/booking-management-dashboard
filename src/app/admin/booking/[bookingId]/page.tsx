@@ -390,6 +390,8 @@ export default function BookingAdminPage() {
   const touristTax = calculateTouristTax(booking);
   const leadGuestEmail = booking.guestLeaderEmail;
   const checkedInGuests = booking.guests || [];
+  const fallbackGuestEmail = checkedInGuests.find((guest) => guest.email)?.email || null;
+  const contactEmail = leadGuestEmail || fallbackGuestEmail;
   const propertyHasNuki = existingKeys.booking?.isAuthorized ?? hasNukiAccess(booking.propertyName);
 
   return (
@@ -910,9 +912,14 @@ export default function BookingAdminPage() {
                     )}
                     {generatingKeys ? 'Generating...' : (booking.universalKeypadCode ? 'Keys Generated' : 'Generate Virtual Keys')}
                   </Button>
-                  <Button className="w-full" variant="outline">
+                  <Button
+                    className="w-full"
+                    variant="outline"
+                    onClick={() => contactEmail && (window.location.href = `mailto:${contactEmail}`)}
+                    disabled={!contactEmail}
+                  >
                     <Mail className="mr-2 h-4 w-4" />
-                    Send Email to Guest
+                    {contactEmail ? 'Send Email to Guest' : 'No Email Available'}
                   </Button>
                 </CardContent>
               </Card>
