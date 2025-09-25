@@ -620,7 +620,7 @@ class HostAwayService {
 
       if (!nickJennyFieldId) {
         console.log('⚠️ Nick Jenny custom field ID not found, skipping HostAway update');
-        return { success: true, error: 'Nick Jenny custom field not configured in HostAway' };
+        return { success: false, error: 'Nick Jenny custom field not configured in HostAway' };
       }
 
       // Prepare updated custom fields - preserve existing ones, update only Nick Jenny

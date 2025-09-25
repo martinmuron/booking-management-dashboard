@@ -102,7 +102,7 @@ class BookingService {
   private async updateHostAwayCheckInLinkForNewBooking(reservationId: number, checkInToken: string): Promise<void> {
     try {
       // Use the production Nick & Jenny domain
-      const baseUrl = 'https://nickandjenny.cz';
+      const baseUrl = 'https://www.nickandjenny.cz';
       const checkInLink = `${baseUrl}/checkin/${checkInToken}`;
       
       console.log(`🔗 Updating HostAway NEW reservation ${reservationId} with Nick Jenny check-in link: ${checkInLink}`);
@@ -509,9 +509,7 @@ class BookingService {
             // Only add Nick Jenny check-in link if guest hasn't already completed check-in with existing system
             if (!checkInInfo.hasExistingCheckInLink || checkInInfo.status === 'PENDING') {
               console.log(`🔗 [NEW BOOKING] Adding Nick Jenny check-in link for reservation ${reservation.id}`);
-              this.updateHostAwayCheckInLinkForNewBooking(reservation.id, newBooking.checkInToken).catch((error) => {
-                console.error(`Failed to update HostAway check-in link for NEW booking ${newBooking.id}:`, error);
-              });
+              await this.updateHostAwayCheckInLinkForNewBooking(reservation.id, newBooking.checkInToken);
             } else {
               console.log(`✅ [NEW BOOKING] Reservation ${reservation.id} already completed check-in externally - skipping Nick Jenny link addition`);
             }
@@ -834,9 +832,7 @@ class BookingService {
         
         // Always add Nick Jenny check-in link for all new reservations
         console.log(`🔗 [SINGLE SYNC NEW] Adding Nick Jenny check-in link for reservation ${reservation.id}`);
-        this.updateHostAwayCheckInLinkForNewBooking(reservation.id, newBooking.checkInToken).catch((error) => {
-          console.error(`Failed to update HostAway check-in link for NEW booking ${newBooking.id}:`, error);
-        });
+        await this.updateHostAwayCheckInLinkForNewBooking(reservation.id, newBooking.checkInToken);
         
         return {
           success: true,
