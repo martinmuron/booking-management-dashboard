@@ -841,7 +841,23 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
         if (intentIdToUse) {
           setPaymentIntentId(intentIdToUse);
         }
-        setBooking((prev) => (prev ? { ...prev, status: 'CHECKED_IN' } : prev));
+        setBooking((prev) => {
+          if (!prev) {
+            return prev;
+          }
+
+          const universalKeypadCode = data?.data?.universalKeypadCode ?? prev.universalKeypadCode ?? null;
+          const keyStatus = data?.data?.keyDistribution?.status;
+          const nextStatus = keyStatus === 'created' || keyStatus === 'already'
+            ? 'KEYS_DISTRIBUTED'
+            : 'CHECKED_IN';
+
+          return {
+            ...prev,
+            status: nextStatus,
+            universalKeypadCode: universalKeypadCode || prev.universalKeypadCode || undefined,
+          };
+        });
         return true;
       }
 
