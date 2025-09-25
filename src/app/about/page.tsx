@@ -1,10 +1,9 @@
 import { Metadata } from 'next'
 import { Card, CardContent } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
-import { Star, MapPin, Users, ArrowLeft } from 'lucide-react'
+import { Star, MapPin, Users } from 'lucide-react'
 import { Logo } from '@/components/Logo'
-import Link from 'next/link'
+import { SiteHeader } from '@/components/SiteHeader'
 
 export const metadata: Metadata = {
   title: 'About Nick, Jenny & Team | Nick & Jenny',
@@ -167,31 +166,7 @@ export default function AboutPage() {
 
   return (
     <div className="min-h-screen bg-white">
-      {/* Header */}
-      <header className="border-b border-gray-200">
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Link href="/">
-                <Button variant="outline" size="sm" className="border-black text-black hover:bg-black hover:text-white">
-                  <ArrowLeft className="w-4 h-4 mr-2" />
-                  Back to Properties
-                </Button>
-              </Link>
-              <Logo size="md" />
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="hidden md:flex items-center gap-3">
-                <Link href="/contact">
-                  <Button variant="outline" size="sm" className="border-black text-black hover:bg-black hover:text-white">
-                    Contact
-                  </Button>
-                </Link>
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
+      <SiteHeader activeRoute="about" />
 
       {/* Hero Section */}
       <section className="py-16 bg-gradient-to-b from-gray-50 to-white">

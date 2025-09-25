@@ -7,7 +7,6 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { Logo } from '@/components/Logo';
 import Link from 'next/link';
 import {
   Mail,
@@ -22,6 +21,8 @@ import {
   Building,
   ArrowLeft
 } from 'lucide-react';
+import { SiteHeader } from '@/components/SiteHeader';
+import { Logo } from '@/components/Logo';
 
 interface FormData {
   name: string;
@@ -66,8 +67,9 @@ export default function ContactClient() {
 
   if (isSubmitted) {
     return (
-      <div className="min-h-screen bg-background p-4">
-        <div className="max-w-2xl mx-auto pt-20 text-center">
+      <div className="min-h-screen bg-background">
+        <SiteHeader activeRoute="contact" />
+        <div className="max-w-2xl mx-auto px-4 pt-20 text-center">
           <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-6" />
           <h1 className="text-3xl font-bold mb-4">Thank You!</h1>
           <p className="text-muted-foreground mb-8">
@@ -85,8 +87,9 @@ export default function ContactClient() {
   }
 
   return (
-    <div className="min-h-screen bg-background p-4">
-      <div className="max-w-6xl mx-auto space-y-8">
+    <div className="min-h-screen bg-background">
+      <SiteHeader activeRoute="contact" />
+      <div className="max-w-6xl mx-auto px-4 pb-12 space-y-8">
 
         {/* Header */}
         <div className="text-center py-8">

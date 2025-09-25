@@ -5,12 +5,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { MapPin, Users, Calendar, ArrowRight, Loader2, CheckCircle, XCircle } from "lucide-react";
+import { MapPin, Users, Calendar, Loader2, CheckCircle, XCircle } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { PropertySearch } from "@/components/PropertySearch";
 import { CountUpAnimation } from "@/components/CountUpAnimation";
 import Link from "next/link";
 import Image from "next/image";
+import { SiteHeader } from "@/components/SiteHeader";
 
 interface Property {
   id: number;
@@ -115,26 +116,7 @@ export default function HomeClient() {
 
   return (
     <div className="min-h-screen bg-white">
-      {/* Header */}
-      <header className="border-b border-gray-200">
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex items-center justify-between">
-            <Logo size="lg" />
-            <div className="flex items-center gap-3">
-              <Link href="/about">
-                <Button variant="ghost" size="sm" className="text-black hover:bg-gray-100">
-                  About Us
-                </Button>
-              </Link>
-              <Link href="/contact">
-                <Button variant="outline" size="sm" className="border-black text-black hover:bg-black hover:text-white">
-                  Contact
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </header>
+      <SiteHeader activeRoute="home" />
 
       {/* Hero Section */}
       <section className="py-20 bg-gradient-to-br from-gray-50 to-white">
