@@ -1,24 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/database';
+import { ensureNukiKeysForBooking } from '@/services/auto-key.service';
 import { nukiApiService } from '@/services/nuki-api.service';
 import { VirtualKeyService } from '@/services/virtual-key.service';
-import { prisma } from '@/lib/database';
 
 // POST /api/virtual-keys - Generate virtual keys for a booking
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { bookingId, roomNumber } = body;
-    
+    const { bookingId } = body;
+
     if (!bookingId) {
       return NextResponse.json(
         { success: false, error: 'Booking ID is required' },
-        { status: 400 }
-      );
-    }
-
-    if (!roomNumber) {
-      return NextResponse.json(
-        { success: false, error: 'Room number is required' },
         { status: 400 }
       );
     }
@@ -36,7 +30,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if keys already exist for this booking
-    const existingKeys = await VirtualKeyService.getVirtualKeysByBookingId(bookingId);
+    const existingKeys = await prisma.virtualKey.findMany({
+      where: { bookingId },
+      orderBy: { createdAt: 'asc' }
+    });
     if (existingKeys.length > 0) {
       return NextResponse.json({
         success: true,
@@ -45,54 +42,71 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Create virtual keys via Nuki API with universal keypad code
-    const { results: nukiResults, universalKeypadCode } = await nukiApiService.createVirtualKeysForBooking(
-      booking.guestLeaderName,
-      new Date(booking.checkInDate),
-      new Date(booking.checkOutDate),
-      roomNumber,
-      booking.propertyName,  // Pass property name to determine key types
-      undefined              // Let function determine key types based on property
-    );
+    const result = await ensureNukiKeysForBooking(booking.id, { force: true });
 
-    if (nukiResults.length === 0) {
-      return NextResponse.json(
-        { success: false, error: 'Failed to create any virtual keys via Nuki API' },
-        { status: 500 }
-      );
+    switch (result.status) {
+      case 'failed':
+        return NextResponse.json(
+          { success: false, error: result.error ?? result.reason },
+          { status: 500 }
+        );
+
+      case 'skipped':
+        return NextResponse.json(
+          { success: false, error: `Key generation skipped: ${result.reason}` },
+          { status: 400 }
+        );
+
+      case 'queued':
+        return NextResponse.json({
+          success: true,
+          data: {
+            keys: existingKeys,
+            universalKeypadCode: booking.universalKeypadCode,
+            queuedKeyTypes: result.queuedKeyTypes
+          },
+          message: 'Key generation scheduled for retry'
+        });
+
+      case 'created':
+        return NextResponse.json({
+          success: true,
+          data: {
+            keys: result.keys,
+            universalKeypadCode: result.universalKeypadCode,
+            queuedKeyTypes: result.queuedKeyTypes,
+          },
+          message: `Successfully generated ${result.createdKeyTypes.length} virtual keys.`
+        });
+
+      case 'already':
+        return NextResponse.json({
+          success: true,
+          data: {
+            keys: existingKeys,
+            universalKeypadCode: booking.universalKeypadCode,
+            queuedKeyTypes: [],
+          },
+          message: 'Virtual keys already exist for this booking.'
+        });
+
+      case 'not_found':
+        return NextResponse.json(
+          { success: false, error: 'Booking no longer exists.' },
+          { status: 404 }
+        );
+
+      default:
+        return NextResponse.json({
+          success: true,
+          data: {
+            keys: existingKeys,
+            universalKeypadCode: booking.universalKeypadCode,
+            queuedKeyTypes: [],
+          },
+          message: 'No changes were required.'
+        });
     }
-
-    // Store the keys in our database
-    const virtualKeys = await VirtualKeyService.createVirtualKeys(
-      bookingId,
-      nukiResults.map(result => ({
-        keyType: result.keyType,
-        nukiKeyId: result.nukiAuth.id,
-      }))
-    );
-
-    // Update booking with universal keypad code
-    await prisma.booking.update({
-      where: { id: bookingId },
-      data: { universalKeypadCode },
-    });
-    
-    return NextResponse.json({
-      success: true,
-      data: { 
-        keys: virtualKeys,
-        universalKeypadCode,
-        roomNumber,
-        nukiDetails: nukiResults.map(r => ({
-          keyType: r.keyType,
-          nukiKeyId: r.nukiAuth.id,
-          name: r.nukiAuth.name,
-          allowedFrom: r.nukiAuth.allowedFromDate,
-          allowedUntil: r.nukiAuth.allowedUntilDate,
-        }))
-      },
-      message: `Successfully generated ${virtualKeys.length} virtual keys with universal code ${universalKeypadCode} for room ${roomNumber}`
-    });
   } catch (error) {
     console.error('Error generating virtual keys:', error);
     return NextResponse.json(

@@ -27,6 +27,7 @@ model Booking {
   payments         Payment[]
   virtualKeys      VirtualKey[]
   ubyPortExport    UbyPortExport?
+  nukiKeyRetries   NukiKeyRetry[]
 
   @@map("bookings")
 }
@@ -82,6 +83,27 @@ model VirtualKey {
   booking       Booking        @relation(fields: [bookingId], references: [id], onDelete: Cascade)
 
   @@map("virtual_keys")
+}
+
+model NukiKeyRetry {
+  id            String           @id @default(cuid())
+  bookingId     String
+  keyType       VirtualKeyType
+  deviceId      String
+  keypadCode    String
+  attemptCount  Int              @default(0)
+  maxAttempts   Int              @default(20)
+  nextAttemptAt DateTime
+  status        NukiRetryStatus  @default(PENDING)
+  lastError     String?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([status, nextAttemptAt])
+  @@index([bookingId, keyType])
+  @@map("nuki_key_retries")
 }
 
 model WebhookLog {
@@ -144,6 +166,13 @@ enum VirtualKeyType {
   LUGGAGE_ROOM
   LAUNDRY_ROOM
   ROOM
+}
+
+enum NukiRetryStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
 }
 
 enum UbyPortStatus {

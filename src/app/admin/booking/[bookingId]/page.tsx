@@ -76,6 +76,7 @@ interface ExistingKeysState {
   totalKeys: number;
   universalKeypadCode: string | null;
   existingKeys: ExistingKeySummary[];
+  queuedKeyTypes: string[];
   booking?: {
     isAuthorized?: boolean;
   };
@@ -88,6 +89,7 @@ interface ExistingKeysApiResponse {
     existingKeys?: ExistingKeySummary[];
     universalKeypadCode?: string | null;
     totalKeys?: number;
+    queuedKeyTypes?: string[];
     booking?: {
       isAuthorized?: boolean;
     };
@@ -215,6 +217,7 @@ export default function BookingAdminPage() {
   const [booking, setBooking] = useState<BookingData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [editingStatus, setEditingStatus] = useState(false);
   const [newStatus, setNewStatus] = useState('');
   const [generatingKeys, setGeneratingKeys] = useState(false);
@@ -223,6 +226,7 @@ export default function BookingAdminPage() {
     existingKeys: [],
     universalKeypadCode: null,
     totalKeys: 0,
+    queuedKeyTypes: [],
   });
 
   useEffect(() => {
@@ -242,29 +246,7 @@ export default function BookingAdminPage() {
           setNewStatus(data.data.status);
 
           // Fetch existing NUKI keys
-          try {
-            const keysResponse = await fetch(`/api/bookings/${bookingId}/existing-keys`);
-            const keysData: ExistingKeysApiResponse = await keysResponse.json();
-            if (keysData.success && keysData.data) {
-              const {
-                hasKeys,
-                existingKeys: fetchedKeys = [],
-                universalKeypadCode = null,
-                totalKeys = fetchedKeys.length,
-                booking: keysBooking,
-              } = keysData.data;
-
-              setExistingKeys({
-                hasKeys,
-                existingKeys: fetchedKeys,
-                universalKeypadCode,
-                totalKeys,
-                booking: keysBooking,
-              });
-            }
-          } catch (err) {
-            console.error('Error fetching existing keys:', err);
-          }
+          await refreshExistingKeys(bookingId);
         } else {
           setError(data.error || 'Failed to fetch booking');
           console.error('Failed to fetch booking:', data);
@@ -279,6 +261,34 @@ export default function BookingAdminPage() {
 
     fetchBooking();
   }, [bookingId]);
+
+  const refreshExistingKeys = async (id: string) => {
+    try {
+      const keysResponse = await fetch(`/api/bookings/${id}/existing-keys`);
+      const keysData: ExistingKeysApiResponse = await keysResponse.json();
+      if (keysData.success && keysData.data) {
+        const {
+          hasKeys,
+          existingKeys: fetchedKeys = [],
+          universalKeypadCode = null,
+          totalKeys = fetchedKeys.length,
+          queuedKeyTypes = [],
+          booking: keysBooking,
+        } = keysData.data;
+
+        setExistingKeys({
+          hasKeys,
+          existingKeys: fetchedKeys,
+          universalKeypadCode,
+          totalKeys,
+          queuedKeyTypes,
+          booking: keysBooking,
+        });
+      }
+    } catch (err) {
+      console.error('Error fetching existing keys:', err);
+    }
+  };
 
   const updateBookingStatus = async () => {
     if (!booking) return;
@@ -306,10 +316,11 @@ export default function BookingAdminPage() {
   };
 
   const generateVirtualKeys = async () => {
-    if (!booking || !booking.roomNumber) return;
+    if (!booking) return;
 
     setGeneratingKeys(true);
     setError(null);
+    setNotice(null);
 
     try {
       const response = await fetch('/api/virtual-keys', {
@@ -317,15 +328,20 @@ export default function BookingAdminPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          bookingId: booking.id,
-          roomNumber: booking.roomNumber,
-        }),
+        body: JSON.stringify({ bookingId: booking.id }),
       });
 
       const data = await response.json();
 
       if (data.success) {
+        if (data.data?.queuedKeyTypes?.length) {
+          setNotice(`Some keys are queued for retry (${data.data.queuedKeyTypes.join(', ')}). We'll retry every 15 minutes.`);
+        } else if (data.message) {
+          setNotice(data.message);
+        } else {
+          setNotice('Virtual keys updated successfully.');
+        }
+
         // Refresh booking data to show the new keys
         const bookingResponse = await fetch(`/api/bookings/${bookingId}`);
         const bookingData = await bookingResponse.json();
@@ -333,6 +349,8 @@ export default function BookingAdminPage() {
         if (bookingData.success) {
           setBooking(bookingData.data);
         }
+
+        await refreshExistingKeys(booking.id);
       } else {
         setError(data.error || 'Failed to generate virtual keys');
       }
@@ -427,6 +445,14 @@ export default function BookingAdminPage() {
                   <AlertCircle className="h-5 w-5" />
                   <span>{error}</span>
                 </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {notice && (
+            <Card className="mb-6 border-blue-200 bg-blue-50">
+              <CardContent className="pt-6 text-blue-800 text-sm">
+                {notice}
               </CardContent>
             </Card>
           )}
@@ -868,6 +894,14 @@ export default function BookingAdminPage() {
                               </div>
                             </div>
                           </div>
+
+                          {existingKeys.queuedKeyTypes?.length ? (
+                            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                              <div className="text-sm text-amber-800">
+                                Waiting for NUKI capacity on: {existingKeys.queuedKeyTypes.join(', ')}. We&apos;ll retry automatically every 15 minutes.
+                              </div>
+                            </div>
+                          ) : null}
                         </div>
                       );
                     }
@@ -903,14 +937,14 @@ export default function BookingAdminPage() {
                     className="w-full"
                     variant="outline"
                     onClick={generateVirtualKeys}
-                    disabled={!!booking.universalKeypadCode || generatingKeys}
+                    disabled={generatingKeys}
                   >
                     {generatingKeys ? (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     ) : (
                       <Key className="mr-2 h-4 w-4" />
                     )}
-                    {generatingKeys ? 'Generating...' : (booking.universalKeypadCode ? 'Keys Generated' : 'Generate Virtual Keys')}
+                    {generatingKeys ? 'Generating...' : 'Generate Virtual Keys'}
                   </Button>
                   <Button
                     className="w-full"

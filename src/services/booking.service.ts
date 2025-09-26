@@ -2,6 +2,8 @@ import { randomUUID } from 'node:crypto';
 import { prisma } from '@/lib/database';
 import { hostAwayService, type HostAwayReservation, type HostAwayCustomField } from './hostaway.service';
 import { ubyPortService } from './ubyport.service';
+import { VirtualKeyService } from './virtual-key.service';
+import { nukiApiService } from './nuki-api.service';
 
 interface BookingData {
   id: string;
@@ -29,6 +31,56 @@ type BookingUpdateData = {
   numberOfGuests?: number;
   roomNumber?: string | null;
   status?: BookingData['status'];
+};
+
+const PRAGUE_TIMEZONE = 'Europe/Prague';
+
+const pad = (value: number) => value.toString().padStart(2, '0');
+
+const getPragueOffset = (date: Date): string => {
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: PRAGUE_TIMEZONE,
+    hour12: false,
+    timeZoneName: 'short'
+  });
+
+  const tzName = formatter
+    .formatToParts(date)
+    .find(part => part.type === 'timeZoneName')?.value ?? 'GMT+00';
+
+  const match = tzName.match(/GMT([+-])(\d{1,2})(?::(\d{2}))?/i);
+
+  if (!match) {
+    return '+00:00';
+  }
+
+  const sign = match[1] ?? '+';
+  const hours = pad(Number.parseInt(match[2] ?? '0', 10));
+  const minutes = pad(Number.parseInt(match[3] ?? '0', 10));
+
+  return `${sign}${hours}:${minutes}`;
+};
+
+const toPragueDate = (input: string | Date, hours: number, minutes: number): Date => {
+  const baseDate = new Date(input);
+  if (Number.isNaN(baseDate.getTime())) {
+    return baseDate;
+  }
+
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: PRAGUE_TIMEZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  });
+
+  const parts = formatter.formatToParts(baseDate);
+  const year = parts.find(part => part.type === 'year')?.value ?? '1970';
+  const month = parts.find(part => part.type === 'month')?.value ?? '01';
+  const day = parts.find(part => part.type === 'day')?.value ?? '01';
+  const offset = getPragueOffset(baseDate);
+
+  return new Date(`${year}-${month}-${day}T${pad(hours)}:${pad(minutes)}:00${offset}`);
 };
 
 class BookingService {
@@ -389,8 +441,8 @@ class BookingService {
             continue;
           }
 
-          const checkInDate = new Date(reservation.arrivalDate);
-          const checkOutDate = new Date(reservation.departureDate);
+          const checkInDate = toPragueDate(reservation.arrivalDate, 15, 0);
+          const checkOutDate = toPragueDate(reservation.departureDate, 22, 0);
 
           if (isNaN(checkInDate.getTime()) || isNaN(checkOutDate.getTime())) {
             console.log(`⚠️  Skipping reservation ${reservation.id}: Invalid dates`, {
@@ -402,6 +454,9 @@ class BookingService {
 
           // Find the corresponding listing using listingMapId (for address info)
           const listing = hostawayListings.find(l => l.id === reservation.listingMapId);
+
+          const hostawayStatus = reservation.status?.toLowerCase?.() ?? '';
+          const isCancelled = hostawayStatus === 'cancelled' || hostawayStatus === 'canceled';
           
           // Check if booking already exists in our database
           const existingBooking = await prisma.booking.findUnique({
@@ -426,11 +481,39 @@ class BookingService {
             checkInToken,
             // Use existing check-in status for new bookings, preserve existing status for updates
             // This handles the seamless transition from checkin.io
-            status: existingBooking?.status || checkInInfo.status
+            status: isCancelled ? 'CANCELLED' : existingBooking?.status || checkInInfo.status
           };
 
           if (existingBooking) {
             console.log(`🔍 [SYNC DEBUG] Found existing booking: ${existingBooking.id}`);
+
+            if (isCancelled && existingBooking.status !== 'CANCELLED') {
+              await prisma.booking.update({
+                where: { id: existingBooking.id },
+                data: {
+                  status: 'CANCELLED',
+                  updatedAt: new Date()
+                }
+              });
+
+              updatedBookings += 1;
+
+              const activeKeys = await prisma.virtualKey.findMany({
+                where: { bookingId: existingBooking.id, isActive: true }
+              });
+
+              if (activeKeys.length > 0) {
+                try {
+                  await nukiApiService.revokeAllKeysForBooking(activeKeys.map(key => key.nukiKeyId));
+                } catch (revokeError) {
+                  console.error('Failed to revoke Nuki keys for cancelled booking', existingBooking.id, revokeError);
+                }
+
+                await VirtualKeyService.deactivateAllKeysForBooking(existingBooking.id);
+              }
+
+              continue;
+            }
             // Update existing booking only if HostAway data has changed
             // CRITICAL: Never overwrite our platform's advanced status (PAYMENT_COMPLETED, KEYS_DISTRIBUTED, etc.)
             // BUT allow upgrading from PENDING to CHECKED_IN when guest completes checkin.io
@@ -507,7 +590,7 @@ class BookingService {
             console.log(`➕ [SYNC DEBUG] Created new booking: ${newBooking.id} - ${bookingData.guestLeaderName} - Status: ${newBooking.status} ${checkInInfo.hasExistingCheckInLink ? '(has existing check-in)' : ''}`);
             
             // Only add Nick Jenny check-in link if guest hasn't already completed check-in with existing system
-            if (!checkInInfo.hasExistingCheckInLink || checkInInfo.status === 'PENDING') {
+            if (!isCancelled && (!checkInInfo.hasExistingCheckInLink || checkInInfo.status === 'PENDING')) {
               console.log(`🔗 [NEW BOOKING] Adding Nick Jenny check-in link for reservation ${reservation.id}`);
               await this.updateHostAwayCheckInLinkForNewBooking(reservation.id, newBooking.checkInToken);
             } else {
@@ -700,8 +783,8 @@ class BookingService {
         };
       }
 
-      const checkInDate = new Date(reservation.arrivalDate);
-      const checkOutDate = new Date(reservation.departureDate);
+      const checkInDate = toPragueDate(reservation.arrivalDate, 15, 0);
+      const checkOutDate = toPragueDate(reservation.departureDate, 22, 0);
 
       if (isNaN(checkInDate.getTime()) || isNaN(checkOutDate.getTime())) {
         console.log(`⚠️  Skipping reservation ${reservation.id}: Invalid dates`);
@@ -725,6 +808,9 @@ class BookingService {
       
       const checkInToken = existingBooking?.checkInToken ?? await this.generateCheckInToken();
 
+      const hostawayStatus = reservation.status?.toLowerCase?.() ?? '';
+      const isCancelled = hostawayStatus === 'cancelled' || hostawayStatus === 'canceled';
+
       const bookingData = {
         hostAwayId: reservation.id.toString(),
         propertyName: reservation.listingName || listing?.name || `Property ${reservation.listingMapId}`,
@@ -737,12 +823,52 @@ class BookingService {
         roomNumber: listing?.address || null,
         checkInToken,
         // Use existing check-in status for new bookings, preserve existing status for updates
-        status: existingBooking?.status || checkInInfo.status
+        status: isCancelled ? 'CANCELLED' : existingBooking?.status || checkInInfo.status
       };
 
       if (existingBooking) {
         console.log(`🔍 [SINGLE SYNC] Found existing booking: ${existingBooking.id}`);
-        
+
+        if (isCancelled && existingBooking.status !== 'CANCELLED') {
+          await prisma.booking.update({
+            where: { id: existingBooking.id },
+            data: {
+              status: 'CANCELLED',
+              updatedAt: new Date()
+            }
+          });
+
+          const activeKeys = await prisma.virtualKey.findMany({
+            where: { bookingId: existingBooking.id, isActive: true }
+          });
+
+          if (activeKeys.length > 0) {
+            try {
+              await nukiApiService.revokeAllKeysForBooking(activeKeys.map(key => key.nukiKeyId));
+            } catch (revokeError) {
+              console.error('Failed to revoke Nuki keys for cancelled booking', existingBooking.id, revokeError);
+            }
+
+            await VirtualKeyService.deactivateAllKeysForBooking(existingBooking.id);
+          }
+
+          return {
+            success: true,
+            message: `Booking ${existingBooking.id} marked as cancelled`,
+            bookingId: existingBooking.id,
+            action: 'updated'
+          };
+        }
+
+        if (isCancelled && existingBooking.status === 'CANCELLED') {
+          return {
+            success: true,
+            message: `Booking ${existingBooking.id} already cancelled`,
+            bookingId: existingBooking.id,
+            action: 'skipped'
+          };
+        }
+
         // Check if HostAway data has changed
         const hasHostAwayChanges = (
           existingBooking.propertyName !== bookingData.propertyName ||
@@ -829,11 +955,12 @@ class BookingService {
         });
         
         console.log(`✅ [SINGLE SYNC] Created new booking: ${newBooking.id} - ${bookingData.guestLeaderName} - Status: ${newBooking.status} ${checkInInfo.hasExistingCheckInLink ? '(has existing check-in)' : ''}`);
-        
-        // Always add Nick Jenny check-in link for all new reservations
-        console.log(`🔗 [SINGLE SYNC NEW] Adding Nick Jenny check-in link for reservation ${reservation.id}`);
-        await this.updateHostAwayCheckInLinkForNewBooking(reservation.id, newBooking.checkInToken);
-        
+
+        if (!isCancelled && (!checkInInfo.hasExistingCheckInLink || checkInInfo.status === 'PENDING')) {
+          console.log(`🔗 [SINGLE SYNC NEW] Adding Nick Jenny check-in link for reservation ${reservation.id}`);
+          await this.updateHostAwayCheckInLinkForNewBooking(reservation.id, newBooking.checkInToken);
+        }
+
         return {
           success: true,
           message: `Created new booking ${newBooking.id} - Status: ${newBooking.status}`,

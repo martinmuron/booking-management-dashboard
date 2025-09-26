@@ -1,5 +1,50 @@
 import { VirtualKeyType } from '@/types';
 
+const PRAGUE_TIMEZONE = 'Europe/Prague';
+
+const pad = (value: number) => value.toString().padStart(2, '0');
+
+const getPragueOffset = (date: Date): string => {
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: PRAGUE_TIMEZONE,
+    hour12: false,
+    timeZoneName: 'short'
+  });
+
+  const tzName = formatter
+    .formatToParts(date)
+    .find(part => part.type === 'timeZoneName')?.value ?? 'GMT+00';
+
+  const offsetMatch = tzName.match(/GMT([+-])(\d{1,2})(?::(\d{2}))?/i);
+
+  if (!offsetMatch) {
+    return '+00:00';
+  }
+
+  const sign = offsetMatch[1] ?? '+';
+  const hours = pad(Number.parseInt(offsetMatch[2] ?? '0', 10));
+  const minutes = pad(Number.parseInt(offsetMatch[3] ?? '0', 10));
+
+  return `${sign}${hours}:${minutes}`;
+};
+
+const toPragueDateTime = (input: Date, hours: number, minutes: number): string => {
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: PRAGUE_TIMEZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  });
+
+  const parts = formatter.formatToParts(input);
+  const year = parts.find(part => part.type === 'year')?.value ?? '1970';
+  const month = parts.find(part => part.type === 'month')?.value ?? '01';
+  const day = parts.find(part => part.type === 'day')?.value ?? '01';
+  const offset = getPragueOffset(input);
+
+  return `${year}-${month}-${day}T${pad(hours)}:${pad(minutes)}:00${offset}`;
+};
+
 export interface NukiDevice {
   smartlockId: number;
   name: string;
@@ -30,6 +75,25 @@ export interface NukiCreateAuthRequest {
   allowedUntilDate?: string;
   allowedWeekDays?: number;
 }
+
+type CreateKeyOptions = {
+  keyTypes?: VirtualKeyType[];
+  keypadCode?: string;
+};
+
+type CreateKeyFailure = {
+  keyType: VirtualKeyType;
+  deviceId?: number;
+  deviceName?: string;
+  error: string;
+};
+
+type CreateKeyResult = {
+  keyType: VirtualKeyType;
+  deviceId: number;
+  deviceName?: string;
+  nukiAuth: NukiAuth;
+};
 
 export class NukiApiService {
   private readonly baseUrl = 'https://api.nuki.io';
@@ -90,47 +154,46 @@ export class NukiApiService {
     }
   }
 
-  // Create virtual key authorization
-  async createVirtualKey(
+  getKeyTypesForProperty(propertyName?: string): VirtualKeyType[] {
+    if (!propertyName) {
+      return [
+        VirtualKeyType.MAIN_ENTRANCE,
+        VirtualKeyType.ROOM,
+        VirtualKeyType.LUGGAGE_ROOM,
+        VirtualKeyType.LAUNDRY_ROOM,
+      ];
+    }
+
+    if (propertyName === 'Bořivojova 50' || propertyName === 'Řehořova') {
+      return [VirtualKeyType.MAIN_ENTRANCE];
+    }
+
+    return [
+      VirtualKeyType.MAIN_ENTRANCE,
+      VirtualKeyType.ROOM,
+      VirtualKeyType.LUGGAGE_ROOM,
+      VirtualKeyType.LAUNDRY_ROOM,
+    ];
+  }
+
+  private async createVirtualKey(
+    deviceId: number,
     keyType: VirtualKeyType,
     guestName: string,
-    checkInDate: Date,
-    checkOutDate: Date,
-    keypadCode?: string,
+    keypadCode: string,
+    allowedFromISO: string,
+    allowedUntilISO: string,
     roomNumber?: string
   ): Promise<NukiAuth> {
-    let deviceId: number;
-    
-    // For room type, use the specific room number. Otherwise use configured defaults
-    if (keyType === VirtualKeyType.ROOM && roomNumber) {
-      // Find the device ID by room number from the actual devices
-      const devices = await this.getDevices();
-      const roomDevice = devices.find(device => device.name === roomNumber);
-      if (roomDevice) {
-        deviceId = roomDevice.smartlockId;
-      } else {
-        throw new Error(`Room device not found for room number: ${roomNumber}`);
-      }
-    } else {
-      deviceId = parseInt(this.deviceIds[keyType]);
-    }
-    
-    // Create time-limited access from check-in to check-out + 1 day buffer
-    const checkOutWithBuffer = new Date(checkOutDate);
-    checkOutWithBuffer.setDate(checkOutWithBuffer.getDate() + 1);
-
     const authRequest: NukiCreateAuthRequest = {
-      name: `${guestName} - ${roomNumber ? `Room ${roomNumber}` : keyType} - ${keypadCode}`,
-      type: keypadCode ? 13 : 15, // 13: Keypad code, 15: Virtual
+      name: `${guestName} – ${keyType}${roomNumber ? ` ${roomNumber}` : ''}`,
+      type: 13,
       smartlockIds: [deviceId],
-      allowedFromDate: checkInDate.toISOString(),
-      allowedUntilDate: checkOutWithBuffer.toISOString(),
-      allowedWeekDays: 127, // All days (Mon-Sun: 64+32+16+8+4+2+1 = 127)
+      code: keypadCode,
+      allowedFromDate: allowedFromISO,
+      allowedUntilDate: allowedUntilISO,
+      allowedWeekDays: 127,
     };
-
-    if (keypadCode) {
-      authRequest.code = keypadCode;
-    }
 
     return this.makeRequest<NukiAuth>('/smartlock/auth', {
       method: 'PUT',
@@ -174,50 +237,72 @@ export class NukiApiService {
     checkOutDate: Date,
     roomNumber: string,
     propertyName?: string,
-    keyTypes?: VirtualKeyType[]
+    options: CreateKeyOptions = {}
   ): Promise<{
-    results: Array<{ keyType: VirtualKeyType; nukiAuth: NukiAuth }>;
+    results: CreateKeyResult[];
     universalKeypadCode: string;
+    attemptedKeyTypes: VirtualKeyType[];
+    failures: CreateKeyFailure[];
   }> {
-    // Determine key types based on property
-    if (!keyTypes) {
-      if (propertyName === 'Bořivojova 50' || propertyName === 'Řehořova') {
-        // Standalone properties - only main entrance
-        keyTypes = [VirtualKeyType.MAIN_ENTRANCE];
-      } else {
-        // Z apartments - full suite of keys
-        keyTypes = [
-          VirtualKeyType.MAIN_ENTRANCE,
-          VirtualKeyType.ROOM,
-          VirtualKeyType.LUGGAGE_ROOM,
-          VirtualKeyType.LAUNDRY_ROOM,
-        ];
-      }
-    }
-    // Generate ONE keypad code for all doors
-    const universalKeypadCode = this.generateKeypadCode();
-    const results = [];
+    const attemptedKeyTypes = options.keyTypes ?? this.getKeyTypesForProperty(propertyName);
+    const universalKeypadCode = options.keypadCode ?? this.generateKeypadCode();
+    const devices = await this.getDevices();
+    const failures: CreateKeyFailure[] = [];
+    const results: CreateKeyResult[] = [];
 
-    for (const keyType of keyTypes) {
+    const allowedFromISO = toPragueDateTime(checkInDate, 15, 0);
+    const allowedUntilISO = toPragueDateTime(checkOutDate, 22, 0);
+
+    const resolveDevice = (keyType: VirtualKeyType): { deviceId: number; deviceName?: string } => {
+      if (keyType === VirtualKeyType.ROOM) {
+        const roomDevice = devices.find(device => device.name === roomNumber);
+        if (!roomDevice) {
+          throw new Error(`Room device not found for ${roomNumber}`);
+        }
+        return { deviceId: roomDevice.smartlockId, deviceName: roomDevice.name };
+      }
+
+      const configuredId = this.deviceIds[keyType];
+      if (!configuredId) {
+        throw new Error(`No Nuki device configured for key type ${keyType}`);
+      }
+
+      return { deviceId: Number.parseInt(configuredId, 10), deviceName: keyType };
+    };
+
+    for (const keyType of attemptedKeyTypes) {
+      let deviceContext: { deviceId: number; deviceName?: string } | null = null;
+
       try {
-        // Use the SAME keypad code for all key types
+        deviceContext = resolveDevice(keyType);
+
         const nukiAuth = await this.createVirtualKey(
+          deviceContext.deviceId,
           keyType,
           guestName,
-          checkInDate,
-          checkOutDate,
           universalKeypadCode,
+          allowedFromISO,
+          allowedUntilISO,
           roomNumber
         );
 
-        results.push({ keyType, nukiAuth });
+        results.push({
+          keyType,
+          deviceId: deviceContext.deviceId,
+          deviceName: deviceContext.deviceName,
+          nukiAuth,
+        });
       } catch (error) {
-        console.error(`Failed to create virtual key for ${keyType}:`, error);
-        // Continue with other keys even if one fails
+        failures.push({
+          keyType,
+          deviceId: deviceContext?.deviceId,
+          deviceName: deviceContext?.deviceName,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
       }
     }
 
-    return { results, universalKeypadCode };
+    return { results, universalKeypadCode, attemptedKeyTypes, failures };
   }
 
   // Generate a random 6-digit keypad code

@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
     let skipped = 0;
     let failed = 0;
 
-    const results: Array<{ bookingId: string; status: string; reason?: string; error?: string }> = [];
+    const results: Array<{ bookingId: string; status: string; reason?: string; error?: string; queuedKeyTypes?: string[] }> = [];
 
     for (const booking of candidateBookings) {
       processed += 1;
@@ -63,19 +63,28 @@ export async function POST(request: NextRequest) {
 
         if (result.status === 'created') {
           created += 1;
-          results.push({ bookingId: booking.id, status: 'created' });
+          results.push({
+            bookingId: booking.id,
+            status: 'created',
+            queuedKeyTypes: result.queuedKeyTypes,
+          });
         } else if (result.status === 'already') {
           already += 1;
           results.push({ bookingId: booking.id, status: 'already' });
+        } else if (result.status === 'queued') {
+          skipped += 1;
+          results.push({
+            bookingId: booking.id,
+            status: 'queued',
+            reason: 'retry_scheduled',
+            queuedKeyTypes: result.queuedKeyTypes,
+          });
         } else if (result.status === 'skipped') {
           skipped += 1;
           results.push({ bookingId: booking.id, status: 'skipped', reason: result.reason });
         } else if (result.status === 'failed') {
           failed += 1;
           results.push({ bookingId: booking.id, status: 'failed', reason: result.reason, error: result.error });
-        } else {
-          skipped += 1;
-          results.push({ bookingId: booking.id, status: result.status });
         }
       } catch (error) {
         failed += 1;
