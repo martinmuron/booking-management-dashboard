@@ -35,6 +35,23 @@ type BookingUpdateData = {
 
 const PRAGUE_TIMEZONE = 'Europe/Prague';
 
+const canonicalizePragueAddress = (value?: string | null): string | null => {
+  if (!value) {
+    return value ?? null;
+  }
+
+  const normalized = value
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase();
+
+  if (normalized.includes('prokopova')) {
+    return 'Prokopova 197/9, 130 00 Praha 3-Žižkov';
+  }
+
+  return value;
+};
+
 const pad = (value: number) => value.toString().padStart(2, '0');
 
 const getPragueOffset = (date: Date): string => {
@@ -468,6 +485,8 @@ class BookingService {
           
           const checkInToken = existingBooking?.checkInToken ?? await this.generateCheckInToken();
 
+          const canonicalAddress = canonicalizePragueAddress(listing?.address);
+
           const bookingData = {
             hostAwayId: reservation.id.toString(),
             propertyName: reservation.listingName || listing?.name || `Property ${reservation.listingMapId}`,
@@ -477,7 +496,7 @@ class BookingService {
             checkInDate,
             checkOutDate,
             numberOfGuests: reservation.numberOfGuests || reservation.adults || 1,
-            roomNumber: listing?.address || null,
+            roomNumber: canonicalAddress,
             checkInToken,
             // Use existing check-in status for new bookings, preserve existing status for updates
             // This handles the seamless transition from checkin.io
@@ -811,6 +830,8 @@ class BookingService {
       const hostawayStatus = reservation.status?.toLowerCase?.() ?? '';
       const isCancelled = hostawayStatus === 'cancelled' || hostawayStatus === 'canceled';
 
+      const canonicalAddress = canonicalizePragueAddress(listing?.address);
+
       const bookingData = {
         hostAwayId: reservation.id.toString(),
         propertyName: reservation.listingName || listing?.name || `Property ${reservation.listingMapId}`,
@@ -820,7 +841,7 @@ class BookingService {
         checkInDate,
         checkOutDate,
         numberOfGuests: reservation.numberOfGuests || reservation.adults || 1,
-        roomNumber: listing?.address || null,
+        roomNumber: canonicalAddress,
         checkInToken,
         // Use existing check-in status for new bookings, preserve existing status for updates
         status: isCancelled ? 'CANCELLED' : existingBooking?.status || checkInInfo.status

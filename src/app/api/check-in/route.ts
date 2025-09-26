@@ -7,6 +7,23 @@ import type { CityTaxGuestInput } from '@/lib/city-tax';
 import { z } from 'zod';
 import { ensureNukiKeysForBooking, EnsureNukiKeysResult } from '@/services/auto-key.service';
 
+const canonicalizePragueAddress = (value?: string | null): string | undefined => {
+  if (!value) {
+    return value ?? undefined;
+  }
+
+  const normalized = value
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase();
+
+  if (normalized.includes('prokopova')) {
+    return 'Prokopova 197/9, 130 00 Praha 3-Žižkov';
+  }
+
+  return value;
+};
+
 const NAME_CHAR_REGEX = /^[A-Za-zÀ-ÖØ-öø-ÿ'\-\s]+$/u;
 const ISO_ALPHA3_REGEX = /^[A-Z]{3}$/;
 const DOCUMENT_NUMBER_REGEX = /^[A-Z0-9]{4,30}$/;
@@ -169,9 +186,9 @@ export async function GET(request: NextRequest) {
         const listings = await hostAwayService.getListings();
         const matchingListing = listings.find(l => l.id.toString() === booking.hostAwayId);
         if (matchingListing?.address) {
-          // Add property address to booking response
+          const canonical = canonicalizePragueAddress(matchingListing.address);
           enrichedBooking = Object.assign({}, booking, { 
-            propertyAddress: matchingListing.address 
+            propertyAddress: canonical ?? matchingListing.address 
           });
         }
       }
