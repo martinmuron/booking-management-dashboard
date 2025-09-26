@@ -290,35 +290,65 @@ export default function NukiManagementPage() {
       const expiredKeys = keys.filter(key => (key as KeyEntry & { isExpired?: boolean }).isExpired);
 
       let successCount = 0;
-      let errorCount = 0;
+      const failedKeys: Array<{ key: KeyEntry; reason: string }> = [];
+      const deletedIds: number[] = [];
 
-      // Delete each expired key
+      // Delete each expired key in the current order (as listed in the UI)
       for (const key of expiredKeys) {
         try {
           const response = await fetch(`/api/nuki/keys/${key.id}?deviceId=${key.deviceId}`, {
             method: 'DELETE'
           });
 
-          if (response.ok) {
+          if (!response.ok) {
+            const errorBody = await response.json().catch(() => null);
+            const message = (errorBody && typeof errorBody.message === 'string')
+              ? errorBody.message
+              : `Failed with status ${response.status}`;
+            failedKeys.push({ key, reason: message });
+            console.error(`Failed to delete key ${key.name} (ID: ${key.id}): ${message}`);
+            continue;
+          }
+
+          let payload: unknown = null;
+          const contentType = response.headers.get('content-type') || '';
+          if (contentType.includes('application/json')) {
+            payload = await response.json().catch(() => null);
+          }
+
+          const success = typeof payload === 'object' && payload !== null
+            ? (payload as { success?: boolean }).success !== false
+            : true;
+
+          if (success) {
             successCount++;
+            deletedIds.push(key.id);
           } else {
-            errorCount++;
-            console.error(`Failed to delete key ${key.name} (ID: ${key.id})`);
+            failedKeys.push({ key, reason: 'Unknown error deleting key' });
+            console.error(`Failed to delete key ${key.name} (ID: ${key.id}): API responded with failure`);
           }
         } catch (error) {
-          errorCount++;
+          failedKeys.push({ key, reason: error instanceof Error ? error.message : 'Unexpected error' });
           console.error(`Error deleting key ${key.name}:`, error);
         }
       }
 
-      // Update local state to remove all expired keys immediately
-      setKeys(prevKeys => prevKeys.filter(k => !(k as KeyEntry & { isExpired?: boolean }).isExpired));
+      // Update local state to remove only the successfully deleted keys
+      if (deletedIds.length > 0) {
+        setKeys(prevKeys => prevKeys.filter(k => !deletedIds.includes(k.id)));
+      }
 
       // Refresh all data to ensure consistency
       fetchOverviewData();
 
-      // Show result (you could add a toast notification here)
-      console.log(`Bulk delete completed: ${successCount} deleted, ${errorCount} failed`);
+      if (failedKeys.length > 0) {
+        console.warn(`Bulk delete completed with issues: ${successCount} deleted, ${failedKeys.length} failed`);
+        failedKeys.forEach(({ key, reason }) => {
+          console.warn(`- ${key.name} (ID: ${key.id}) on device ${key.deviceId}: ${reason}`);
+        });
+      } else {
+        console.log(`Bulk delete completed: ${successCount} expired keys removed`);
+      }
 
       // Close dialog
       setShowBulkDeleteConfirm(false);
