@@ -40,6 +40,8 @@ async function nukiFetch<T>(path: string, options: RequestInit = {}): Promise<{ 
   }
 }
 
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
 // GET key details
 export async function GET(
   request: NextRequest,
@@ -154,12 +156,38 @@ export async function DELETE(
         { status: result.status }
       );
     }
-    
-    return NextResponse.json({
-      success: true,
-      message: 'Key deleted successfully'
-    });
 
+    // Verify the key has actually been removed. Nuki may return 204 while still keeping the key.
+    const maxAttempts = 3;
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      const verify = await nukiFetch<Record<string, unknown>>(`/smartlock/${deviceId}/auth/${keyId}`);
+
+      if (!verify.ok) {
+        if (verify.status === 404) {
+          return NextResponse.json({
+            success: true,
+            message: 'Key deleted successfully'
+          });
+        }
+
+        console.warn(`Verification after delete failed with status ${verify.status} ${verify.statusText}`);
+      } else if (!verify.data) {
+        return NextResponse.json({
+          success: true,
+          message: 'Key deleted successfully'
+        });
+      } else {
+        console.warn(`Key ${keyId} still present after delete attempt ${attempt + 1}`);
+      }
+
+      // Give Nuki a moment to process asynchronous deletions.
+      await sleep(500 * (attempt + 1));
+    }
+
+    return NextResponse.json(
+      { success: false, message: 'Key could not be verified as deleted' },
+      { status: 409 }
+    );
   } catch (error) {
     console.error('Error deleting key:', error);
     return NextResponse.json(
