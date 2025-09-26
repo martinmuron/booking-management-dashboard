@@ -122,7 +122,17 @@ export default function AdminDashboard() {
   const [dateFrom, setDateFrom] = useState<string>('');
   const [dateTo, setDateTo] = useState<string>('');
   const [timeFilter, setTimeFilter] = useState<'all' | 'past' | 'upcoming' | 'upcoming30' | 'inprogress'>('upcoming');
+  const [searchInput, setSearchInput] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
+
+  const applySearch = () => {
+    setSearchQuery(searchInput.trim());
+  };
+
+  const clearSearch = () => {
+    setSearchInput('');
+    setSearchQuery('');
+  };
 
   const fetchBookings = async () => {
     try {
@@ -493,15 +503,28 @@ export default function AdminDashboard() {
                   <Search className="h-4 w-4 text-muted-foreground" />
                   <Input
                     placeholder="Search reservations (name, email, property, booking ID...)"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
+                    value={searchInput}
+                    onChange={(e) => setSearchInput(e.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') {
+                        event.preventDefault();
+                        applySearch();
+                      }
+                    }}
                     className="max-w-md"
                   />
-                  {searchQuery && (
+                  <Button
+                    size="sm"
+                    onClick={applySearch}
+                    className="h-8"
+                  >
+                    Search
+                  </Button>
+                  {(searchInput || searchQuery) && (
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => setSearchQuery('')}
+                      onClick={clearSearch}
                       className="h-8 px-2"
                     >
                       <X className="h-4 w-4" />
