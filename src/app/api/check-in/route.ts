@@ -265,7 +265,8 @@ export async function POST(request: NextRequest) {
     const cityTaxAmount = calculateCityTaxForStay(
       guests as Array<CityTaxGuestInput>,
       booking.checkInDate,
-      booking.checkOutDate
+      booking.checkOutDate,
+      { propertyName: booking.propertyName }
     );
 
     if (cityTaxAmount > 0) {

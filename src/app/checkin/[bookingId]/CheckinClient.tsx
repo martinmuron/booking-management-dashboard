@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 import {
   calculateCityTaxForGuests,
+  getCityTaxPolicy,
   isPragueCityTaxExempt
 } from "@/lib/city-tax";
 
@@ -658,10 +659,31 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
     return Math.ceil(diff / (1000 * 60 * 60 * 24));
   }, [booking]);
 
-  const cityTaxAmount = useMemo(
-    () => calculateCityTaxForGuests(guests, nights),
-    [guests, nights]
+  const cityTaxPolicy = useMemo(
+    () =>
+      getCityTaxPolicy({
+        propertyName: booking?.propertyName,
+        propertyAddress: booking?.propertyAddress
+      }),
+    [booking?.propertyName, booking?.propertyAddress]
   );
+
+  const cityTaxAmount = useMemo(
+    () =>
+      calculateCityTaxForGuests(guests, nights, {
+        propertyName: booking?.propertyName,
+        propertyAddress: booking?.propertyAddress
+      }),
+    [guests, nights, booking?.propertyName, booking?.propertyAddress]
+  );
+
+  const cityTaxTitle = cityTaxPolicy.cityName
+    ? `${cityTaxPolicy.cityName} City Tax`
+    : 'City Tax';
+
+  const cityTaxDescription = cityTaxPolicy.cityName
+    ? `Required payment for visitors to ${cityTaxPolicy.cityName} (${cityTaxPolicy.taxPerPersonPerNight} CZK per person per night, 18+ only)`
+    : `Required municipal tax (${cityTaxPolicy.taxPerPersonPerNight} CZK per person per night, 18+ only)`;
 
   const isGuestTaxInfoComplete = useMemo(() => {
     return guests.every(guest => {
@@ -1465,7 +1487,7 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
                                     aria-invalid={!!errors.residenceCity}
                                     className={errors.residenceCity ? 'border-red-500 focus-visible:ring-red-500' : ''}
                                   />
-                                  {isPragueCityTaxExempt(guest.residenceCity) && (
+                                  {cityTaxPolicy.pragueExemptionApplies && isPragueCityTaxExempt(guest.residenceCity) && (
                                     <p className="text-sm text-green-600 mt-1">✓ Prague resident - City tax exempt</p>
                                   )}
                                   {errors.residenceCity && (
@@ -1588,11 +1610,9 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
                   <CardHeader>
                     <CardTitle className="flex items-center">
                       <CreditCard className="mr-2 h-5 w-5" />
-                      Prague City Tax
+                      {cityTaxTitle}
                     </CardTitle>
-                    <CardDescription>
-                      Required payment for visitors to Prague (50 CZK per person per night, 18+ only)
-                    </CardDescription>
+                    <CardDescription>{cityTaxDescription}</CardDescription>
                   </CardHeader>
                   <CardContent>
                     {checkInCompleted ? (

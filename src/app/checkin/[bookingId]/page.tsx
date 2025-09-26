@@ -1,6 +1,7 @@
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import CheckinClient from './CheckinClient';
+import { getCityTaxPolicy } from '@/lib/city-tax';
 
 interface VirtualKey {
   id: string;
@@ -44,6 +45,10 @@ async function getBookingByToken(token: string): Promise<BookingData | null> {
     }
 
     // Transform the booking data to match the expected interface
+    const cityTaxPolicy = getCityTaxPolicy({
+      propertyName: booking.propertyName
+    });
+
     return {
       id: booking.id,
       propertyName: booking.propertyName,
@@ -54,7 +59,7 @@ async function getBookingByToken(token: string): Promise<BookingData | null> {
       roomNumber: booking.roomNumber || undefined,
       guestLeaderName: booking.guestLeaderName,
       cityTaxAmount: 0,
-      cityTaxPerPerson: 50,
+      cityTaxPerPerson: cityTaxPolicy.taxPerPersonPerNight,
       universalKeypadCode: booking.universalKeypadCode || undefined,
       virtualKeys: [] // Not included in this simplified version
     };
