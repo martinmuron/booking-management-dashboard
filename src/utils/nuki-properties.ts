@@ -39,6 +39,9 @@ const NUKI_SPECIAL_PROPERTY_NAMES = [
   'řehořova',
   'rehovorova',
   'rehorova',
+  'prokopova 9',
+  'prokopova 197/9',
+  'prokopova'
 ];
 
 // Legacy constant required by admin tooling – we still expose a deterministic
@@ -48,6 +51,7 @@ const STATIC_NUKI_PROPERTY_LIST: readonly string[] = [
   'Bořivojova 50',
   'Bořivojova 73',
   'Řehořova',
+  'Prokopova 197/9'
 ];
 
 export const NUKI_AUTHORIZED_PROPERTIES = STATIC_NUKI_PROPERTY_LIST;

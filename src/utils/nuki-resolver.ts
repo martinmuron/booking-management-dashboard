@@ -63,6 +63,39 @@ export async function resolveNukiPropertyCode(booking: Booking): Promise<string 
     return internalName;
   }
 
+  const candidates: string[] = [];
+
+  if (internalName) {
+    candidates.push(internalName);
+  }
+
+  if (listing?.address) {
+    candidates.push(listing.address);
+  }
+
+  if (booking.propertyName) {
+    candidates.push(booking.propertyName);
+  }
+
+  if (booking.roomNumber) {
+    candidates.push(booking.roomNumber);
+  }
+
+  for (const candidate of candidates) {
+    if (!candidate) {
+      continue;
+    }
+
+    if (hasNukiAccess(candidate)) {
+      return candidate;
+    }
+
+    const normalizedCandidate = normalize(candidate);
+    if (normalizedCandidate.includes('PROKOPOVA')) {
+      return 'Prokopova 197/9';
+    }
+  }
+
   return null;
 }
 

@@ -223,7 +223,7 @@ const shouldShowAppliancesInfo = (booking?: BookingData | null) => {
   }
 
   const fields = [booking.propertyName, booking.propertyAddress, booking.roomNumber];
-  return fields.some((field) => field && normalizeForMatch(field).includes('prokopova 9'));
+  return fields.some((field) => field && normalizeForMatch(field).includes('prokopova'));
 };
 
 type GuestErrors = Partial<Record<keyof Guest, string>>;
@@ -231,6 +231,12 @@ type GuestErrors = Partial<Record<keyof Guest, string>>;
 type ApiValidationIssue = {
   message: string;
   path?: Array<string | number>;
+  formErrors?: string[];
+};
+
+type ServerValidationSummary = {
+  serverErrors: Record<string, GuestErrors>;
+  formMessages: string[];
 };
 
 const formatDate = (dateString: string) => {
@@ -682,6 +688,10 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
     [guests, nights, booking?.propertyName, booking?.propertyAddress]
   );
 
+  const requiredGuestCount = booking?.numberOfGuests ?? guests.length;
+  const missingGuestCount = Math.max(requiredGuestCount - guests.length, 0);
+  const allGuestFormsPresent = missingGuestCount === 0;
+
   const cityTaxTitle = cityTaxPolicy.cityName
     ? `${cityTaxPolicy.cityName} City Tax`
     : 'City Tax';
@@ -700,7 +710,15 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
     });
   }, [guests]);
 
-  const canInitiatePayment = cityTaxAmount > 0 && isGuestTaxInfoComplete;
+  const allGuestFormsValid = useMemo(() => {
+    if (!allGuestFormsPresent) {
+      return false;
+    }
+
+    return guests.every(guest => Object.keys(validateGuest(guest)).length === 0);
+  }, [guests, allGuestFormsPresent]);
+
+  const canInitiatePayment = cityTaxAmount > 0 && isGuestTaxInfoComplete && allGuestFormsValid;
 
   useEffect(() => {
     if (checkInCompleted) {
@@ -790,37 +808,40 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
     setCheckInCompleted(false);
   };
 
-  const applyServerValidationIssues = (issues?: ApiValidationIssue[]) => {
+const applyServerValidationIssues = (issues?: ApiValidationIssue[]): ServerValidationSummary | undefined => {
     if (!issues || issues.length === 0) {
       return undefined;
     }
 
     const serverErrors: Record<string, GuestErrors> = {};
+    const formMessages: string[] = [];
 
     issues.forEach(issue => {
       const path = issue.path;
-      if (!Array.isArray(path) || path.length < 2) {
-        return;
-      }
 
-      if (path[0] !== 'guests') {
+      if (!Array.isArray(path) || path.length < 2 || path[0] !== 'guests') {
+        if (issue.message) {
+          formMessages.push(issue.message);
+        }
         return;
       }
 
       const guestIndex = Number(path[1]);
       if (Number.isNaN(guestIndex) || guestIndex < 0 || guestIndex >= guests.length) {
+        if (issue.message) {
+          formMessages.push(issue.message);
+        }
         return;
       }
 
       const guest = guests[guestIndex];
-      if (!guest) {
-        return;
-      }
-
       const guestId = guest.id;
       const field = path[2];
 
       if (typeof field !== 'string') {
+        if (issue.message) {
+          formMessages.push(issue.message);
+        }
         return;
       }
 
@@ -830,7 +851,10 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
 
     if (Object.keys(serverErrors).length > 0) {
       setGuestErrors(prev => ({ ...prev, ...serverErrors }));
-      return serverErrors;
+    }
+
+    if (Object.keys(serverErrors).length > 0 || formMessages.length > 0) {
+      return { serverErrors, formMessages };
     }
 
     return undefined;
@@ -872,6 +896,11 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
     }
 
     setSuccessMessage(null);
+
+    if (!allGuestFormsPresent) {
+      setError(`Please add ${missingGuestCount} more guest${missingGuestCount === 1 ? '' : 's'} before completing check-in.`);
+      return false;
+    }
 
     const guestsValid = validateAllGuests(guests);
     if (!guestsValid) {
@@ -934,13 +963,18 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
         return true;
       }
 
-      const serverErrors = applyServerValidationIssues(data.issues as ApiValidationIssue[] | undefined);
-      if (serverErrors) {
-        const firstGuestError = Object.values(serverErrors)
+      const serverValidation = applyServerValidationIssues(data.issues as ApiValidationIssue[] | undefined);
+      if (serverValidation) {
+        const firstGuestError = Object.values(serverValidation.serverErrors)
           .flatMap(errorMap => Object.values(errorMap))
           .find(Boolean);
         if (firstGuestError) {
           setError(firstGuestError);
+          return false;
+        }
+
+        if (serverValidation.formMessages.length > 0) {
+          setError(serverValidation.formMessages[0]);
           return false;
         }
       }
@@ -964,6 +998,11 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
 
     setSuccessMessage(null);
 
+    if (!allGuestFormsPresent) {
+      setError(`Please add ${missingGuestCount} more guest${missingGuestCount === 1 ? '' : 's'} before paying the city tax.`);
+      return;
+    }
+
     const guestsValid = validateAllGuests(guests);
     if (!guestsValid) {
       setError('Please fix the highlighted guest details before paying the city tax.');
@@ -976,7 +1015,11 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
     }
 
     if (!canInitiatePayment) {
-      setError('Please complete guest details (date of birth and city/country of residence) before paying the city tax.');
+      if (!allGuestFormsValid) {
+        setError('Please fix the highlighted guest details before paying the city tax.');
+      } else {
+        setError('Please complete guest details (date of birth and city/country of residence) before paying the city tax.');
+      }
       return;
     }
 
@@ -1661,6 +1704,11 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
                         <Plus className="mr-2 h-4 w-4" />
                         Add Guest
                       </Button>
+                      {missingGuestCount > 0 && (
+                        <p className="mt-3 text-sm text-amber-600">
+                          Add {missingGuestCount} more guest{missingGuestCount === 1 ? '' : 's'} to match the reservation.
+                        </p>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -1694,6 +1742,11 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
                         <p className="text-sm text-muted-foreground">
                           Total tax amount: <strong>{cityTaxAmount} CZK</strong>
                         </p>
+                        {missingGuestCount > 0 && (
+                          <p className="text-xs text-amber-600">
+                            Add {missingGuestCount} more guest{missingGuestCount === 1 ? '' : 's'} to enable payment.
+                          </p>
+                        )}
                         {!isGuestTaxInfoComplete && (
                           <p className="text-xs text-amber-600">
                             Please enter date of birth and residence city/country for each guest before paying the city tax.
@@ -1734,9 +1787,14 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
                         <p className="text-sm text-muted-foreground">
                           This stay has no city tax due. You can complete your check-in now.
                         </p>
+                        {missingGuestCount > 0 && (
+                          <p className="text-xs text-amber-600">
+                            Add {missingGuestCount} more guest{missingGuestCount === 1 ? '' : 's'} before completing check-in.
+                          </p>
+                        )}
                         <Button
                           onClick={() => finalizeCheckIn()}
-                          disabled={submitting}
+                          disabled={submitting || !allGuestFormsPresent || !allGuestFormsValid}
                         >
                           {submitting ? (
                             <>
