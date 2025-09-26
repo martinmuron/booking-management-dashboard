@@ -228,6 +228,11 @@ const shouldShowAppliancesInfo = (booking?: BookingData | null) => {
 
 type GuestErrors = Partial<Record<keyof Guest, string>>;
 
+type ApiValidationIssue = {
+  message: string;
+  path?: Array<string | number>;
+};
+
 const formatDate = (dateString: string) => {
   return new Date(dateString).toLocaleDateString('en-US', {
     weekday: 'long',
@@ -785,6 +790,52 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
     setCheckInCompleted(false);
   };
 
+  const applyServerValidationIssues = (issues?: ApiValidationIssue[]) => {
+    if (!issues || issues.length === 0) {
+      return undefined;
+    }
+
+    const serverErrors: Record<string, GuestErrors> = {};
+
+    issues.forEach(issue => {
+      const path = issue.path;
+      if (!Array.isArray(path) || path.length < 2) {
+        return;
+      }
+
+      if (path[0] !== 'guests') {
+        return;
+      }
+
+      const guestIndex = Number(path[1]);
+      if (Number.isNaN(guestIndex) || guestIndex < 0 || guestIndex >= guests.length) {
+        return;
+      }
+
+      const guest = guests[guestIndex];
+      if (!guest) {
+        return;
+      }
+
+      const guestId = guest.id;
+      const field = path[2];
+
+      if (typeof field !== 'string') {
+        return;
+      }
+
+      serverErrors[guestId] = serverErrors[guestId] ?? {};
+      (serverErrors[guestId] as GuestErrors)[field as keyof Guest] = issue.message;
+    });
+
+    if (Object.keys(serverErrors).length > 0) {
+      setGuestErrors(prev => ({ ...prev, ...serverErrors }));
+      return serverErrors;
+    }
+
+    return undefined;
+  };
+
   const buildNormalizedGuests = () => {
     return guests.map((guest) => {
       const sanitizedNationality = sanitizeIsoAlpha3(guest.nationality);
@@ -881,6 +932,17 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
           };
         });
         return true;
+      }
+
+      const serverErrors = applyServerValidationIssues(data.issues as ApiValidationIssue[] | undefined);
+      if (serverErrors) {
+        const firstGuestError = Object.values(serverErrors)
+          .flatMap(errorMap => Object.values(errorMap))
+          .find(Boolean);
+        if (firstGuestError) {
+          setError(firstGuestError);
+          return false;
+        }
       }
 
       setError(data.error || 'Failed to complete check-in');

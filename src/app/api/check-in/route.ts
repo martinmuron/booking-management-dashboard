@@ -210,11 +210,13 @@ export async function POST(request: NextRequest) {
     const parsed = requestSchema.safeParse(body);
 
     if (!parsed.success) {
+      console.error('Check-in validation failed:', parsed.error.issues);
       return NextResponse.json(
         {
           success: false,
           error: 'Guest information is invalid',
-          details: parsed.error.flatten()
+          details: parsed.error.flatten(),
+          issues: parsed.error.issues
         },
         { status: 422 }
       );
