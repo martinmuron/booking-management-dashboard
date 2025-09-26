@@ -208,22 +208,30 @@ const normalizeForMatch = (value: string) =>
     .replace(/\p{Diacritic}/gu, '')
     .toLowerCase();
 
-const shouldShowArrivalInstructions = (booking?: BookingData | null) => {
+const isProkopovaField = (value?: string | null) => {
+  if (!value) {
+    return false;
+  }
+
+  const normalized = normalizeForMatch(value).replace(/[^a-z0-9]/g, '');
+  return normalized.includes('prokopova1979') || normalized.includes('prokopova9');
+};
+
+const isProkopovaBooking = (booking?: BookingData | null) => {
   if (!booking) {
     return false;
   }
 
   const fields = [booking.propertyName, booking.propertyAddress, booking.roomNumber];
-  return fields.some((field) => field && normalizeForMatch(field).includes('prokopova'));
+  return fields.some(field => isProkopovaField(field));
+};
+
+const shouldShowArrivalInstructions = (booking?: BookingData | null) => {
+  return isProkopovaBooking(booking);
 };
 
 const shouldShowAppliancesInfo = (booking?: BookingData | null) => {
-  if (!booking) {
-    return false;
-  }
-
-  const fields = [booking.propertyName, booking.propertyAddress, booking.roomNumber];
-  return fields.some((field) => field && normalizeForMatch(field).includes('prokopova'));
+  return isProkopovaBooking(booking);
 };
 
 type GuestErrors = Partial<Record<keyof Guest, string>>;
