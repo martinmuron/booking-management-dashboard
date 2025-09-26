@@ -3,8 +3,15 @@ import { prisma } from '@/lib/database';
 import { hashPassword, verifyPassword } from '@/lib/password';
 
 const ADMIN_CREDENTIAL_ID = 'primary';
-const DEFAULT_EMAIL = process.env.DEFAULT_ADMIN_EMAIL ?? 'nick@investmentsolutions.cz';
-const DEFAULT_PASSWORD = process.env.DEFAULT_ADMIN_PASSWORD ?? '123456';
+const envEmail = process.env.DEFAULT_ADMIN_EMAIL;
+const envPassword = process.env.DEFAULT_ADMIN_PASSWORD;
+
+if (!envEmail || !envPassword) {
+  throw new Error('DEFAULT_ADMIN_EMAIL and DEFAULT_ADMIN_PASSWORD must be configured');
+}
+
+const DEFAULT_EMAIL = envEmail;
+const DEFAULT_PASSWORD = envPassword;
 
 async function createDefaultCredential() {
   const passwordHash = await hashPassword(DEFAULT_PASSWORD);
