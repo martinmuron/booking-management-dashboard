@@ -225,7 +225,7 @@ export class NukiApiService {
     // When Nuki returns 204 (no content), fall back to locating the authorization manually
     const authorizations = await this.makeRequest<NukiAuthorization[]>(`/smartlock/${deviceId}/auth`);
     const match = authorizations.find((auth) => {
-      const sameCode = auth.code === keypadCode;
+      const sameCode = auth.code !== undefined && String(auth.code) === String(keypadCode);
       const sameName = auth.name === authRequest.name;
       const withinWindow = auth.allowedFromDate === allowedFromISO && auth.allowedUntilDate === allowedUntilISO;
       return sameCode || (sameName && withinWindow);
