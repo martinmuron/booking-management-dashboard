@@ -126,7 +126,6 @@ export class NukiApiService {
 
   private async makeRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
-    
     const response = await fetch(url, {
       ...options,
       headers: {
@@ -136,12 +135,21 @@ export class NukiApiService {
       },
     });
 
+    const text = await response.text();
+
     if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`Nuki API error (${response.status}): ${error}`);
+      throw new Error(`Nuki API error (${response.status}): ${text}`);
     }
 
-    return response.json();
+    if (!text) {
+      return undefined as T;
+    }
+
+    try {
+      return JSON.parse(text) as T;
+    } catch (error) {
+      throw new Error(`Failed to parse Nuki API response: ${error instanceof Error ? error.message : 'Unknown error'} | Body: ${text}`);
+    }
   }
 
   // Get all smart locks
@@ -205,10 +213,29 @@ export class NukiApiService {
       allowedWeekDays: 127,
     };
 
-    return this.makeRequest<NukiAuth>('/smartlock/auth', {
+    const created = await this.makeRequest<NukiAuth | undefined>('/smartlock/auth', {
       method: 'PUT',
       body: JSON.stringify(authRequest),
     });
+
+    if (created && created.id) {
+      return created;
+    }
+
+    // When Nuki returns 204 (no content), fall back to locating the authorization manually
+    const authorizations = await this.makeRequest<NukiAuthorization[]>(`/smartlock/${deviceId}/auth`);
+    const match = authorizations.find((auth) => {
+      const sameCode = auth.code === keypadCode;
+      const sameName = auth.name === authRequest.name;
+      const withinWindow = auth.allowedFromDate === allowedFromISO && auth.allowedUntilDate === allowedUntilISO;
+      return sameCode || (sameName && withinWindow);
+    });
+
+    if (!match) {
+      throw new Error('nuki_authorization_not_found');
+    }
+
+    return match;
   }
 
   // Delete/revoke authorization
