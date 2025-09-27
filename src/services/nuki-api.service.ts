@@ -453,6 +453,13 @@ export class NukiApiService {
           roomNumber
         );
 
+        console.log('[NUKI] Created authorization', {
+          keyType,
+          deviceId: deviceContext.deviceId,
+          authId: nukiAuth?.id,
+          code: nukiAuth?.code,
+        });
+
         results.push({
           keyType,
           deviceId: deviceContext.deviceId,

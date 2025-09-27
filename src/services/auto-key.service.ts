@@ -105,6 +105,7 @@ export async function ensureNukiKeysForBooking(
     const hasDuplicateCodeFailure = creationAttempt.failures.some((failure) =>
       failure.error.toLowerCase().includes("parameter 'code' is not valid")
     );
+    let regeneratedCode = false;
 
     if (hasDuplicateCodeFailure) {
       console.warn('[NUKI] Duplicate keypad code detected, regenerating...', {
@@ -114,6 +115,7 @@ export async function ensureNukiKeysForBooking(
       });
 
       creationAttempt = await attemptWithCode(undefined);
+      regeneratedCode = true;
     }
 
     const capacityFailures = creationAttempt.failures.filter((failure) =>
@@ -171,7 +173,9 @@ export async function ensureNukiKeysForBooking(
       });
     }
 
-    const universalCodeToPersist = booking.universalKeypadCode ?? universalKeypadCode;
+    const universalCodeToPersist = regeneratedCode
+      ? universalKeypadCode
+      : booking.universalKeypadCode ?? universalKeypadCode;
     const updateData: Prisma.BookingUpdateArgs['data'] = {};
 
     if (universalCodeToPersist && booking.universalKeypadCode !== universalCodeToPersist) {
@@ -241,6 +245,11 @@ export async function ensureNukiKeysForBooking(
     });
 
     if (queuedKeyTypes.length > 0 && createdKeyTypes.length === 0) {
+      console.warn('[NUKI] Key generation queued', {
+        bookingId: booking.id,
+        queuedKeyTypes,
+        failures,
+      });
       return {
         status: 'queued',
         queuedKeyTypes,
@@ -249,6 +258,10 @@ export async function ensureNukiKeysForBooking(
     }
 
     if (createdKeyTypes.length === 0) {
+      console.error('[NUKI] Key generation failed', {
+        bookingId: booking.id,
+        failures,
+      });
       const capacityFailure = failures.find(failure => failure.error === 'authorization_capacity_reached');
       if (capacityFailure) {
         const current = capacityFailure.currentCount ?? 'unknown';
