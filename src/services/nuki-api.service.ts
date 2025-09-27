@@ -223,13 +223,27 @@ export class NukiApiService {
     }
 
     // When Nuki returns 204 (no content), fall back to locating the authorization manually
-    const authorizations = await this.makeRequest<NukiAuthorization[]>(`/smartlock/${deviceId}/auth`);
-    const match = authorizations.find((auth) => {
-      const sameCode = auth.code !== undefined && String(auth.code) === String(keypadCode);
-      const sameName = auth.name === authRequest.name;
-      const withinWindow = auth.allowedFromDate === allowedFromISO && auth.allowedUntilDate === allowedUntilISO;
-      return sameCode || (sameName && withinWindow);
-    });
+    const attemptLookup = async () => {
+      const authorizations = await this.makeRequest<NukiAuthorization[]>(`/smartlock/${deviceId}/auth`);
+      return authorizations.find((auth) => {
+        const sameCode = auth.code !== undefined && String(auth.code) === String(keypadCode);
+        const sameName = auth.name === authRequest.name;
+        const withinWindow = auth.allowedFromDate === allowedFromISO && auth.allowedUntilDate === allowedUntilISO;
+        return sameCode || (sameName && withinWindow);
+      });
+    };
+
+    let match = await attemptLookup();
+
+    if (!match) {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      match = await attemptLookup();
+    }
+
+    if (!match) {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      match = await attemptLookup();
+    }
 
     if (!match) {
       throw new Error('nuki_authorization_not_found');
