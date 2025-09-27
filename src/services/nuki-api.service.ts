@@ -65,6 +65,13 @@ export interface NukiAuth {
   allowedWeekDays?: number;
 }
 
+export interface NukiAuthorization extends NukiAuth {
+  typeName?: string;
+  enabled?: boolean;
+  creationDate?: string;
+  lastActiveDate?: string;
+}
+
 export interface NukiCreateAuthRequest {
   name: string;
   type: number; // 0: App user, 13: Keypad code, 15: Virtual
@@ -206,6 +213,93 @@ export class NukiApiService {
     await this.makeRequest(`/smartlock/auth/${authId}`, {
       method: 'DELETE',
     });
+  }
+
+  // Fetch all authorizations across devices
+  async getAllAuthorizations(): Promise<Array<NukiAuthorization & { deviceId: number; deviceName: string }>> {
+    const devices = await this.getDevices();
+    const results: Array<NukiAuthorization & { deviceId: number; deviceName: string }> = [];
+
+    let index = 0;
+    const concurrency = 3;
+
+    const worker = async () => {
+      while (index < devices.length) {
+        const current = devices[index++];
+        const deviceId = current.smartlockId;
+        try {
+          const auths = await this.makeRequest<NukiAuthorization[]>(`/smartlock/${deviceId}/auth`);
+          if (Array.isArray(auths)) {
+            for (const auth of auths) {
+              results.push({
+                ...auth,
+                deviceId,
+                deviceName: current.name,
+              });
+            }
+          }
+        } catch (error) {
+          console.error(`Failed to fetch authorizations for device ${deviceId}:`, error);
+        }
+        // small delay to avoid rate limits
+        await new Promise(resolve => setTimeout(resolve, 150));
+      }
+    };
+
+    const workers = Array.from({ length: Math.min(concurrency, devices.length) }, () => worker());
+    await Promise.all(workers);
+
+    return results;
+  }
+
+  async cleanupExpiredAuthorizations(now: Date = new Date()): Promise<{
+    processed: number;
+    expired: number;
+    deleted: number;
+    failed: number;
+    details: Array<{ id: string; deviceId: number; deviceName: string; status: 'deleted' | 'failed'; reason?: string }>;
+  }> {
+    const allAuths = await this.getAllAuthorizations();
+    const nowMs = now.getTime();
+
+    let deleted = 0;
+    let failed = 0;
+    const details: Array<{ id: string; deviceId: number; deviceName: string; status: 'deleted' | 'failed'; reason?: string }> = [];
+
+    for (const auth of allAuths) {
+      const expiry = auth.allowedUntilDate ? new Date(auth.allowedUntilDate).getTime() : null;
+      if (expiry !== null && expiry < nowMs) {
+        try {
+          await this.revokeVirtualKey(String(auth.id));
+          deleted += 1;
+          details.push({
+            id: String(auth.id),
+            deviceId: auth.deviceId,
+            deviceName: auth.deviceName,
+            status: 'deleted',
+          });
+        } catch (error) {
+          failed += 1;
+          details.push({
+            id: String(auth.id),
+            deviceId: auth.deviceId,
+            deviceName: auth.deviceName,
+            status: 'failed',
+            reason: error instanceof Error ? error.message : 'Unknown error',
+          });
+        }
+      }
+    }
+
+    const expired = deleted + failed;
+
+    return {
+      processed: allAuths.length,
+      expired,
+      deleted,
+      failed,
+      details,
+    };
   }
 
   // Lock device

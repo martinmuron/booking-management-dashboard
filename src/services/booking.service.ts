@@ -4,6 +4,7 @@ import { hostAwayService, type HostAwayReservation, type HostAwayCustomField } f
 import { ubyPortService } from './ubyport.service';
 import { VirtualKeyService } from './virtual-key.service';
 import { nukiApiService } from './nuki-api.service';
+import { ensureNukiKeysForBooking } from './auto-key.service';
 
 interface BookingData {
   id: string;
@@ -118,6 +119,40 @@ class BookingService {
     }
 
     throw new Error('Unable to generate a unique check-in token after multiple attempts');
+  }
+
+  /**
+   * Auto-generate Nuki keys when check-in is within the lead time window
+   */
+  private async ensureKeysWithinLeadTime(bookingId: string, checkInDate?: Date | null): Promise<void> {
+    if (!checkInDate) {
+      return;
+    }
+
+    const now = new Date();
+    const leadTimeMs = 3 * 24 * 60 * 60 * 1000;
+    const delta = checkInDate.getTime() - now.getTime();
+
+    if (delta > leadTimeMs || delta < -leadTimeMs) {
+      return;
+    }
+
+    try {
+      console.log(`🔑 [AUTO KEYS] Ensuring keys for booking ${bookingId} (check-in ${checkInDate.toISOString()})`);
+      const result = await ensureNukiKeysForBooking(bookingId, { force: true });
+
+      if (result.status === 'created') {
+        console.log(`✅ [AUTO KEYS] Generated keys for booking ${bookingId}`);
+      } else if (result.status === 'already') {
+        console.log(`ℹ️ [AUTO KEYS] Keys already exist for booking ${bookingId}`);
+      } else if (result.status === 'skipped') {
+        console.log(`ℹ️ [AUTO KEYS] Skipped booking ${bookingId}: ${result.reason}`);
+      } else if (result.status === 'failed') {
+        console.error(`❌ [AUTO KEYS] Failed to generate keys for booking ${bookingId}: ${result.reason}${result.error ? ` - ${result.error}` : ''}`);
+      }
+    } catch (error) {
+      console.error(`❌ [AUTO KEYS] Unexpected error generating keys for booking ${bookingId}:`, error);
+    }
   }
 
   /**
@@ -452,6 +487,11 @@ class BookingService {
             listingName: reservation.listingName
           });
 
+          if (!this.isReservationStatusEligible(reservation)) {
+            console.log(`⏭️  Skipping reservation ${reservation.id} due to status ${reservation.status}`);
+            continue;
+          }
+
           // Validate dates before processing
           if (!reservation.arrivalDate || !reservation.departureDate) {
             console.log(`⚠️  Skipping reservation ${reservation.id}: Missing dates`);
@@ -615,7 +655,11 @@ class BookingService {
             } else {
               console.log(`✅ [NEW BOOKING] Reservation ${reservation.id} already completed check-in externally - skipping Nick Jenny link addition`);
             }
-            
+
+            if (!isCancelled) {
+              await this.ensureKeysWithinLeadTime(newBooking.id, newBooking.checkInDate);
+            }
+
             // Verify the booking was created
             const verifyBooking = await prisma.booking.findUnique({
               where: { id: newBooking.id }
@@ -724,6 +768,22 @@ class BookingService {
   }
 
   /**
+   * Determine if a HostAway reservation status represents an actionable booking
+   */
+  private isReservationStatusEligible(reservation: HostAwayReservation): boolean {
+    const status = reservation.status?.toLowerCase();
+    if (!status) {
+      return true;
+    }
+
+    if (status.startsWith('inquiry')) {
+      return false;
+    }
+
+    return true;
+  }
+
+  /**
    * Get booking by check-in token
    */
   async getBookingByToken(token: string) {
@@ -810,6 +870,14 @@ class BookingService {
         return {
           success: false,
           message: `Reservation ${reservation.id} has invalid dates`
+        };
+      }
+
+      if (!this.isReservationStatusEligible(reservation)) {
+        console.log(`⏭️  [SINGLE SYNC] Skipping reservation ${reservation.id} due to status ${reservation.status}`);
+        return {
+          success: false,
+          message: `Reservation ${reservation.id} skipped due to status ${reservation.status}`
         };
       }
 
@@ -980,6 +1048,10 @@ class BookingService {
         if (!isCancelled && (!checkInInfo.hasExistingCheckInLink || checkInInfo.status === 'PENDING')) {
           console.log(`🔗 [SINGLE SYNC NEW] Adding Nick Jenny check-in link for reservation ${reservation.id}`);
           await this.updateHostAwayCheckInLinkForNewBooking(reservation.id, newBooking.checkInToken);
+        }
+
+        if (!isCancelled) {
+          await this.ensureKeysWithinLeadTime(newBooking.id, newBooking.checkInDate);
         }
 
         return {

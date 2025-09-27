@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/database';
 import { ensureNukiKeysForBooking } from '@/services/auto-key.service';
 
-// POST /api/cron/nuki-precheck - Pre-generate Nuki keys 2 days before arrival
+// POST /api/cron/nuki-precheck - Pre-generate Nuki keys 3 days before arrival
 export async function POST(request: NextRequest) {
   try {
     const authHeader = request.headers.get('authorization');
@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
     windowStart.setHours(0, 0, 0, 0);
 
     const windowEnd = new Date(now);
-    windowEnd.setDate(windowEnd.getDate() + 2);
+    windowEnd.setDate(windowEnd.getDate() + 3);
     windowEnd.setHours(23, 59, 59, 999);
 
     const candidateBookings = await prisma.booking.findMany({
