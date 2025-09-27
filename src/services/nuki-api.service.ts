@@ -1,6 +1,7 @@
 import { VirtualKeyType } from '@/types';
 
 const PRAGUE_TIMEZONE = 'Europe/Prague';
+const DEFAULT_AUTHORIZATION_LIMIT = Number.parseInt(process.env.NUKI_AUTHORIZATION_LIMIT ?? '190', 10);
 
 const pad = (value: number) => value.toString().padStart(2, '0');
 
@@ -93,6 +94,8 @@ type CreateKeyFailure = {
   deviceId?: number;
   deviceName?: string;
   error: string;
+  currentCount?: number;
+  limit?: number;
 };
 
 type CreateKeyResult = {
@@ -343,6 +346,20 @@ export class NukiApiService {
     const devices = await this.getDevices();
     const failures: CreateKeyFailure[] = [];
     const results: CreateKeyResult[] = [];
+    const deviceAuthCounts = new Map<number, number>();
+
+    const getAuthorizationCount = async (deviceId: number): Promise<number> => {
+      if (!deviceAuthCounts.has(deviceId)) {
+        try {
+          const auths = await this.makeRequest<NukiAuthorization[]>(`/smartlock/${deviceId}/auth`);
+          deviceAuthCounts.set(deviceId, Array.isArray(auths) ? auths.length : 0);
+        } catch (error) {
+          console.error(`Failed to fetch authorization count for device ${deviceId}:`, error);
+          deviceAuthCounts.set(deviceId, 0);
+        }
+      }
+      return deviceAuthCounts.get(deviceId) ?? 0;
+    };
 
     const allowedFromISO = toPragueDateTime(checkInDate, 15, 0);
     const allowedUntilISO = toPragueDateTime(checkOutDate, 22, 0);
@@ -370,6 +387,21 @@ export class NukiApiService {
       try {
         deviceContext = resolveDevice(keyType);
 
+        const capacityLimit = Number.isFinite(DEFAULT_AUTHORIZATION_LIMIT) ? DEFAULT_AUTHORIZATION_LIMIT : 190;
+        const currentCount = await getAuthorizationCount(deviceContext.deviceId);
+
+        if (currentCount >= capacityLimit) {
+          failures.push({
+            keyType,
+            deviceId: deviceContext.deviceId,
+            deviceName: deviceContext.deviceName,
+            error: 'authorization_capacity_reached',
+            currentCount,
+            limit: capacityLimit,
+          });
+          continue;
+        }
+
         const nukiAuth = await this.createVirtualKey(
           deviceContext.deviceId,
           keyType,
@@ -386,12 +418,16 @@ export class NukiApiService {
           deviceName: deviceContext.deviceName,
           nukiAuth,
         });
+
+        deviceAuthCounts.set(deviceContext.deviceId, currentCount + 1);
       } catch (error) {
         failures.push({
           keyType,
           deviceId: deviceContext?.deviceId,
           deviceName: deviceContext?.deviceName,
           error: error instanceof Error ? error.message : 'Unknown error',
+          currentCount: deviceContext?.deviceId ? await getAuthorizationCount(deviceContext.deviceId) : undefined,
+          limit: Number.isFinite(DEFAULT_AUTHORIZATION_LIMIT) ? DEFAULT_AUTHORIZATION_LIMIT : undefined,
         });
       }
     }

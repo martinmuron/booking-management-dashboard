@@ -87,7 +87,7 @@ export async function ensureNukiKeysForBooking(
   const keyTypesToGenerate = missingKeyTypes.length > 0 ? missingKeyTypes : requestedKeyTypes;
 
   try {
-    const { results, universalKeypadCode, failures } = await nukiApi.createVirtualKeysForBooking(
+    let creationAttempt = await nukiApi.createVirtualKeysForBooking(
       guestName,
       new Date(booking.checkInDate),
       new Date(booking.checkOutDate),
@@ -98,6 +98,48 @@ export async function ensureNukiKeysForBooking(
         keypadCode: options.keypadCode ?? booking.universalKeypadCode ?? undefined,
       }
     );
+
+    const capacityFailures = creationAttempt.failures.filter((failure) =>
+      failure.error === 'authorization_capacity_reached'
+    );
+
+    if (capacityFailures.length > 0) {
+      console.warn('[NUKI] Authorization capacity reached. Running cleanup before retrying...', {
+        bookingId: booking.id,
+        failures: capacityFailures,
+      });
+
+      const cleanupResult = await nukiApi.cleanupExpiredAuthorizations();
+      console.log('[NUKI] Cleanup result before retry:', cleanupResult);
+
+      const retryKeyTypes = capacityFailures.map((failure) => failure.keyType);
+      const retry = await nukiApi.createVirtualKeysForBooking(
+        guestName,
+        new Date(booking.checkInDate),
+        new Date(booking.checkOutDate),
+        roomCode ?? propertyCode,
+        propertyCode,
+        {
+          keyTypes: retryKeyTypes,
+          keypadCode: creationAttempt.universalKeypadCode,
+        }
+      );
+
+      creationAttempt = {
+        results: [...creationAttempt.results, ...retry.results],
+        universalKeypadCode: creationAttempt.universalKeypadCode,
+        attemptedKeyTypes: Array.from(new Set([
+          ...creationAttempt.attemptedKeyTypes,
+          ...retry.attemptedKeyTypes
+        ])),
+        failures: [
+          ...creationAttempt.failures.filter((failure) => failure.error !== 'authorization_capacity_reached'),
+          ...retry.failures,
+        ],
+      };
+    }
+
+    const { results, universalKeypadCode, failures } = creationAttempt;
 
     const createdKeyTypes = results.map(result => result.keyType as VirtualKeyType);
 
@@ -190,7 +232,19 @@ export async function ensureNukiKeysForBooking(
     }
 
     if (createdKeyTypes.length === 0) {
-      return { status: 'failed', reason: 'nuki_no_keys' };
+      const capacityFailure = failures.find(failure => failure.error === 'authorization_capacity_reached');
+      if (capacityFailure) {
+        const current = capacityFailure.currentCount ?? 'unknown';
+        const limit = capacityFailure.limit ?? 190;
+        return {
+          status: 'failed',
+          reason: 'nuki_error',
+          error: `The ${capacityFailure.deviceName ?? 'selected'} lock has reached its authorization capacity (${current}/${limit}). Expired codes were cleaned up automatically; if the issue persists, free up slots directly in Nuki and try again.`
+        };
+      }
+
+      const failureMessage = failures[0]?.error ?? 'Unable to create any Nuki keys';
+      return { status: 'failed', reason: 'nuki_error', error: failureMessage };
     }
 
     return {
