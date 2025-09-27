@@ -87,17 +87,34 @@ export async function ensureNukiKeysForBooking(
   const keyTypesToGenerate = missingKeyTypes.length > 0 ? missingKeyTypes : requestedKeyTypes;
 
   try {
-    let creationAttempt = await nukiApi.createVirtualKeysForBooking(
-      guestName,
-      new Date(booking.checkInDate),
-      new Date(booking.checkOutDate),
-      roomCode ?? propertyCode,
-      propertyCode,
-      {
-        keyTypes: keyTypesToGenerate,
-        keypadCode: options.keypadCode ?? booking.universalKeypadCode ?? undefined,
-      }
+    const attemptWithCode = async (keypadCode?: string) =>
+      nukiApi.createVirtualKeysForBooking(
+        guestName,
+        new Date(booking.checkInDate),
+        new Date(booking.checkOutDate),
+        roomCode ?? propertyCode,
+        propertyCode,
+        {
+          keyTypes: keyTypesToGenerate,
+          keypadCode,
+        }
+      );
+
+    let creationAttempt = await attemptWithCode(options.keypadCode ?? booking.universalKeypadCode ?? undefined);
+
+    const hasDuplicateCodeFailure = creationAttempt.failures.some((failure) =>
+      failure.error.toLowerCase().includes("parameter 'code' is not valid")
     );
+
+    if (hasDuplicateCodeFailure) {
+      console.warn('[NUKI] Duplicate keypad code detected, regenerating...', {
+        bookingId: booking.id,
+        guestName,
+        failures: creationAttempt.failures,
+      });
+
+      creationAttempt = await attemptWithCode(undefined);
+    }
 
     const capacityFailures = creationAttempt.failures.filter((failure) =>
       failure.error === 'authorization_capacity_reached'
@@ -240,6 +257,18 @@ export async function ensureNukiKeysForBooking(
           status: 'failed',
           reason: 'nuki_error',
           error: `The ${capacityFailure.deviceName ?? 'selected'} lock has reached its authorization capacity (${current}/${limit}). Expired codes were cleaned up automatically; if the issue persists, free up slots directly in Nuki and try again.`
+        };
+      }
+
+      const duplicateFailure = failures.find((failure) =>
+        failure.error.toLowerCase().includes("parameter 'code' is not valid")
+      );
+
+      if (duplicateFailure) {
+        return {
+          status: 'failed',
+          reason: 'nuki_error',
+          error: 'Nuki rejected the generated keypad code as invalid. Please retry key generation so a new code can be issued.'
         };
       }
 
