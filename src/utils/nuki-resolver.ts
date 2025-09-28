@@ -1,6 +1,6 @@
 import type { Booking } from '@prisma/client';
 import { hostAwayService } from '@/services/hostaway.service';
-import { hasNukiAccess } from '@/utils/nuki-properties';
+import { hasNukiAccess, NUKI_DEVICE_ROOM_CODES } from '@/utils/nuki-properties';
 
 function normalize(input: string) {
   return input

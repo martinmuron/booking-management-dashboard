@@ -1,7 +1,7 @@
 // Normalised list of smart-lock codes discovered from the live Nuki account.
 // We rely on these codes instead of a brittle hard-coded property list so that
 // new “Ž###” style apartments are automatically supported.
-const NUKI_DEVICE_ROOM_CODES = new Set([
+export const NUKI_DEVICE_ROOM_CODES = new Set([
   '001',
   '004',
   '101',
