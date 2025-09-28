@@ -103,12 +103,12 @@ export async function resolveNukiPropertyCode(booking: Booking): Promise<string 
  * Infer the three-digit room code (if any) for a booking / property combination.
  */
 export function deriveRoomNumber(booking: Booking, propertyCode?: string | null): string | null {
-  const candidates = [booking.roomNumber, booking.propertyName, propertyCode]
+  const candidates = [propertyCode, booking.propertyName, booking.roomNumber]
     .filter((value): value is string => Boolean(value));
 
   for (const candidate of candidates) {
     const code = findThreeDigitCode(candidate);
-    if (code) {
+    if (code && NUKI_DEVICE_ROOM_CODES.has(code)) {
       return code;
     }
   }
