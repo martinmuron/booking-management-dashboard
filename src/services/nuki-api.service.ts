@@ -109,12 +109,12 @@ export class NukiApiService {
   private readonly baseUrl = 'https://api.nuki.io';
   private readonly apiKey: string;
 
-  // Default device IDs - these would need to be configured for your actual Nuki devices
+  // Device IDs - must be configured via environment variables
   private readonly deviceIds = {
-    [VirtualKeyType.MAIN_ENTRANCE]: process.env.NUKI_MAIN_ENTRANCE_ID || '123456789', // Replace with actual device ID
-    [VirtualKeyType.ROOM]: process.env.NUKI_ROOM_ID || '123456790', // Replace with actual device ID  
-    [VirtualKeyType.LUGGAGE_ROOM]: process.env.NUKI_LUGGAGE_ROOM_ID || '123456791', // Replace with actual device ID
-    [VirtualKeyType.LAUNDRY_ROOM]: process.env.NUKI_LAUNDRY_ROOM_ID || '123456792', // Replace with actual device ID
+    [VirtualKeyType.MAIN_ENTRANCE]: process.env.NUKI_MAIN_ENTRANCE_ID,
+    [VirtualKeyType.ROOM]: process.env.NUKI_ROOM_ID,
+    [VirtualKeyType.LUGGAGE_ROOM]: process.env.NUKI_LUGGAGE_ROOM_ID,
+    [VirtualKeyType.LAUNDRY_ROOM]: process.env.NUKI_LAUNDRY_ROOM_ID,
   };
 
   constructor() {
