@@ -3,6 +3,7 @@ import type Stripe from 'stripe';
 import { stripe } from '@/lib/stripe-server';
 import { prisma } from '@/lib/database';
 import { addWebhookLog } from '@/lib/webhook-logs';
+import { ensureNukiKeysForBooking } from '@/services/auto-key.service';
 
 type PayloadStyle = 'snapshot' | 'thin';
 
@@ -102,6 +103,35 @@ async function handlePaymentIntentEvent(
       paidAt,
     },
   });
+
+  // If payment succeeded, update booking status and generate keys
+  if (status === 'paid') {
+    try {
+      // Update booking status to PAYMENT_COMPLETED
+      await prisma.booking.update({
+        where: { id: bookingId },
+        data: { status: 'PAYMENT_COMPLETED' },
+      });
+
+      // Generate Nuki keys automatically
+      const keyResult = await ensureNukiKeysForBooking(bookingId, { force: true });
+
+      await addWebhookLog({
+        eventType: event.type,
+        status: 'success',
+        message: `Payment completed - booking status updated and keys generated: ${keyResult.status}`,
+        reservationId: bookingId,
+      });
+    } catch (keyError) {
+      await addWebhookLog({
+        eventType: event.type,
+        status: 'error',
+        message: 'Payment processed but key generation failed',
+        reservationId: bookingId,
+        error: keyError instanceof Error ? keyError.message : 'Unknown error',
+      });
+    }
+  }
 
   await addWebhookLog({
     eventType: event.type,

@@ -379,10 +379,14 @@ export async function POST(request: NextRequest) {
 
     const leadGuest = guestData[0];
 
+    // Set status to PAYMENT_COMPLETED since payment requirement (if any) has been satisfied
+    // - Prague guests: cityTaxAmount = 0, no payment required → PAYMENT_COMPLETED
+    // - Non-Prague guests: cityTaxAmount > 0, payment verified above → PAYMENT_COMPLETED
+
     await prisma.booking.update({
       where: { id: booking.id },
       data: {
-        status: 'CHECKED_IN',
+        status: 'PAYMENT_COMPLETED',
         updatedAt: new Date(),
         ...(leadGuest.email ? { guestLeaderEmail: leadGuest.email } : {}),
         ...(leadGuest.phone ? { guestLeaderPhone: leadGuest.phone } : {}),
@@ -391,7 +395,7 @@ export async function POST(request: NextRequest) {
 
     let keyDistribution: EnsureNukiKeysResult | null = null;
     try {
-      keyDistribution = await ensureNukiKeysForBooking(booking.id);
+      keyDistribution = await ensureNukiKeysForBooking(booking.id, { force: true });
     } catch (keyError) {
       console.error('Failed to ensure NUKI keys during check-in:', keyError);
     }
