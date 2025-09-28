@@ -522,6 +522,9 @@ export class NukiApiService {
   // Check device status for all key types
   async checkAllDevicesStatus(): Promise<Record<VirtualKeyType, boolean>> {
     const statusChecks = Object.entries(this.deviceIds).map(async ([keyType, deviceId]) => {
+      if (!deviceId) {
+        return [keyType as VirtualKeyType, false];
+      }
       const isOnline = await this.isDeviceOnline(parseInt(deviceId));
       return [keyType as VirtualKeyType, isOnline];
     });
