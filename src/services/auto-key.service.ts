@@ -69,7 +69,7 @@ export async function ensureNukiKeysForBooking(
   const requestedKeyTypes = options.keyTypes ?? expectedKeyTypes;
   const missingKeyTypes = requestedKeyTypes.filter(type => !existingActiveTypes.has(type));
 
-  if (!forceGeneration && missingKeyTypes.length === 0) {
+  if (missingKeyTypes.length === 0) {
     if (existingActiveKeys.length > 0) {
       return { status: 'already', reason: 'existing_keys', keys: existingActiveKeys };
     }
@@ -84,7 +84,7 @@ export async function ensureNukiKeysForBooking(
   }
 
   const guestName = booking.guestLeaderName || booking.guestLeaderEmail || 'Guest';
-  const keyTypesToGenerate = missingKeyTypes.length > 0 ? missingKeyTypes : requestedKeyTypes;
+  const keyTypesToGenerate = missingKeyTypes;
 
   try {
     const attemptWithCode = async (keypadCode?: string) =>
