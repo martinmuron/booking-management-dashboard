@@ -405,11 +405,31 @@ export class NukiApiService {
     const allowedFromISO = toPragueDateTime(checkInDate, 15, 0);
     const allowedUntilISO = toPragueDateTime(checkOutDate, 22, 0);
 
+    // Extract actual room number from property name or room number field
+    const extractRoomNumber = (roomNumber: string, propertyName?: string): string => {
+      // Try to extract from property name first (e.g., "8 bed apartment in Zizkov (402)" -> "402")
+      if (propertyName) {
+        const propertyMatch = propertyName.match(/\((\d+)\)$/);
+        if (propertyMatch) {
+          return propertyMatch[1];
+        }
+      }
+
+      // Try to extract from room number field (e.g., "Prokopova 197/9" -> look for numbers)
+      const roomMatch = roomNumber.match(/(\d+)/);
+      if (roomMatch) {
+        return roomMatch[1];
+      }
+
+      return roomNumber; // fallback to original
+    };
+
     const resolveDevice = (keyType: VirtualKeyType): { deviceId: number; deviceName?: string } => {
       if (keyType === VirtualKeyType.ROOM) {
-        const roomDevice = devices.find(device => device.name === roomNumber);
+        const actualRoomNumber = extractRoomNumber(roomNumber, propertyName);
+        const roomDevice = devices.find(device => device.name === actualRoomNumber);
         if (!roomDevice) {
-          throw new Error(`Room device not found for ${roomNumber}`);
+          throw new Error(`Room device not found for ${actualRoomNumber} (extracted from ${roomNumber})`);
         }
         return { deviceId: roomDevice.smartlockId, deviceName: roomDevice.name };
       }
