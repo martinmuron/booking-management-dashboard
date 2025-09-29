@@ -24,6 +24,33 @@ interface BookingData {
   cityTaxAmount: number;
   cityTaxPerPerson: number;
   universalKeypadCode?: string;
+  status: string;
+  payments: Array<{
+    id: string;
+    status: string;
+    amount?: number | null;
+    stripePaymentIntentId?: string | null;
+    currency?: string | null;
+  }>;
+  guests: Array<{
+    id: string;
+    firstName: string;
+    lastName: string;
+    email?: string | null;
+    phone?: string | null;
+    phoneCountryCode?: string | null;
+    dateOfBirth?: string | null;
+    nationality?: string | null;
+    citizenship?: string | null;
+    residenceCountry?: string | null;
+    residenceCity?: string | null;
+    residenceAddress?: string | null;
+    purposeOfStay?: string | null;
+    documentType?: string | null;
+    documentNumber?: string | null;
+    visaNumber?: string | null;
+    notes?: string | null;
+  }>;
   virtualKeys?: VirtualKey[];
 }
 
