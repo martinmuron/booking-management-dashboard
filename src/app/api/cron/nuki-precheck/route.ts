@@ -53,7 +53,16 @@ export async function POST(request: NextRequest) {
     let skipped = 0;
     let failed = 0;
 
-    const results: Array<{ bookingId: string; status: string; reason?: string; error?: string; queuedKeyTypes?: string[] }> = [];
+    const results: Array<{
+      bookingId: string;
+      hostAwayId?: string;
+      propertyName?: string;
+      checkInDate?: Date;
+      status: string;
+      reason?: string;
+      error?: string;
+      queuedKeyTypes?: string[]
+    }> = [];
 
     for (const booking of candidateBookings) {
       processed += 1;

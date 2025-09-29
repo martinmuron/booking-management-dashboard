@@ -118,7 +118,7 @@ export class NukiApiService {
   };
 
   // Room-specific device IDs
-  private readonly roomDeviceIds = {
+  private readonly roomDeviceIds: { [key: string]: string | undefined } = {
     '001': process.env.NUKI_ROOM_001_ID,
     '004': process.env.NUKI_ROOM_004_ID,
     '101': process.env.NUKI_ROOM_101_ID,
@@ -403,7 +403,13 @@ export class NukiApiService {
 
   // Lock device
   async lockDevice(keyType: VirtualKeyType): Promise<void> {
+    if (keyType === VirtualKeyType.ROOM) {
+      throw new Error('Cannot lock ROOM devices - device ID depends on property code');
+    }
     const deviceId = this.deviceIds[keyType];
+    if (!deviceId) {
+      throw new Error(`No device ID configured for key type: ${keyType}`);
+    }
     await this.makeRequest(`/smartlock/${deviceId}/action/lock`, {
       method: 'POST',
     });
@@ -411,7 +417,13 @@ export class NukiApiService {
 
   // Unlock device
   async unlockDevice(keyType: VirtualKeyType): Promise<void> {
+    if (keyType === VirtualKeyType.ROOM) {
+      throw new Error('Cannot unlock ROOM devices - device ID depends on property code');
+    }
     const deviceId = this.deviceIds[keyType];
+    if (!deviceId) {
+      throw new Error(`No device ID configured for key type: ${keyType}`);
+    }
     await this.makeRequest(`/smartlock/${deviceId}/action/unlock`, {
       method: 'POST',
     });
@@ -419,7 +431,13 @@ export class NukiApiService {
 
   // Get device logs
   async getDeviceLogs(keyType: VirtualKeyType): Promise<unknown[]> {
+    if (keyType === VirtualKeyType.ROOM) {
+      throw new Error('Cannot get logs for ROOM devices - device ID depends on property code');
+    }
     const deviceId = this.deviceIds[keyType];
+    if (!deviceId) {
+      throw new Error(`No device ID configured for key type: ${keyType}`);
+    }
     return this.makeRequest(`/smartlock/${deviceId}/log`);
   }
 
