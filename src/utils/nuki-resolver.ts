@@ -1,6 +1,7 @@
 import type { Booking } from '@prisma/client';
 import { hostAwayService } from '@/services/hostaway.service';
 import { hasNukiAccess, NUKI_DEVICE_ROOM_CODES } from '@/utils/nuki-properties';
+import { getRoomCodeFromListingId } from '@/utils/prokopova-room-mapping';
 
 function normalize(input: string) {
   return input
@@ -101,8 +102,32 @@ export async function resolveNukiPropertyCode(booking: Booking): Promise<string 
 
 /**
  * Infer the three-digit room code (if any) for a booking / property combination.
+ * Uses HostAway listing ID mapping as primary method for accurate room detection.
  */
-export function deriveRoomNumber(booking: Booking, propertyCode?: string | null): string | null {
+export async function deriveRoomNumber(booking: Booking, propertyCode?: string | null): Promise<string | null> {
+  // Primary method: Use HostAway listing ID mapping for 100% accuracy
+  if (booking.hostAwayId) {
+    try {
+      const reservationId = Number(booking.hostAwayId.replace(/[^0-9]/g, ''));
+      if (reservationId) {
+        const [reservation, listings] = await Promise.all([
+          hostAwayService.getReservationById(reservationId),
+          hostAwayService.getListings(),
+        ]);
+
+        if (reservation?.listingMapId) {
+          const roomCode = getRoomCodeFromListingId(reservation.listingMapId);
+          if (roomCode && NUKI_DEVICE_ROOM_CODES.has(roomCode)) {
+            return roomCode;
+          }
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to resolve room code from HostAway listing ID, falling back to property name parsing:', error);
+    }
+  }
+
+  // Fallback method: Extract room code from property names/room numbers
   const candidates = [propertyCode, booking.propertyName, booking.roomNumber]
     .filter((value): value is string => Boolean(value));
 

@@ -100,7 +100,7 @@ export async function ensureNukiKeysForBooking(
   }
 
   const propertyType = getNukiPropertyType(propertyCode);
-  const roomCode = deriveRoomNumber(booking, propertyCode);
+  const roomCode = await deriveRoomNumber(booking, propertyCode);
 
   if (propertyType === 'z-coded' && !roomCode) {
     return { status: 'skipped', reason: 'room_unresolved' };
