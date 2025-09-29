@@ -2,9 +2,7 @@ import type { Prisma, VirtualKey as PrismaVirtualKeyModel } from '@prisma/client
 import { prisma } from '@/lib/database';
 import { nukiApiService } from '@/services/nuki-api.service';
 import { hostAwayService } from '@/services/hostaway.service';
-import { resolveNukiPropertyCode, deriveRoomNumber } from '@/utils/nuki-resolver';
-import { getNukiPropertyType, hasNukiAccess } from '@/utils/nuki-properties';
-import { hasNukiAccessByListingId, getNukiPropertyMapping } from '@/utils/nuki-properties-mapping';
+import { getNukiPropertyMapping } from '@/utils/nuki-properties-mapping';
 import type { VirtualKeyType } from '@/types';
 
 const KEY_GENERATION_STATUSES = new Set(['CHECKED_IN', 'PAYMENT_COMPLETED']);
@@ -58,32 +56,18 @@ export async function ensureNukiKeysForBooking(
     return { status: 'skipped', reason: 'status_not_ready' };
   }
 
-  const propertyCode = await resolveNukiPropertyCode(booking);
-
-  if (!propertyCode || !hasNukiAccess(propertyCode)) {
-    return { status: 'skipped', reason: 'property_not_authorized' };
-  }
-
-  // Get the actual address and listing mapping from HostAway for accurate key type detection
-  let listingAddress: string | undefined;
+  // Get HostAway listing ID for precise Nuki mapping
+  let listingId: number | undefined;
   let listingMapping: ReturnType<typeof getNukiPropertyMapping> = null;
 
   try {
     if (booking.hostAwayId) {
       const reservationId = Number(booking.hostAwayId.replace(/[^0-9]/g, ''));
       if (reservationId) {
-        const [reservation, listings] = await Promise.all([
-          hostAwayService.getReservationById(reservationId),
-          hostAwayService.getListings()
-        ]);
-
+        const reservation = await hostAwayService.getReservationById(reservationId);
         if (reservation?.listingMapId) {
-          const listing = listings.find(l => l.id === reservation.listingMapId);
-          listingAddress = listing?.address;
-          console.log(`📍 Found listing address for booking ${booking.id}: "${listingAddress}"`);
-
-          // Check if this listing has Nuki access via our comprehensive mapping
-          listingMapping = getNukiPropertyMapping(reservation.listingMapId);
+          listingId = reservation.listingMapId;
+          listingMapping = getNukiPropertyMapping(listingId);
           if (listingMapping) {
             console.log(`✅ [NUKI] Property authorized via HostAway listing ID ${listingMapping.listingId}: ${listingMapping.name} (${listingMapping.propertyType})`);
           }
@@ -91,15 +75,15 @@ export async function ensureNukiKeysForBooking(
       }
     }
   } catch (error) {
-    console.warn('Failed to fetch listing address, falling back to property name detection:', error);
+    console.warn('Failed to fetch HostAway listing ID:', error);
   }
 
-  // Primary authorization check: HostAway listing ID mapping or fallback to property name
-  if (!listingMapping && !hasNukiAccess(propertyCode ?? booking.propertyName)) {
+  // Authorization check: HostAway listing ID mapping only
+  if (!listingMapping) {
     return { status: 'skipped', reason: 'property_not_authorized' };
   }
 
-  const expectedKeyTypes = await nukiApi.getKeyTypesForProperty(propertyCode ?? booking.propertyName, listingAddress);
+  const expectedKeyTypes = await nukiApi.getKeyTypesForProperty(listingId);
   const existingActiveKeys = booking.virtualKeys?.filter(key => key.isActive) ?? [];
   const existingActiveTypes = new Set(existingActiveKeys.map(key => key.keyType));
 
@@ -113,12 +97,8 @@ export async function ensureNukiKeysForBooking(
     // No missing key types, but no active keys either (should not happen). Allow regeneration.
   }
 
-  const propertyType = getNukiPropertyType(propertyCode);
-  const roomCode = await deriveRoomNumber(booking, propertyCode);
-
-  if (propertyType === 'z-coded' && !roomCode) {
-    return { status: 'skipped', reason: 'room_unresolved' };
-  }
+  // Get room code from listing mapping (Prokopova properties only)
+  const roomCode = listingMapping.propertyType === 'prokopova' ? listingMapping.roomCode : undefined;
 
   const guestName = booking.guestLeaderName || booking.guestLeaderEmail || 'Guest';
   const keyTypesToGenerate = missingKeyTypes;
@@ -129,12 +109,11 @@ export async function ensureNukiKeysForBooking(
         guestName,
         new Date(booking.checkInDate),
         new Date(booking.checkOutDate),
-        roomCode ?? propertyCode,
-        propertyCode,
+        roomCode ?? booking.propertyName ?? 'Unknown',
+        listingId,
         {
           keyTypes: keyTypesToGenerate,
           keypadCode,
-          address: listingAddress,
         }
       );
 
@@ -198,12 +177,11 @@ export async function ensureNukiKeysForBooking(
         guestName,
         new Date(booking.checkInDate),
         new Date(booking.checkOutDate),
-        roomCode ?? propertyCode,
-        propertyCode,
+        roomCode ?? booking.propertyName ?? 'Unknown',
+        listingId,
         {
           keyTypes: retryKeyTypes,
           keypadCode: creationAttempt.universalKeypadCode,
-          address: listingAddress,
         }
       );
 

@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import StripePayment from "@/components/ui/stripe-payment";
-import { hasNukiAccess } from "@/utils/nuki-properties";
+import { hasNukiAccessByListingId, getNukiPropertyMapping } from "@/utils/nuki-properties-mapping";
 import {
   Calendar,
   Users,
@@ -70,6 +70,7 @@ interface BookingData {
   id: string;
   propertyName: string;
   propertyAddress?: string;
+  listingId?: number;
   checkInDate: string;
   checkOutDate: string;
   numberOfGuests: number;
@@ -213,53 +214,21 @@ const normalizeForMatch = (value: string) =>
  * @param booking - The booking data
  * @returns true if property should have Nuki access
  */
-const hasNukiAccessByAddress = (booking?: BookingData | null): boolean => {
-  if (!booking) {
+const hasNukiAccess = (booking?: BookingData | null): boolean => {
+  if (!booking?.listingId) {
     return false;
   }
 
-  // Use address-based mapping for 100% accurate identification
-  if (booking.propertyAddress) {
-    const normalizedAddress = booking.propertyAddress.toLowerCase().trim();
-
-    // Prokopova 197/9 building - ALL units get Nuki access
-    if (normalizedAddress.includes('prokopova 197') || normalizedAddress.includes('prokopova197')) {
-      return true;
-    }
-
-    // Bořivojova 50 building
-    if (normalizedAddress.includes('bořivojova 50') || normalizedAddress.includes('borivojova 50')) {
-      return true;
-    }
-
-    // Řehořova building
-    if (normalizedAddress.includes('řehořova') || normalizedAddress.includes('rehorova')) {
-      return true;
-    }
-  }
-
-  // Fallback to property name parsing if no address available
-  return hasNukiAccess(booking.propertyName);
+  return hasNukiAccessByListingId(booking.listingId);
 };
 
 const isProkopovaBooking = (booking?: BookingData | null) => {
-  if (!booking) {
+  if (!booking?.listingId) {
     return false;
   }
 
-  // Use address-based detection first
-  if (booking.propertyAddress) {
-    const normalizedAddress = booking.propertyAddress.toLowerCase().trim();
-    return normalizedAddress.includes('prokopova 197') || normalizedAddress.includes('prokopova197');
-  }
-
-  // Fallback to checking property name and room number
-  const fields = [booking.propertyName, booking.roomNumber];
-  return fields.some(field => {
-    if (!field) return false;
-    const normalized = normalizeForMatch(field).replace(/[^a-z0-9]/g, '');
-    return normalized.includes('prokopova197') || normalized.includes('prokopova1979') || normalized.includes('prokopova9');
-  });
+  const mapping = getNukiPropertyMapping(booking.listingId);
+  return mapping?.propertyType === 'prokopova';
 };
 
 const shouldShowArrivalInstructions = (booking?: BookingData | null) => {
@@ -1074,7 +1043,7 @@ const applyServerValidationIssues = (issues?: ApiValidationIssue[]): ServerValid
   const firstName = booking?.guestLeaderName.split(' ')[0] || 'Guest';
 
   const aroundAddress = booking?.propertyAddress || booking?.roomNumber || booking?.propertyName || 'Prague, Czechia';
-  const propertyHasNuki = hasNukiAccessByAddress(booking);
+  const propertyHasNuki = hasNukiAccess(booking);
   const canShowGuestKeys = Boolean(booking && propertyHasNuki && booking.status && ['CHECKED_IN', 'KEYS_DISTRIBUTED'].includes(booking.status));
   const showArrivalInstructions = shouldShowArrivalInstructions(booking);
   const showAppliancesInfo = shouldShowAppliancesInfo(booking);

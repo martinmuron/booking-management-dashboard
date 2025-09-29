@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/database';
+import { hostAwayService } from '@/services/hostaway.service';
 
 export async function GET(
   request: NextRequest,
@@ -47,9 +48,35 @@ export async function GET(
       propertyName: booking.propertyName
     });
 
+    // Try to enrich booking with listing ID from HostAway
+    let enrichedBooking = booking;
+    try {
+      if (booking.hostAwayId) {
+        const reservationId = Number(booking.hostAwayId.replace(/[^0-9]/g, ''));
+        if (reservationId) {
+          const [reservation, listings] = await Promise.all([
+            hostAwayService.getReservationById(reservationId),
+            hostAwayService.getListings()
+          ]);
+
+          if (reservation?.listingMapId) {
+            const matchingListing = listings.find(l => l.id === reservation.listingMapId);
+            if (matchingListing) {
+              enrichedBooking = Object.assign({}, booking, {
+                listingId: matchingListing.id
+              });
+            }
+          }
+        }
+      }
+    } catch (enrichError) {
+      console.log('Could not fetch HostAway listing ID, continuing without:', enrichError);
+      // Continue without listingId - this is not critical for admin view
+    }
+
     return NextResponse.json({
       success: true,
-      data: booking
+      data: enrichedBooking
     });
 
   } catch (error) {

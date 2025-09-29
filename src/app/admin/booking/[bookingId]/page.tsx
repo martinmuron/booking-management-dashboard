@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
-import { hasNukiAccess } from "@/utils/nuki-properties";
+import { hasNukiAccessByListingId, getNukiPropertyMapping } from "@/utils/nuki-properties-mapping";
 import { AdminNav } from "@/components/admin/AdminNav";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -101,6 +101,7 @@ interface BookingData {
   hostAwayId: string;
   propertyName: string;
   propertyAddress?: string;
+  listingId?: number;
   guestLeaderName: string;
   guestLeaderEmail: string;
   checkInDate: string;
@@ -122,33 +123,12 @@ interface BookingData {
  * @param booking - The booking data
  * @returns true if property should have Nuki access
  */
-const hasNukiAccessByAddress = (booking?: BookingData | null): boolean => {
-  if (!booking) {
+const hasNukiAccess = (booking?: BookingData | null): boolean => {
+  if (!booking?.listingId) {
     return false;
   }
 
-  // Use address-based mapping for 100% accurate identification
-  if (booking.propertyAddress) {
-    const normalizedAddress = booking.propertyAddress.toLowerCase().trim();
-
-    // Prokopova 197/9 building - ALL units get Nuki access
-    if (normalizedAddress.includes('prokopova 197') || normalizedAddress.includes('prokopova197')) {
-      return true;
-    }
-
-    // Bořivojova 50 building
-    if (normalizedAddress.includes('bořivojova 50') || normalizedAddress.includes('borivojova 50')) {
-      return true;
-    }
-
-    // Řehořova building
-    if (normalizedAddress.includes('řehořova') || normalizedAddress.includes('rehorova')) {
-      return true;
-    }
-  }
-
-  // Fallback to property name parsing if no address available
-  return hasNukiAccess(booking.propertyName);
+  return hasNukiAccessByListingId(booking.listingId);
 };
 
 const getStatusColor = (status?: string) => {
@@ -445,7 +425,7 @@ export default function BookingAdminPage() {
   const checkedInGuests = booking.guests || [];
   const fallbackGuestEmail = checkedInGuests.find((guest) => guest.email)?.email || null;
   const contactEmail = leadGuestEmail || fallbackGuestEmail;
-  const propertyHasNuki = existingKeys.booking?.isAuthorized ?? hasNukiAccessByAddress(booking);
+  const propertyHasNuki = existingKeys.booking?.isAuthorized ?? hasNukiAccess(booking);
 
   return (
     <div className="min-h-screen bg-background">

@@ -1,5 +1,5 @@
 import { VirtualKeyType } from '@/types';
-import { hasNukiAccess } from '@/utils/nuki-properties';
+import { getNukiPropertyMapping } from '@/utils/nuki-properties-mapping';
 
 const PRAGUE_TIMEZONE = 'Europe/Prague';
 const DEFAULT_AUTHORIZATION_LIMIT = Number.parseInt(process.env.NUKI_AUTHORIZATION_LIMIT ?? '190', 10);
@@ -210,86 +210,32 @@ export class NukiApiService {
     }
   }
 
-  async getKeyTypesForProperty(propertyName?: string, address?: string): Promise<VirtualKeyType[]> {
-    // If no property name, assume it has Nuki access and return all key types
-    if (!propertyName) {
-      return [
-        VirtualKeyType.MAIN_ENTRANCE,
-        VirtualKeyType.ROOM,
-        VirtualKeyType.LUGGAGE_ROOM,
-        VirtualKeyType.LAUNDRY_ROOM,
-      ];
-    }
-
-    // Check if property has Nuki access at all
-    if (!hasNukiAccess(propertyName)) {
-      return []; // No keys should be generated for properties without Nuki access
-    }
-
-    // Use address-based mapping for 100% accurate identification
-    if (address) {
-      const normalizedAddress = address.toLowerCase().trim();
-
-      // Prokopova 197/9 building - ALL units get all 4 key types
-      if (normalizedAddress.includes('prokopova 197') || normalizedAddress.includes('prokopova197')) {
-        return [
-          VirtualKeyType.MAIN_ENTRANCE,
-          VirtualKeyType.ROOM,
-          VirtualKeyType.LUGGAGE_ROOM,
-          VirtualKeyType.LAUNDRY_ROOM,
-        ];
-      }
-
-      // Bořivojova 50 - single key only
-      if (normalizedAddress.includes('bořivojova 50') || normalizedAddress.includes('borivojova 50')) {
-        return [VirtualKeyType.MAIN_ENTRANCE];
-      }
-
-      // Řehořova - single key only
-      if (normalizedAddress.includes('řehořova') || normalizedAddress.includes('rehorova')) {
-        return [VirtualKeyType.MAIN_ENTRANCE];
+  async getKeyTypesForProperty(listingId?: string | number): Promise<VirtualKeyType[]> {
+    // Use HostAway listing ID mapping for 100% accurate identification
+    if (listingId) {
+      const mapping = getNukiPropertyMapping(listingId);
+      if (mapping) {
+        switch (mapping.propertyType) {
+          case 'prokopova':
+            // Prokopova properties get all 4 key types
+            return [
+              VirtualKeyType.MAIN_ENTRANCE,
+              VirtualKeyType.ROOM,
+              VirtualKeyType.LUGGAGE_ROOM,
+              VirtualKeyType.LAUNDRY_ROOM,
+            ];
+          case 'rehorova':
+          case 'borivojova':
+            // Other Nuki properties get main entrance only
+            return [VirtualKeyType.MAIN_ENTRANCE];
+          default:
+            return [];
+        }
       }
     }
 
-    // Fallback to property name-based mapping (less reliable)
-    const normalizedProperty = propertyName.toLowerCase().trim();
-
-    // Special single-key properties
-    if (normalizedProperty === 'bořivojova 50' || normalizedProperty === 'borivojova 50' ||
-        normalizedProperty === 'řehořova' || normalizedProperty === 'rehorova') {
-      return [VirtualKeyType.MAIN_ENTRANCE];
-    }
-
-    // Prokopova building properties - ALL properties at Prokopova 197/9 get all 4 key types
-    // This includes various naming patterns used in the system:
-    const isProkopova = (
-      // Direct Prokopova references
-      normalizedProperty.includes('prokopova') ||
-      // Room number patterns with parentheses (104), (203), (402), etc.
-      /\(\d{3}\)/.test(normalizedProperty) ||
-      // Properties explicitly mentioning Zizkov/Žižkov (the neighborhood)
-      (normalizedProperty.includes('zizkov') || normalizedProperty.includes('žižkov')) ||
-      // Short codes starting with Ž followed by room numbers
-      /^ž\d{3}$/.test(normalizedProperty) ||
-      // "Flat by Zizkov" or "Flat in Zizkov" patterns
-      normalizedProperty.includes('flat') && (normalizedProperty.includes('zizkov') || normalizedProperty.includes('žižkov')) ||
-      // "Apartment in Zizkov" patterns
-      normalizedProperty.includes('apartment') && (normalizedProperty.includes('zizkov') || normalizedProperty.includes('žižkov')) ||
-      // Studio patterns mentioning the location
-      normalizedProperty.includes('studio') && (normalizedProperty.includes('žižkov') || normalizedProperty.includes('zizkov')) && normalizedProperty.includes('tram')
-    );
-
-    if (isProkopova) {
-      return [
-        VirtualKeyType.MAIN_ENTRANCE,
-        VirtualKeyType.ROOM,
-        VirtualKeyType.LUGGAGE_ROOM,
-        VirtualKeyType.LAUNDRY_ROOM,
-      ];
-    }
-
-    // All other properties with Nuki access get only main entrance key by default
-    return [VirtualKeyType.MAIN_ENTRANCE];
+    // No listing ID or mapping found - no Nuki access
+    return [];
   }
 
   private async createVirtualKey(
@@ -490,15 +436,15 @@ export class NukiApiService {
     checkInDate: Date,
     checkOutDate: Date,
     roomNumber: string,
-    propertyName?: string,
-    options: CreateKeyOptions & { address?: string } = {}
+    listingId?: string | number,
+    options: CreateKeyOptions = {}
   ): Promise<{
     results: CreateKeyResult[];
     universalKeypadCode: string;
     attemptedKeyTypes: VirtualKeyType[];
     failures: CreateKeyFailure[];
   }> {
-    const attemptedKeyTypes = options.keyTypes ?? await this.getKeyTypesForProperty(propertyName, options.address);
+    const attemptedKeyTypes = options.keyTypes ?? await this.getKeyTypesForProperty(listingId);
     const universalKeypadCode = options.keypadCode ?? this.generateKeypadCode();
     const devices = await this.getDevices();
     const failures: CreateKeyFailure[] = [];
@@ -541,92 +487,69 @@ export class NukiApiService {
     };
 
     const resolveDevice = (keyType: VirtualKeyType): { deviceId: number; deviceName?: string } => {
+      const mapping = listingId ? getNukiPropertyMapping(listingId) : null;
+
       if (keyType === VirtualKeyType.ROOM) {
-        const actualRoomNumber = extractRoomNumber(roomNumber, propertyName);
-
-        // Normalize room number to 3-digit format (e.g., "1" -> "001", "102" -> "102")
-        const normalizedRoomNumber = actualRoomNumber.padStart(3, '0');
-
-        const roomDeviceId = this.roomDeviceIds[normalizedRoomNumber];
-        if (!roomDeviceId) {
-          throw new Error(`No Nuki device configured for room ${normalizedRoomNumber} (extracted from ${roomNumber})`);
+        // Only Prokopova properties have room keys
+        if (mapping?.propertyType === 'prokopova' && mapping.roomCode) {
+          const roomDeviceId = this.roomDeviceIds[mapping.roomCode];
+          if (!roomDeviceId) {
+            throw new Error(`No Nuki device configured for room ${mapping.roomCode}`);
+          }
+          return {
+            deviceId: Number.parseInt(roomDeviceId, 10),
+            deviceName: `Room ${mapping.roomCode}`
+          };
+        } else {
+          // Fallback: try to extract room number from roomNumber parameter
+          const roomMatch = roomNumber.match(/(\d{3})/);
+          if (roomMatch) {
+            const roomCode = roomMatch[1];
+            const roomDeviceId = this.roomDeviceIds[roomCode];
+            if (!roomDeviceId) {
+              throw new Error(`No Nuki device configured for room ${roomCode}`);
+            }
+            return {
+              deviceId: Number.parseInt(roomDeviceId, 10),
+              deviceName: `Room ${roomCode}`
+            };
+          }
+          throw new Error(`Cannot resolve room device for ${roomNumber}`);
         }
-
-        return {
-          deviceId: Number.parseInt(roomDeviceId, 10),
-          deviceName: `Room ${normalizedRoomNumber}`
-        };
       }
 
-      // Handle property-specific devices for MAIN_ENTRANCE keys using address first, then property name
-      if (keyType === VirtualKeyType.MAIN_ENTRANCE) {
-        // Use address-based mapping for accurate device assignment
-        if (options.address) {
-          const normalizedAddress = options.address.toLowerCase().trim();
-
-          // Bořivojova 50 - specific device
-          if (normalizedAddress.includes('bořivojova 50') || normalizedAddress.includes('borivojova 50')) {
-            const deviceId = this.specialDeviceIds.BORIVOJOVA_ENTRY;
-            if (!deviceId) {
+      // Handle property-specific devices for MAIN_ENTRANCE keys
+      if (keyType === VirtualKeyType.MAIN_ENTRANCE && mapping) {
+        switch (mapping.propertyType) {
+          case 'borivojova':
+            const borivojovaId = this.specialDeviceIds.BORIVOJOVA_ENTRY;
+            if (!borivojovaId) {
               throw new Error('No Nuki device configured for Bořivojova Entry');
             }
             return {
-              deviceId: Number.parseInt(deviceId, 10),
+              deviceId: Number.parseInt(borivojovaId, 10),
               deviceName: 'Bořivojova Entry'
             };
-          }
 
-          // Řehořova - specific device
-          if (normalizedAddress.includes('řehořova') || normalizedAddress.includes('rehorova')) {
-            const deviceId = this.specialDeviceIds.REHOROVA;
-            if (!deviceId) {
+          case 'rehorova':
+            const rehorovaId = this.specialDeviceIds.REHOROVA;
+            if (!rehorovaId) {
               throw new Error('No Nuki device configured for Řehořova');
             }
             return {
-              deviceId: Number.parseInt(deviceId, 10),
+              deviceId: Number.parseInt(rehorovaId, 10),
               deviceName: 'Řehořova'
             };
-          }
 
-          // Prokopova 197/9 - use main entrance device for this building
-          if (normalizedAddress.includes('prokopova 197') || normalizedAddress.includes('prokopova197')) {
-            const deviceId = this.deviceIds[VirtualKeyType.MAIN_ENTRANCE];
-            if (!deviceId) {
+          case 'prokopova':
+            const prokopovaId = this.deviceIds[VirtualKeyType.MAIN_ENTRANCE];
+            if (!prokopovaId) {
               throw new Error('No Nuki device configured for Prokopova main entrance');
             }
             return {
-              deviceId: Number.parseInt(deviceId, 10),
+              deviceId: Number.parseInt(prokopovaId, 10),
               deviceName: 'Prokopova Main Entrance'
             };
-          }
-        }
-
-        // Fallback to property name-based mapping
-        if (propertyName) {
-          const normalizedProperty = propertyName.toLowerCase().trim();
-
-          // Use property-specific devices for special locations
-          if (normalizedProperty === 'bořivojova 50' || normalizedProperty === 'borivojova 50') {
-            const deviceId = this.specialDeviceIds.BORIVOJOVA_ENTRY;
-            if (!deviceId) {
-              throw new Error('No Nuki device configured for Bořivojova Entry');
-            }
-            return {
-              deviceId: Number.parseInt(deviceId, 10),
-              deviceName: 'Bořivojova Entry'
-            };
-          }
-
-          if (normalizedProperty === 'řehořova' || normalizedProperty === 'rehorova') {
-            const deviceId = this.specialDeviceIds.REHOROVA;
-            if (!deviceId) {
-              throw new Error('No Nuki device configured for Řehořova');
-            }
-            return {
-              deviceId: Number.parseInt(deviceId, 10),
-              deviceName: 'Řehořova'
-            };
-          }
         }
       }
 

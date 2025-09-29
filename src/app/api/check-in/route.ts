@@ -178,23 +178,32 @@ export async function GET(request: NextRequest) {
       );
     }
     
-    // Try to enrich booking with property address from HostAway
+    // Try to enrich booking with property address and listing ID from HostAway
     let enrichedBooking = booking;
     try {
       if (booking.hostAwayId) {
-        // Get all listings to find the address
-        const listings = await hostAwayService.getListings();
-        const matchingListing = listings.find(l => l.id.toString() === booking.hostAwayId);
-        if (matchingListing?.address) {
-          const canonical = canonicalizePragueAddress(matchingListing.address);
-          enrichedBooking = Object.assign({}, booking, { 
-            propertyAddress: canonical ?? matchingListing.address 
-          });
+        const reservationId = Number(booking.hostAwayId.replace(/[^0-9]/g, ''));
+        if (reservationId) {
+          const [reservation, listings] = await Promise.all([
+            hostAwayService.getReservationById(reservationId),
+            hostAwayService.getListings()
+          ]);
+
+          if (reservation?.listingMapId) {
+            const matchingListing = listings.find(l => l.id === reservation.listingMapId);
+            if (matchingListing) {
+              const canonical = canonicalizePragueAddress(matchingListing.address);
+              enrichedBooking = Object.assign({}, booking, {
+                propertyAddress: canonical ?? matchingListing.address,
+                listingId: matchingListing.id
+              });
+            }
+          }
         }
       }
     } catch (addressError) {
-      console.log('Could not fetch property address, continuing without:', addressError);
-      // Continue without address - this is not critical
+      console.log('Could not fetch property details from HostAway, continuing without:', addressError);
+      // Continue without address/listingId - this is not critical
     }
     
     return NextResponse.json({
