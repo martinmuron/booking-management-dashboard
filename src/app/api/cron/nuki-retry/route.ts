@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
 
       if (result.status === 'created' && result.createdKeyTypes.includes(retry.keyType)) {
         // Update the retry record with the new successful keypad code if it was regenerated
-        const updateData: any = {
+        const updateData: Parameters<typeof prisma.nukiKeyRetry.update>[0]['data'] = {
           status: 'COMPLETED',
           lastError: null,
           updatedAt: new Date(),
