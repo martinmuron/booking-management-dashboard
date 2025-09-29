@@ -103,6 +103,18 @@ export async function POST() {
             status: 'skipped',
             reason: result.reason
           });
+        } else if (result.status === 'too_early') {
+          // This shouldn't happen since we filter to 3-day window, but handle gracefully
+          skipped += 1;
+          console.warn(`⏰ [NUKI-PRECHECK] Key generation too early for booking ${booking.id} (${booking.propertyName}) - will retry later`);
+          results.push({
+            bookingId: booking.id,
+            hostAwayId: booking.hostAwayId,
+            propertyName: booking.propertyName,
+            checkInDate: booking.checkInDate,
+            status: 'skipped',
+            reason: 'too_early'
+          });
         } else if (result.status === 'failed') {
           failed += 1;
           console.error(`❌ [NUKI-PRECHECK] Key generation failed for booking ${booking.id} (${booking.propertyName}) - ${result.error}`);

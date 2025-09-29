@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import StripePayment from "@/components/ui/stripe-payment";
 import { hasNukiAccessByListingId, getNukiPropertyMapping } from "@/utils/nuki-properties-mapping";
 import { hasNukiAccess as hasNukiAccessByName } from "@/utils/nuki-properties";
+import { KEY_GENERATION_ADVANCE_DAYS } from "@/services/auto-key.service";
 import {
   Calendar,
   Users,
@@ -252,6 +253,31 @@ const shouldShowArrivalInstructions = (booking?: BookingData | null) => {
 
 const shouldShowAppliancesInfo = (booking?: BookingData | null) => {
   return isProkopovaBooking(booking);
+};
+
+/**
+ * Calculate when access codes will be available (3 days before check-in)
+ */
+const getKeyGenerationInfo = (checkInDate?: string) => {
+  if (!checkInDate) {
+    return { isTooEarly: false, generationDate: null, daysUntil: 0 };
+  }
+
+  const now = new Date();
+  const checkIn = new Date(checkInDate);
+  const msPerDay = 1000 * 60 * 60 * 24;
+  const daysUntilCheckIn = Math.ceil((checkIn.getTime() - now.getTime()) / msPerDay);
+
+  if (daysUntilCheckIn > KEY_GENERATION_ADVANCE_DAYS) {
+    const generationDate = new Date(checkIn.getTime() - KEY_GENERATION_ADVANCE_DAYS * msPerDay);
+    return {
+      isTooEarly: true,
+      generationDate,
+      daysUntil: daysUntilCheckIn - KEY_GENERATION_ADVANCE_DAYS
+    };
+  }
+
+  return { isTooEarly: false, generationDate: null, daysUntil: 0 };
 };
 
 type GuestErrors = Partial<Record<keyof Guest, string>>;
@@ -1943,13 +1969,46 @@ const applyServerValidationIssues = (issues?: ApiValidationIssue[]): ServerValid
                         <div className="bg-muted p-6 rounded-lg text-center">
                           <Key className="mx-auto h-12 w-12 text-muted-foreground mb-3" />
                           <h4 className="font-medium mb-2">Access Code Pending</h4>
-                          <p className="text-sm text-muted-foreground mb-4">
-                            Your digital keys will be activated automatically once check-in is completed. We will send a confirmation email with the code.
-                          </p>
-                      <Badge className="bg-blue-100 text-blue-800">
-                        <Clock className="h-3 w-3 mr-1" />
-                        Awaiting Completion
-                      </Badge>
+                          {(() => {
+                            const keyInfo = getKeyGenerationInfo(booking?.checkInDate);
+                            if (keyInfo.isTooEarly && keyInfo.generationDate) {
+                              const formattedDate = keyInfo.generationDate.toLocaleDateString('en-US', {
+                                weekday: 'long',
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric',
+                                timeZone: 'Europe/Prague'
+                              });
+                              return (
+                                <>
+                                  <p className="text-sm text-muted-foreground mb-2">
+                                    Your access code will be automatically generated and sent to you on:
+                                  </p>
+                                  <p className="text-sm font-semibold text-foreground mb-4">
+                                    {formattedDate}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground mb-4">
+                                    (3 days before your check-in date)
+                                  </p>
+                                  <Badge className="bg-amber-100 text-amber-800 border-amber-300">
+                                    <Clock className="h-3 w-3 mr-1" />
+                                    Available in {keyInfo.daysUntil} {keyInfo.daysUntil === 1 ? 'day' : 'days'}
+                                  </Badge>
+                                </>
+                              );
+                            }
+                            return (
+                              <>
+                                <p className="text-sm text-muted-foreground mb-4">
+                                  Your digital keys will be activated automatically once check-in is completed. We will send a confirmation email with the code.
+                                </p>
+                                <Badge className="bg-blue-100 text-blue-800">
+                                  <Clock className="h-3 w-3 mr-1" />
+                                  Awaiting Completion
+                                </Badge>
+                              </>
+                            );
+                          })()}
                     </div>
                       )}
                     </CardContent>

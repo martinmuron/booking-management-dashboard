@@ -42,7 +42,11 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const result = await ensureNukiKeysForBooking(booking.id, { force: true });
+    // Admin can force generation even if check-in is far in the future
+    const result = await ensureNukiKeysForBooking(booking.id, {
+      force: true,
+      allowEarlyGeneration: true
+    });
 
     switch (result.status) {
       case 'failed':
@@ -54,6 +58,16 @@ export async function POST(request: NextRequest) {
       case 'skipped':
         return NextResponse.json(
           { success: false, error: `Key generation skipped: ${result.reason}` },
+          { status: 400 }
+        );
+
+      case 'too_early':
+        // This shouldn't happen with allowEarlyGeneration=true, but handle it gracefully
+        return NextResponse.json(
+          {
+            success: false,
+            error: `Keys cannot be generated yet. Check-in is ${result.daysUntilGeneration} days away. Keys will be available 3 days before check-in.`
+          },
           { status: 400 }
         );
 

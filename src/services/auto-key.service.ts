@@ -7,6 +7,7 @@ import type { VirtualKeyType } from '@/types';
 
 const KEY_GENERATION_STATUSES = new Set(['CHECKED_IN', 'PAYMENT_COMPLETED']);
 const RETRY_INTERVAL_MINUTES = 15;
+const KEY_GENERATION_ADVANCE_DAYS = 3; // Generate keys only within 3 days of check-in
 
 type PrismaClientLike = Pick<typeof prisma, 'booking' | 'virtualKey' | 'nukiKeyRetry'>;
 
@@ -18,11 +19,13 @@ type EnsureOptions = {
   force?: boolean;
   keyTypes?: VirtualKeyType[];
   keypadCode?: string;
+  allowEarlyGeneration?: boolean; // Override 3-day window check (admin use)
 };
 
 type EnsureResult =
   | { status: 'not_found' }
   | { status: 'skipped'; reason: 'property_not_authorized' | 'room_unresolved' | 'status_not_ready' | 'booking_cancelled' }
+  | { status: 'too_early'; daysUntilGeneration: number; generationDate: Date; checkInDate: Date }
   | { status: 'already'; reason: 'existing_keys'; keys: PrismaVirtualKey[] }
   | { status: 'failed'; reason: 'nuki_no_keys' | 'nuki_error'; error?: string }
   | { status: 'queued'; queuedKeyTypes: VirtualKeyType[]; universalKeypadCode: string | null }
@@ -54,6 +57,34 @@ export async function ensureNukiKeysForBooking(
 
   if (!forceGeneration && !KEY_GENERATION_STATUSES.has(booking.status)) {
     return { status: 'skipped', reason: 'status_not_ready' };
+  }
+
+  // Check if check-in is too far in the future (unless early generation is explicitly allowed)
+  // Note: forceGeneration only bypasses status checks, not date checks
+  if (!options.allowEarlyGeneration) {
+    const now = new Date();
+    const checkInDate = new Date(booking.checkInDate);
+    const msPerDay = 1000 * 60 * 60 * 24;
+    const daysUntilCheckIn = Math.ceil((checkInDate.getTime() - now.getTime()) / msPerDay);
+
+    if (daysUntilCheckIn > KEY_GENERATION_ADVANCE_DAYS) {
+      const generationDate = new Date(checkInDate.getTime() - KEY_GENERATION_ADVANCE_DAYS * msPerDay);
+      console.log(`⏰ [NUKI] Key generation too early for booking ${booking.id}`, {
+        bookingId: booking.id,
+        hostAwayId: booking.hostAwayId,
+        checkInDate: checkInDate.toISOString(),
+        daysUntilCheckIn,
+        generationWindowDays: KEY_GENERATION_ADVANCE_DAYS,
+        generationAvailableOn: generationDate.toISOString(),
+        message: `Keys will be generated automatically ${KEY_GENERATION_ADVANCE_DAYS} days before check-in`
+      });
+      return {
+        status: 'too_early',
+        daysUntilGeneration: daysUntilCheckIn - KEY_GENERATION_ADVANCE_DAYS,
+        generationDate,
+        checkInDate
+      };
+    }
   }
 
   // Get HostAway listing ID for precise Nuki mapping
@@ -399,3 +430,4 @@ export async function ensureNukiKeysForBooking(
 }
 
 export type EnsureNukiKeysResult = EnsureResult;
+export { KEY_GENERATION_ADVANCE_DAYS };

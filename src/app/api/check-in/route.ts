@@ -406,6 +406,8 @@ export async function POST(request: NextRequest) {
 
     let keyDistribution: EnsureNukiKeysResult | null = null;
     try {
+      // Note: force=true bypasses status checks, but NOT date checks
+      // Keys will only generate within 3 days of check-in (unless admin overrides)
       keyDistribution = await ensureNukiKeysForBooking(booking.id, { force: true });
     } catch (keyError) {
       console.error('Failed to ensure NUKI keys during check-in:', keyError);
@@ -413,6 +415,9 @@ export async function POST(request: NextRequest) {
 
     const keyStatus = keyDistribution?.status;
     const distributedKeys = keyStatus === 'created' || keyStatus === 'already';
+    const tooEarly = keyStatus === 'too_early';
+
+    // If keys are too early, that's okay - they'll be generated automatically 3 days before check-in
     const nextStatus = distributedKeys ? 'KEYS_DISTRIBUTED' : 'CHECKED_IN';
 
     const bookingUpdateData: Parameters<typeof prisma.booking.update>[0]['data'] = {
@@ -463,7 +468,9 @@ export async function POST(request: NextRequest) {
       ? 'Check-in completed and digital keys generated'
       : keyDistribution?.status === 'already'
         ? 'Check-in completed; digital keys already prepared'
-        : 'Check-in completed successfully';
+        : keyDistribution?.status === 'too_early'
+          ? 'Check-in completed successfully. Your access codes will be available 3 days before your check-in date.'
+          : 'Check-in completed successfully';
 
     return NextResponse.json({
       success: true,
