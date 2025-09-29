@@ -1,18 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { bookingService } from '@/services/booking.service';
 
-export async function POST(request: NextRequest) {
+export async function POST() {
   try {
-    const authHeader = request.headers.get('authorization');
-    const cronSecret = process.env.CRON_SECRET || 'development-secret';
-
-    if (authHeader !== `Bearer ${cronSecret}`) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
     const syncResult = await bookingService.syncBookingsFromHostAway();
 
     return NextResponse.json({

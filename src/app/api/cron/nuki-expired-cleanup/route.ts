@@ -1,21 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/database';
 import { nukiApiService } from '@/services/nuki-api.service';
 
 const BUFFER_HOURS = 4; // allow a short grace period after checkout
 
-export async function POST(request: NextRequest) {
+export async function POST() {
   try {
-    const authHeader = request.headers.get('authorization');
-    const cronSecret = process.env.CRON_SECRET || 'development-secret';
-
-    if (authHeader !== `Bearer ${cronSecret}`) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
     const now = new Date();
     const cutoff = new Date(now.getTime() - BUFFER_HOURS * 60 * 60 * 1000);
 

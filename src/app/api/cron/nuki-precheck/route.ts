@@ -1,20 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/database';
 import { ensureNukiKeysForBooking } from '@/services/auto-key.service';
 
 // POST /api/cron/nuki-precheck - Pre-generate Nuki keys 3 days before arrival
-export async function POST(request: NextRequest) {
+export async function POST() {
   try {
-    const authHeader = request.headers.get('authorization');
-    const cronSecret = process.env.CRON_SECRET || 'development-secret';
-
-    if (authHeader !== `Bearer ${cronSecret}`) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
     const now = new Date();
     const windowStart = new Date(now);
     windowStart.setHours(0, 0, 0, 0);

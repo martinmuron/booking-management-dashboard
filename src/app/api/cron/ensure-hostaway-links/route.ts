@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/database';
 import { hostAwayService } from '@/services/hostaway.service';
 
@@ -10,18 +10,8 @@ function getExpectedLink(token: string) {
   return `${CHECK_IN_BASE_URL}/checkin/${token}`;
 }
 
-export async function POST(request: NextRequest) {
+export async function POST() {
   try {
-    const secret = process.env.CRON_SECRET;
-    const authHeader = request.headers.get('authorization');
-
-    if (!secret || authHeader !== `Bearer ${secret}`) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
     const now = new Date();
     const createdWindow = new Date(now.getTime() - 1000 * 60 * 60 * 24 * 3); // last 3 days
     const upcomingWindow = new Date(now.getTime() + 1000 * 60 * 60 * 24 * 14); // next 14 days

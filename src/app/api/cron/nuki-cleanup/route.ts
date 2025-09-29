@@ -1,19 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { nukiApiService } from '@/services/nuki-api.service';
 
 // POST /api/cron/nuki-cleanup - Permanently delete expired Nuki authorizations
-export async function POST(request: NextRequest) {
+export async function POST() {
   try {
-    const authHeader = request.headers.get('authorization');
-    const cronSecret = process.env.CRON_SECRET || 'development-secret';
-
-    if (authHeader !== `Bearer ${cronSecret}`) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
     console.log('🧹 Running Nuki expired authorization cleanup cron...');
 
     const result = await nukiApiService.cleanupExpiredAuthorizations();

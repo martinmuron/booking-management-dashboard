@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
-import { hasNukiAccessByListingId, getNukiPropertyMapping } from "@/utils/nuki-properties-mapping";
+import { hasNukiAccessByListingId } from "@/utils/nuki-properties-mapping";
+import { hasNukiAccess as hasNukiAccessByName } from "@/utils/nuki-properties";
 import { AdminNav } from "@/components/admin/AdminNav";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -123,12 +124,17 @@ interface BookingData {
  * @param booking - The booking data
  * @returns true if property should have Nuki access
  */
-const hasNukiAccess = (booking?: BookingData | null): boolean => {
-  if (!booking?.listingId) {
+const bookingHasNukiAccess = (booking?: BookingData | null): boolean => {
+  if (!booking) {
     return false;
   }
 
-  return hasNukiAccessByListingId(booking.listingId);
+  if (booking.listingId && hasNukiAccessByListingId(booking.listingId)) {
+    return true;
+  }
+
+  const candidates = [booking.propertyName, booking.propertyAddress, booking.roomNumber];
+  return candidates.some((value) => value && hasNukiAccessByName(value));
 };
 
 const getStatusColor = (status?: string) => {
@@ -425,7 +431,7 @@ export default function BookingAdminPage() {
   const checkedInGuests = booking.guests || [];
   const fallbackGuestEmail = checkedInGuests.find((guest) => guest.email)?.email || null;
   const contactEmail = leadGuestEmail || fallbackGuestEmail;
-  const propertyHasNuki = existingKeys.booking?.isAuthorized ?? hasNukiAccess(booking);
+  const propertyHasNuki = existingKeys.booking?.isAuthorized ?? bookingHasNukiAccess(booking);
 
   return (
     <div className="min-h-screen bg-background">
@@ -895,19 +901,6 @@ export default function BookingAdminPage() {
                                 </div>
                               </div>
                             ))}
-                          </div>
-
-                          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                            <div className="flex items-start space-x-3">
-                              <CheckCircle2 className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
-                              <div>
-                                <p className="text-sm font-medium text-green-900">Existing NUKI Keys Found</p>
-                                <p className="text-sm text-green-700">
-                                  {existingKeys.totalKeys} digital access key{existingKeys.totalKeys === 1 ? '' : 's'} are active for this stay.
-                                  Guests can use the universal keypad code on every door above.
-                                </p>
-                              </div>
-                            </div>
                           </div>
 
                           {existingKeys.queuedKeyTypes?.length ? (

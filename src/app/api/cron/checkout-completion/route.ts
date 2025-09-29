@@ -1,23 +1,12 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/database';
 import { VirtualKeyService } from '@/services/virtual-key.service';
 import { nukiApiService } from '@/services/nuki-api.service';
 
 // POST /api/cron/checkout-completion - Automatically mark bookings as COMPLETED after checkout date
-export async function POST(request: NextRequest) {
+export async function POST() {
   try {
     console.log('🕐 Running checkout completion cron job...');
-
-    // Verify this is a cron job (Vercel sends a special header)
-    const authHeader = request.headers.get('authorization');
-    const cronSecret = process.env.CRON_SECRET || 'development-secret';
-
-    if (authHeader !== `Bearer ${cronSecret}`) {
-      return NextResponse.json({
-        success: false,
-        error: 'Unauthorized'
-      }, { status: 401 });
-    }
 
     // Get current date (start of today)
     const today = new Date();

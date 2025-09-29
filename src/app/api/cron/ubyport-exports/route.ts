@@ -1,22 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/database';
 import { ubyPortService } from '@/services/ubyport.service';
 
 // POST /api/cron/ubyport-exports - Process UbyPort exports for bookings that checked in today
-export async function POST(request: NextRequest) {
+export async function POST() {
   try {
     console.log('🕐 Running UbyPort export cron job...');
-
-    // Verify this is a cron job (Vercel sends a special header)
-    const authHeader = request.headers.get('authorization');
-    const cronSecret = process.env.CRON_SECRET || 'development-secret';
-    
-    if (authHeader !== `Bearer ${cronSecret}`) {
-      return NextResponse.json({
-        success: false,
-        error: 'Unauthorized'
-      }, { status: 401 });
-    }
 
     // Get today's date range
     const today = new Date();

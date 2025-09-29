@@ -1,22 +1,12 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/database';
 import { ensureNukiKeysForBooking } from '@/services/auto-key.service';
 import { nukiApiService } from '@/services/nuki-api.service';
 
 const RETRY_INTERVAL_MINUTES = 15;
 
-export async function POST(request: NextRequest) {
+export async function POST() {
   try {
-    const authHeader = request.headers.get('authorization');
-    const cronSecret = process.env.CRON_SECRET || 'development-secret';
-
-    if (authHeader !== `Bearer ${cronSecret}`) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
     const now = new Date();
     const retries = await prisma.nukiKeyRetry.findMany({
       where: {

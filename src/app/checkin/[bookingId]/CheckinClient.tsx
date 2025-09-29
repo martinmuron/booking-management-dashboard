@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import StripePayment from "@/components/ui/stripe-payment";
 import { hasNukiAccessByListingId, getNukiPropertyMapping } from "@/utils/nuki-properties-mapping";
+import { hasNukiAccess as hasNukiAccessByName } from "@/utils/nuki-properties";
 import {
   Calendar,
   Users,
@@ -214,21 +215,33 @@ const normalizeForMatch = (value: string) =>
  * @param booking - The booking data
  * @returns true if property should have Nuki access
  */
-const hasNukiAccess = (booking?: BookingData | null): boolean => {
-  if (!booking?.listingId) {
+const bookingHasNukiAccess = (booking?: BookingData | null): boolean => {
+  if (!booking) {
     return false;
   }
 
-  return hasNukiAccessByListingId(booking.listingId);
+  if (booking.listingId && hasNukiAccessByListingId(booking.listingId)) {
+    return true;
+  }
+
+  const candidates = [booking.propertyName, booking.propertyAddress, booking.roomNumber];
+  return candidates.some((value) => value && hasNukiAccessByName(value));
 };
 
 const isProkopovaBooking = (booking?: BookingData | null) => {
-  if (!booking?.listingId) {
+  if (!booking) {
     return false;
   }
 
-  const mapping = getNukiPropertyMapping(booking.listingId);
-  return mapping?.propertyType === 'prokopova';
+  if (booking.listingId) {
+    const mapping = getNukiPropertyMapping(booking.listingId);
+    if (mapping?.propertyType === 'prokopova') {
+      return true;
+    }
+  }
+
+  const candidates = [booking.propertyName, booking.propertyAddress, booking.roomNumber];
+  return candidates.some((value) => value?.toLowerCase().includes('prokopova'));
 };
 
 const shouldShowArrivalInstructions = (booking?: BookingData | null) => {
@@ -1043,7 +1056,7 @@ const applyServerValidationIssues = (issues?: ApiValidationIssue[]): ServerValid
   const firstName = booking?.guestLeaderName.split(' ')[0] || 'Guest';
 
   const aroundAddress = booking?.propertyAddress || booking?.roomNumber || booking?.propertyName || 'Prague, Czechia';
-  const propertyHasNuki = hasNukiAccess(booking);
+  const propertyHasNuki = bookingHasNukiAccess(booking);
   const canShowGuestKeys = Boolean(booking && propertyHasNuki && booking.status && ['CHECKED_IN', 'KEYS_DISTRIBUTED'].includes(booking.status));
   const showArrivalInstructions = shouldShowArrivalInstructions(booking);
   const showAppliancesInfo = shouldShowAppliancesInfo(booking);
