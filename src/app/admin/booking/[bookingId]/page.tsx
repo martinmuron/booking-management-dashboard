@@ -13,9 +13,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { 
-  Users, 
-  MapPin, 
+import {
+  Users,
+  MapPin,
   Mail,
   CreditCard,
   Key,
@@ -29,7 +29,8 @@ import {
   Clock,
   DollarSign,
   UserCheck,
-  Calendar
+  Calendar,
+  Download
 } from "lucide-react";
 
 interface Guest {
@@ -249,6 +250,7 @@ export default function BookingAdminPage() {
     totalKeys: 0,
     queuedKeyTypes: [],
   });
+  const [exportingGuests, setExportingGuests] = useState(false);
 
   useEffect(() => {
     const fetchBooking = async () => {
@@ -380,6 +382,43 @@ export default function BookingAdminPage() {
       console.error('Error generating virtual keys:', err);
     } finally {
       setGeneratingKeys(false);
+    }
+  };
+
+  const exportUbyPortGuests = async () => {
+    if (!booking) {
+      return;
+    }
+
+    setExportingGuests(true);
+    setError(null);
+
+    try {
+      const response = await fetch(`/api/bookings/${booking.id}/ubyport-export`);
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        setError(data?.error || 'Failed to export guest information');
+        return;
+      }
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `ubyport_${booking.id}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      setNotice('Guest registration exported for UbyPort.');
+    } catch (exportError) {
+      console.error('Failed to export UbyPort guest data:', exportError);
+      setError('Failed to export guest information');
+    } finally {
+      setExportingGuests(false);
     }
   };
 
@@ -953,6 +992,19 @@ export default function BookingAdminPage() {
                       <Key className="mr-2 h-4 w-4" />
                     )}
                     {generatingKeys ? 'Generating...' : 'Generate Virtual Keys'}
+                  </Button>
+                  <Button
+                    className="w-full"
+                    variant="outline"
+                    onClick={exportUbyPortGuests}
+                    disabled={exportingGuests || !(booking?.guests && booking.guests.length > 0)}
+                  >
+                    {exportingGuests ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Download className="mr-2 h-4 w-4" />
+                    )}
+                    {exportingGuests ? 'Preparing Export...' : 'Export Guest Info (UbyPort)'}
                   </Button>
                   <Button
                     className="w-full"
