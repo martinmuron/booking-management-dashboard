@@ -50,22 +50,39 @@ export async function POST(request: NextRequest) {
         data: { status: 'PROCESSING', lastError: null }
       });
 
+      // Check if the previous error was due to invalid keypad code
+      const isKeypadCodeError = retry.lastError &&
+        (retry.lastError.includes('code\' is not valid') ||
+         retry.lastError.includes('keypad code') ||
+         retry.lastError.includes('parameter \'code\''));
+
+      // Generate new keypad code if the previous attempt failed due to code validation
+      const keypadCodeToUse = isKeypadCodeError ? undefined : retry.keypadCode;
+
       const result = await ensureNukiKeysForBooking(retry.bookingId, {
         force: true,
         keyTypes: [retry.keyType],
-        keypadCode: retry.keypadCode,
+        keypadCode: keypadCodeToUse, // undefined = generate new code
         nukiApi: nukiApiService,
       });
 
       if (result.status === 'created' && result.createdKeyTypes.includes(retry.keyType)) {
+        // Update the retry record with the new successful keypad code if it was regenerated
+        const updateData: any = {
+          status: 'COMPLETED',
+          lastError: null,
+          updatedAt: new Date(),
+          attemptCount: retry.attemptCount + 1,
+        };
+
+        // If we generated a new keypad code and it succeeded, update the retry record
+        if (isKeypadCodeError && result.universalKeypadCode) {
+          updateData.keypadCode = result.universalKeypadCode;
+        }
+
         await prisma.nukiKeyRetry.update({
           where: { id: retry.id },
-          data: {
-            status: 'COMPLETED',
-            lastError: null,
-            updatedAt: new Date(),
-            attemptCount: retry.attemptCount + 1,
-          }
+          data: updateData
         });
         completed += 1;
         continue;
