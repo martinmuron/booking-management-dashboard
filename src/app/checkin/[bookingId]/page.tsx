@@ -1,7 +1,7 @@
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import CheckinClient from './CheckinClient';
-import { getCityTaxPolicy } from '@/lib/city-tax';
+import { getCityTaxPolicy, calculateCityTaxForStay, type CityTaxGuestInput } from '@/lib/city-tax';
 
 interface VirtualKey {
   id: string;
@@ -49,18 +49,62 @@ async function getBookingByToken(token: string): Promise<BookingData | null> {
       propertyName: booking.propertyName
     });
 
+    const guestPayloads = booking.guests.map((guest) => ({
+      id: guest.id,
+      firstName: guest.firstName,
+      lastName: guest.lastName,
+      email: guest.email,
+      phone: guest.phone,
+      phoneCountryCode: guest.phoneCountryCode,
+      dateOfBirth: guest.dateOfBirth ? guest.dateOfBirth.toISOString() : null,
+      nationality: guest.nationality,
+      citizenship: guest.citizenship,
+      residenceCountry: guest.residenceCountry,
+      residenceCity: guest.residenceCity,
+      residenceAddress: guest.residenceAddress,
+      purposeOfStay: guest.purposeOfStay,
+      documentType: guest.documentType,
+      documentNumber: guest.documentNumber,
+      visaNumber: guest.visaNumber,
+      notes: guest.notes
+    }));
+
+    const cityTaxGuests: CityTaxGuestInput[] = booking.guests.map((guest) => ({
+      dateOfBirth: guest.dateOfBirth ?? null,
+      residenceCity: guest.residenceCity ?? null,
+    }));
+
+    const cityTaxAmount = calculateCityTaxForStay(
+      cityTaxGuests,
+      booking.checkInDate,
+      booking.checkOutDate,
+      {
+        propertyName: booking.propertyName,
+        propertyAddress: booking.roomNumber ?? undefined,
+      }
+    );
+
     return {
       id: booking.id,
       propertyName: booking.propertyName,
-      propertyAddress: undefined,
+      propertyAddress: booking.roomNumber ?? undefined,
       checkInDate: booking.checkInDate.toISOString(),
       checkOutDate: booking.checkOutDate.toISOString(),
       numberOfGuests: booking.numberOfGuests,
       roomNumber: booking.roomNumber || undefined,
       guestLeaderName: booking.guestLeaderName,
-      cityTaxAmount: 0,
+      cityTaxAmount,
       cityTaxPerPerson: cityTaxPolicy.taxPerPersonPerNight,
       universalKeypadCode: booking.universalKeypadCode || undefined,
+      status: booking.status,
+      payments: booking.payments.map(payment => ({
+        id: payment.id,
+        status: payment.status,
+        amount: payment.amount,
+        stripePaymentIntentId: payment.stripePaymentIntentId,
+        currency: payment.currency
+      })),
+      guests: guestPayloads,
       virtualKeys: [] // Not included in this simplified version
     };
   } catch (error) {

@@ -89,6 +89,7 @@ interface BookingData {
     stripePaymentIntentId?: string | null;
     currency?: string;
   }>;
+  guests?: ApiGuestPayload[];
 }
 
 interface CheckinClientProps {
@@ -342,6 +343,89 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
     }
   };
 
+  const transformGuestsFromPayload = (apiGuests: ApiGuestPayload[]): Guest[] =>
+    apiGuests.map((guest, index) => ({
+      id: guest.id || `${Date.now()}-${index}`,
+      firstName: sanitizeString(guest.firstName) || '',
+      lastName: sanitizeString(guest.lastName) || '',
+      email: sanitizeString(guest.email ?? ''),
+      phone: sanitizeString(guest.phone ?? ''),
+      phoneCountryCode: sanitizeString(guest.phoneCountryCode ?? '+420') || '+420',
+      dateOfBirth: guest.dateOfBirth ? new Date(guest.dateOfBirth).toISOString().split('T')[0] : '',
+      nationality: sanitizeIsoAlpha3(guest.nationality ?? ''),
+      citizenship: sanitizeIsoAlpha3(guest.citizenship ?? ''),
+      residenceCountry: sanitizeIsoAlpha3(guest.residenceCountry ?? ''),
+      residenceCity: sanitizeString(guest.residenceCity ?? ''),
+      residenceAddress: sanitizeString(guest.residenceAddress ?? ''),
+      purposeOfStay: sanitizeString(guest.purposeOfStay ?? ''),
+      documentType: sanitizeString(guest.documentType ?? ''),
+      documentNumber: sanitizeDocumentNumber(guest.documentNumber ?? ''),
+      visaNumber: sanitizeString(guest.visaNumber ?? ''),
+      notes: sanitizeString(guest.notes ?? '')
+    }));
+
+  const createDefaultGuest = (guestName: string): Guest => {
+    const sanitized = sanitizeString(guestName) || 'Guest';
+    const nameParts = sanitized.split(' ');
+    const firstName = nameParts[0] || 'Guest';
+    const lastName = nameParts.slice(1).join(' ');
+
+    return {
+      id: 'guest-default',
+      firstName,
+      lastName,
+      email: '',
+      phone: '',
+      phoneCountryCode: '+420',
+      dateOfBirth: '',
+      nationality: '',
+      citizenship: '',
+      residenceCountry: '',
+      residenceCity: '',
+      residenceAddress: '',
+      purposeOfStay: '',
+      documentType: '',
+      documentNumber: '',
+      visaNumber: '',
+      notes: ''
+    };
+  };
+
+  const applyBookingSnapshot = (snapshot: BookingData) => {
+    setBooking(snapshot);
+
+    const paidPayment = snapshot.payments?.find(payment => payment.status?.toLowerCase() === 'paid');
+    const normalizedStatus = snapshot.status?.toUpperCase?.();
+    const completedByStatus = normalizedStatus
+      ? ['PAYMENT_COMPLETED', 'CHECKED_IN', 'KEYS_DISTRIBUTED'].includes(normalizedStatus)
+      : false;
+    const completed = completedByStatus || Boolean(paidPayment);
+
+    setCheckInCompleted(completed);
+    setSuccessMessage(completed ? 'Check-in already completed.' : null);
+
+    if (paidPayment) {
+      setPaymentIntentId(paidPayment.stripePaymentIntentId ?? null);
+      setPaymentIntentAmount(paidPayment.amount ?? null);
+    }
+
+    if (draftLoadedRef.current) {
+      return;
+    }
+
+    const payloadGuests = Array.isArray(snapshot.guests) ? snapshot.guests : [];
+
+    if (payloadGuests.length > 0) {
+      const normalized = transformGuestsFromPayload(payloadGuests as ApiGuestPayload[]);
+      setGuests(normalized);
+      setGuestErrors(initialiseGuestErrors(normalized));
+    } else {
+      const fallbackGuest = createDefaultGuest(snapshot.guestLeaderName || 'Guest');
+      setGuests([fallbackGuest]);
+      setGuestErrors({ [fallbackGuest.id]: {} });
+    }
+  };
+
   // Track active section on scroll
   useEffect(() => {
     const handleScroll = () => {
@@ -373,73 +457,23 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
   }, []);
 
   useEffect(() => {
-    if (!initialBooking) {
-      // Fetch booking data if not provided by server
-      const fetchBooking = async () => {
-        try {
-          const response = await fetch(`/api/check-in?token=${bookingToken}`);
-          const data = await response.json();
+    let cancelled = false;
 
+    if (initialBooking) {
+      applyBookingSnapshot(initialBooking);
+      setError(null);
+      setFatalError(null);
+    }
+
+    const fetchBooking = async () => {
+      try {
+        const response = await fetch(`/api/check-in?token=${bookingToken}`);
+        const data = await response.json();
+
+        if (!cancelled) {
           if (data.success) {
-            const fetchedBooking = data.data.booking as BookingData & { guests?: ApiGuestPayload[] };
-            setBooking(fetchedBooking);
-
-            const paidPayment = fetchedBooking.payments?.find(payment => payment.status?.toLowerCase() === 'paid');
-            const completed = Boolean(fetchedBooking.status === 'CHECKED_IN' || paidPayment);
-            setCheckInCompleted(completed);
-            setSuccessMessage(completed ? 'Check-in already completed.' : null);
-            if (paidPayment) {
-              setPaymentIntentId(paidPayment.stripePaymentIntentId ?? null);
-              setPaymentIntentAmount(paidPayment.amount ?? null);
-            }
-
-            const fetchedGuests = ((fetchedBooking.guests || []) as ApiGuestPayload[]).map((guest, index) => ({
-              id: guest.id || `${Date.now()}-${index}`,
-              firstName: guest.firstName || '',
-              lastName: guest.lastName || '',
-              email: guest.email ?? '',
-              phone: guest.phone ?? '',
-              phoneCountryCode: guest.phoneCountryCode ?? '+420',
-              dateOfBirth: guest.dateOfBirth ? new Date(guest.dateOfBirth).toISOString().split('T')[0] : '',
-              nationality: guest.nationality ?? '',
-              citizenship: guest.citizenship ?? '',
-              residenceCountry: guest.residenceCountry ?? '',
-              residenceCity: guest.residenceCity ?? '',
-              residenceAddress: guest.residenceAddress ?? '',
-              purposeOfStay: guest.purposeOfStay ?? '',
-              documentType: guest.documentType ?? '',
-              documentNumber: guest.documentNumber ?? '',
-              visaNumber: guest.visaNumber ?? '',
-              notes: guest.notes ?? ''
-            }));
-
-            if (fetchedGuests.length > 0) {
-              draftLoadedRef.current = false;
-              setGuests(fetchedGuests);
-              setGuestErrors(initialiseGuestErrors(fetchedGuests));
-            } else if (!draftLoadedRef.current) {
-              const fallbackGuest: Guest = {
-                id: '1',
-                firstName: '',
-                lastName: '',
-                email: '',
-                phone: '',
-                phoneCountryCode: '+420',
-                dateOfBirth: '',
-                nationality: '',
-                citizenship: '',
-                residenceCountry: '',
-                residenceCity: '',
-                residenceAddress: '',
-                purposeOfStay: '',
-                documentType: '',
-                documentNumber: '',
-                visaNumber: '',
-                notes: ''
-              };
-              setGuests([fallbackGuest]);
-              setGuestErrors(initialiseGuestErrors([fallbackGuest]));
-            }
+            const fetchedBooking = data.data.booking as BookingData;
+            applyBookingSnapshot(fetchedBooking);
             setError(null);
             setFatalError(null);
           } else {
@@ -447,46 +481,26 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
             setError(message);
             setFatalError(message);
           }
-        } catch (err) {
+        }
+      } catch (err) {
+        if (!cancelled) {
           console.error('Failed to fetch booking details', err);
           const message = 'Network error: Unable to load booking details';
           setError(message);
           setFatalError(message);
-        } finally {
+        }
+      } finally {
+        if (!cancelled) {
           setLoading(false);
         }
-      };
+      }
+    };
 
-      fetchBooking();
-    } else {
-      // Initialize guests from the booking data
-      const guestName = initialBooking.guestLeaderName || 'Guest';
-      const nameParts = guestName.split(' ');
-      const defaultGuest: Guest = {
-        id: '1',
-        firstName: nameParts[0] || 'Guest',
-        lastName: nameParts.slice(1).join(' ') || '',
-        email: '',
-        phone: '',
-        phoneCountryCode: '+420',
-        dateOfBirth: '',
-        nationality: '',
-        citizenship: '',
-        residenceCountry: '',
-        residenceCity: '',
-        residenceAddress: '',
-        purposeOfStay: '',
-        documentType: '',
-        documentNumber: '',
-        visaNumber: '',
-        notes: ''
-      };
+    fetchBooking();
 
-      setGuests([defaultGuest]);
-      setGuestErrors({ [defaultGuest.id]: {} });
-      setError(null);
-      setFatalError(null);
-    }
+    return () => {
+      cancelled = true;
+    };
   }, [bookingToken, initialBooking]);
 
   const addGuest = () => {
