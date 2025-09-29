@@ -142,7 +142,8 @@ export async function GET(request: NextRequest) {
         where: { checkInToken: token },
         include: {
           guests: true,
-          payments: true
+          payments: true,
+          virtualKeys: true,
         }
       });
     } catch (guestError) {
@@ -152,7 +153,8 @@ export async function GET(request: NextRequest) {
         booking = await prisma.booking.findUnique({
           where: { checkInToken: token },
           include: {
-            payments: true
+            payments: true,
+            virtualKeys: true,
           }
         });
         // Add empty guests array to maintain expected structure
@@ -444,6 +446,16 @@ export async function POST(request: NextRequest) {
               ? keyDistribution.universalKeypadCode
               : finalizedBooking.universalKeypadCode ?? null,
           error: keyDistribution.status === 'failed' ? keyDistribution.error : undefined,
+          keys: 'keys' in keyDistribution
+            ? keyDistribution.keys.map(key => ({
+                id: key.id,
+                keyType: key.keyType,
+                nukiKeyId: key.nukiKeyId,
+                isActive: key.isActive,
+                createdAt: key.createdAt,
+                deactivatedAt: key.deactivatedAt,
+              }))
+            : undefined,
         }
       : null;
 

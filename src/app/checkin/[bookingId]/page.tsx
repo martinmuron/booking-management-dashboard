@@ -63,7 +63,8 @@ async function getBookingByToken(token: string): Promise<BookingData | null> {
       where: { checkInToken: token },
       include: {
         guests: true,
-        payments: true
+        payments: true,
+        virtualKeys: true,
       }
     });
 
@@ -131,8 +132,15 @@ async function getBookingByToken(token: string): Promise<BookingData | null> {
         stripePaymentIntentId: payment.stripePaymentIntentId,
         currency: payment.currency
       })),
+      virtualKeys: booking.virtualKeys.map(key => ({
+        id: key.id,
+        keyType: key.keyType,
+        nukiKeyId: key.nukiKeyId,
+        isActive: key.isActive,
+        createdAt: key.createdAt.toISOString(),
+        deactivatedAt: key.deactivatedAt ? key.deactivatedAt.toISOString() : undefined,
+      })),
       guests: guestPayloads,
-      virtualKeys: [] // Not included in this simplified version
     };
   } catch (error) {
     console.error('Error fetching booking for metadata:', error);

@@ -30,7 +30,8 @@ import {
   Navigation,
   Menu,
   X,
-  ChevronRight
+  ChevronRight,
+  DoorClosed
 } from "lucide-react";
 import {
   calculateCityTaxForGuests,
@@ -993,11 +994,25 @@ const applyServerValidationIssues = (issues?: ApiValidationIssue[]): ServerValid
           const nextStatus = keyStatus === 'created' || keyStatus === 'already'
             ? 'KEYS_DISTRIBUTED'
             : 'CHECKED_IN';
+          const distributionKeys = data?.data?.keyDistribution?.keyCount && data.data.keyDistribution.keyCount > 0
+            ? (Array.isArray(data?.data?.keyDistribution?.keys)
+              ? data.data.keyDistribution.keys as VirtualKey[]
+              : undefined)
+            : undefined;
+
+          const nextVirtualKeys = distributionKeys
+            ? distributionKeys.map(key => ({
+                ...key,
+                createdAt: key.createdAt,
+                deactivatedAt: key.deactivatedAt,
+              }))
+            : prev.virtualKeys;
 
           return {
             ...prev,
             status: nextStatus,
             universalKeypadCode: universalKeypadCode || prev.universalKeypadCode || undefined,
+            virtualKeys: nextVirtualKeys,
           };
         });
         return true;
@@ -1074,6 +1089,18 @@ const applyServerValidationIssues = (issues?: ApiValidationIssue[]): ServerValid
   const canShowGuestKeys = Boolean(booking && propertyHasNuki && booking.status && ['CHECKED_IN', 'KEYS_DISTRIBUTED'].includes(booking.status));
   const showArrivalInstructions = shouldShowArrivalInstructions(booking);
   const showAppliancesInfo = shouldShowAppliancesInfo(booking);
+  const activeVirtualKeys = (booking?.virtualKeys ?? []).filter(key => key.isActive !== false);
+  const keyTypeLabels: Record<string, string> = {
+    MAIN_ENTRANCE: 'Main Entrance',
+    ROOM: booking?.propertyName ? `Your apartment (${booking.propertyName})` : 'Your apartment',
+    LUGGAGE_ROOM: 'Luggage Room',
+    LAUNDRY_ROOM: 'Laundry Room',
+  };
+  const accessAreas = activeVirtualKeys.length > 0
+    ? Array.from(new Set(activeVirtualKeys.map(key => keyTypeLabels[key.keyType as keyof typeof keyTypeLabels] ?? key.keyType)))
+    : propertyHasNuki
+      ? ['Main Entrance']
+      : [];
 
   const guestInfoCompleted = checkInCompleted || guests.every((guest) => {
     const firstName = sanitizeString(guest.firstName);
@@ -1897,6 +1924,20 @@ const applyServerValidationIssues = (issues?: ApiValidationIssue[]): ServerValid
                               <li>4. Lock the door from the inside by pressing the middle of the lock, or from the outside by pressing the triangle on the keypad.</li>
                             </ol>
                           </div>
+
+                          {accessAreas.length > 0 && (
+                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                              <h4 className="font-medium text-blue-900 mb-2 flex items-center">
+                                <DoorClosed className="h-4 w-4 mr-2" />
+                                Where Your Code Works
+                              </h4>
+                              <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
+                                {accessAreas.map(area => (
+                                  <li key={area}>{area}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
                         </div>
                       ) : (
                         <div className="bg-muted p-6 rounded-lg text-center">
