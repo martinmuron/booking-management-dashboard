@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import StripePayment from "@/components/ui/stripe-payment";
 import { hasNukiAccessByListingId, getNukiPropertyMapping } from "@/utils/nuki-properties-mapping";
 import { hasNukiAccess as hasNukiAccessByName } from "@/utils/nuki-properties";
-import { KEY_GENERATION_ADVANCE_DAYS } from "@/services/auto-key.service";
+import { NUKI_KEY_LEAD_DAYS } from "@/config/nuki";
 import {
   Calendar,
   Users,
@@ -268,12 +268,12 @@ const getKeyGenerationInfo = (checkInDate?: string) => {
   const msPerDay = 1000 * 60 * 60 * 24;
   const daysUntilCheckIn = Math.ceil((checkIn.getTime() - now.getTime()) / msPerDay);
 
-  if (daysUntilCheckIn > KEY_GENERATION_ADVANCE_DAYS) {
-    const generationDate = new Date(checkIn.getTime() - KEY_GENERATION_ADVANCE_DAYS * msPerDay);
+  if (daysUntilCheckIn > NUKI_KEY_LEAD_DAYS) {
+    const generationDate = new Date(checkIn.getTime() - NUKI_KEY_LEAD_DAYS * msPerDay);
     return {
       isTooEarly: true,
       generationDate,
-      daysUntil: daysUntilCheckIn - KEY_GENERATION_ADVANCE_DAYS
+      daysUntil: daysUntilCheckIn - NUKI_KEY_LEAD_DAYS
     };
   }
 

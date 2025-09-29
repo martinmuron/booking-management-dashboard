@@ -4,10 +4,10 @@ import { nukiApiService } from '@/services/nuki-api.service';
 import { hostAwayService } from '@/services/hostaway.service';
 import { getNukiPropertyMapping } from '@/utils/nuki-properties-mapping';
 import type { VirtualKeyType } from '@/types';
+import { NUKI_KEY_LEAD_DAYS } from '@/config/nuki';
 
 const KEY_GENERATION_STATUSES = new Set(['CHECKED_IN', 'PAYMENT_COMPLETED']);
 const RETRY_INTERVAL_MINUTES = 15;
-const KEY_GENERATION_ADVANCE_DAYS = 3; // Generate keys only within 3 days of check-in
 
 type PrismaClientLike = Pick<typeof prisma, 'booking' | 'virtualKey' | 'nukiKeyRetry'>;
 
@@ -67,20 +67,20 @@ export async function ensureNukiKeysForBooking(
     const msPerDay = 1000 * 60 * 60 * 24;
     const daysUntilCheckIn = Math.ceil((checkInDate.getTime() - now.getTime()) / msPerDay);
 
-    if (daysUntilCheckIn > KEY_GENERATION_ADVANCE_DAYS) {
-      const generationDate = new Date(checkInDate.getTime() - KEY_GENERATION_ADVANCE_DAYS * msPerDay);
+    if (daysUntilCheckIn > NUKI_KEY_LEAD_DAYS) {
+      const generationDate = new Date(checkInDate.getTime() - NUKI_KEY_LEAD_DAYS * msPerDay);
       console.log(`⏰ [NUKI] Key generation too early for booking ${booking.id}`, {
         bookingId: booking.id,
         hostAwayId: booking.hostAwayId,
         checkInDate: checkInDate.toISOString(),
         daysUntilCheckIn,
-        generationWindowDays: KEY_GENERATION_ADVANCE_DAYS,
+        generationWindowDays: NUKI_KEY_LEAD_DAYS,
         generationAvailableOn: generationDate.toISOString(),
-        message: `Keys will be generated automatically ${KEY_GENERATION_ADVANCE_DAYS} days before check-in`
+        message: `Keys will be generated automatically ${NUKI_KEY_LEAD_DAYS} days before check-in`
       });
       return {
         status: 'too_early',
-        daysUntilGeneration: daysUntilCheckIn - KEY_GENERATION_ADVANCE_DAYS,
+        daysUntilGeneration: daysUntilCheckIn - NUKI_KEY_LEAD_DAYS,
         generationDate,
         checkInDate
       };
@@ -430,4 +430,4 @@ export async function ensureNukiKeysForBooking(
 }
 
 export type EnsureNukiKeysResult = EnsureResult;
-export { KEY_GENERATION_ADVANCE_DAYS };
+export { NUKI_KEY_LEAD_DAYS as KEY_GENERATION_ADVANCE_DAYS };
