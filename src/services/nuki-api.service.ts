@@ -210,7 +210,7 @@ export class NukiApiService {
     }
   }
 
-  getKeyTypesForProperty(propertyName?: string): VirtualKeyType[] {
+  async getKeyTypesForProperty(propertyName?: string, address?: string): Promise<VirtualKeyType[]> {
     // If no property name, assume it has Nuki access and return all key types
     if (!propertyName) {
       return [
@@ -226,7 +226,32 @@ export class NukiApiService {
       return []; // No keys should be generated for properties without Nuki access
     }
 
-    // Normalize property name for case-insensitive matching
+    // Use address-based mapping for 100% accurate identification
+    if (address) {
+      const normalizedAddress = address.toLowerCase().trim();
+
+      // Prokopova 197/9 building - ALL units get all 4 key types
+      if (normalizedAddress.includes('prokopova 197') || normalizedAddress.includes('prokopova197')) {
+        return [
+          VirtualKeyType.MAIN_ENTRANCE,
+          VirtualKeyType.ROOM,
+          VirtualKeyType.LUGGAGE_ROOM,
+          VirtualKeyType.LAUNDRY_ROOM,
+        ];
+      }
+
+      // Bořivojova 50 - single key only
+      if (normalizedAddress.includes('bořivojova 50') || normalizedAddress.includes('borivojova 50')) {
+        return [VirtualKeyType.MAIN_ENTRANCE];
+      }
+
+      // Řehořova - single key only
+      if (normalizedAddress.includes('řehořova') || normalizedAddress.includes('rehorova')) {
+        return [VirtualKeyType.MAIN_ENTRANCE];
+      }
+    }
+
+    // Fallback to property name-based mapping (less reliable)
     const normalizedProperty = propertyName.toLowerCase().trim();
 
     // Special single-key properties
@@ -235,8 +260,26 @@ export class NukiApiService {
       return [VirtualKeyType.MAIN_ENTRANCE];
     }
 
-    // ONLY Prokopova properties get all 4 key types
-    if (normalizedProperty.includes('prokopova')) {
+    // Prokopova building properties - ALL properties at Prokopova 197/9 get all 4 key types
+    // This includes various naming patterns used in the system:
+    const isProkopova = (
+      // Direct Prokopova references
+      normalizedProperty.includes('prokopova') ||
+      // Room number patterns with parentheses (104), (203), (402), etc.
+      /\(\d{3}\)/.test(normalizedProperty) ||
+      // Properties explicitly mentioning Zizkov/Žižkov (the neighborhood)
+      (normalizedProperty.includes('zizkov') || normalizedProperty.includes('žižkov')) ||
+      // Short codes starting with Ž followed by room numbers
+      /^ž\d{3}$/.test(normalizedProperty) ||
+      // "Flat by Zizkov" or "Flat in Zizkov" patterns
+      normalizedProperty.includes('flat') && (normalizedProperty.includes('zizkov') || normalizedProperty.includes('žižkov')) ||
+      // "Apartment in Zizkov" patterns
+      normalizedProperty.includes('apartment') && (normalizedProperty.includes('zizkov') || normalizedProperty.includes('žižkov')) ||
+      // Studio patterns mentioning the location
+      normalizedProperty.includes('studio') && (normalizedProperty.includes('žižkov') || normalizedProperty.includes('zizkov')) && normalizedProperty.includes('tram')
+    );
+
+    if (isProkopova) {
       return [
         VirtualKeyType.MAIN_ENTRANCE,
         VirtualKeyType.ROOM,
@@ -448,14 +491,14 @@ export class NukiApiService {
     checkOutDate: Date,
     roomNumber: string,
     propertyName?: string,
-    options: CreateKeyOptions = {}
+    options: CreateKeyOptions & { address?: string } = {}
   ): Promise<{
     results: CreateKeyResult[];
     universalKeypadCode: string;
     attemptedKeyTypes: VirtualKeyType[];
     failures: CreateKeyFailure[];
   }> {
-    const attemptedKeyTypes = options.keyTypes ?? this.getKeyTypesForProperty(propertyName);
+    const attemptedKeyTypes = options.keyTypes ?? await this.getKeyTypesForProperty(propertyName, options.address);
     const universalKeypadCode = options.keypadCode ?? this.generateKeypadCode();
     const devices = await this.getDevices();
     const failures: CreateKeyFailure[] = [];
@@ -515,31 +558,75 @@ export class NukiApiService {
         };
       }
 
-      // Handle property-specific devices for MAIN_ENTRANCE keys
-      if (keyType === VirtualKeyType.MAIN_ENTRANCE && propertyName) {
-        const normalizedProperty = propertyName.toLowerCase().trim();
+      // Handle property-specific devices for MAIN_ENTRANCE keys using address first, then property name
+      if (keyType === VirtualKeyType.MAIN_ENTRANCE) {
+        // Use address-based mapping for accurate device assignment
+        if (options.address) {
+          const normalizedAddress = options.address.toLowerCase().trim();
 
-        // Use property-specific devices for special locations
-        if (normalizedProperty === 'bořivojova 50' || normalizedProperty === 'borivojova 50') {
-          const deviceId = this.specialDeviceIds.BORIVOJOVA_ENTRY;
-          if (!deviceId) {
-            throw new Error('No Nuki device configured for Bořivojova Entry');
+          // Bořivojova 50 - specific device
+          if (normalizedAddress.includes('bořivojova 50') || normalizedAddress.includes('borivojova 50')) {
+            const deviceId = this.specialDeviceIds.BORIVOJOVA_ENTRY;
+            if (!deviceId) {
+              throw new Error('No Nuki device configured for Bořivojova Entry');
+            }
+            return {
+              deviceId: Number.parseInt(deviceId, 10),
+              deviceName: 'Bořivojova Entry'
+            };
           }
-          return {
-            deviceId: Number.parseInt(deviceId, 10),
-            deviceName: 'Bořivojova Entry'
-          };
+
+          // Řehořova - specific device
+          if (normalizedAddress.includes('řehořova') || normalizedAddress.includes('rehorova')) {
+            const deviceId = this.specialDeviceIds.REHOROVA;
+            if (!deviceId) {
+              throw new Error('No Nuki device configured for Řehořova');
+            }
+            return {
+              deviceId: Number.parseInt(deviceId, 10),
+              deviceName: 'Řehořova'
+            };
+          }
+
+          // Prokopova 197/9 - use main entrance device for this building
+          if (normalizedAddress.includes('prokopova 197') || normalizedAddress.includes('prokopova197')) {
+            const deviceId = this.deviceIds[VirtualKeyType.MAIN_ENTRANCE];
+            if (!deviceId) {
+              throw new Error('No Nuki device configured for Prokopova main entrance');
+            }
+            return {
+              deviceId: Number.parseInt(deviceId, 10),
+              deviceName: 'Prokopova Main Entrance'
+            };
+          }
         }
 
-        if (normalizedProperty === 'řehořova' || normalizedProperty === 'rehorova') {
-          const deviceId = this.specialDeviceIds.REHOROVA;
-          if (!deviceId) {
-            throw new Error('No Nuki device configured for Řehořova');
+        // Fallback to property name-based mapping
+        if (propertyName) {
+          const normalizedProperty = propertyName.toLowerCase().trim();
+
+          // Use property-specific devices for special locations
+          if (normalizedProperty === 'bořivojova 50' || normalizedProperty === 'borivojova 50') {
+            const deviceId = this.specialDeviceIds.BORIVOJOVA_ENTRY;
+            if (!deviceId) {
+              throw new Error('No Nuki device configured for Bořivojova Entry');
+            }
+            return {
+              deviceId: Number.parseInt(deviceId, 10),
+              deviceName: 'Bořivojova Entry'
+            };
           }
-          return {
-            deviceId: Number.parseInt(deviceId, 10),
-            deviceName: 'Řehořova'
-          };
+
+          if (normalizedProperty === 'řehořova' || normalizedProperty === 'rehorova') {
+            const deviceId = this.specialDeviceIds.REHOROVA;
+            if (!deviceId) {
+              throw new Error('No Nuki device configured for Řehořova');
+            }
+            return {
+              deviceId: Number.parseInt(deviceId, 10),
+              deviceName: 'Řehořova'
+            };
+          }
         }
       }
 
@@ -613,9 +700,83 @@ export class NukiApiService {
     return { results, universalKeypadCode, attemptedKeyTypes, failures };
   }
 
-  // Generate a random 6-digit keypad code
+  // Generate a random 4-6 digit keypad code that meets Nuki validation requirements
   private generateKeypadCode(): string {
-    return Math.floor(100000 + Math.random() * 900000).toString();
+    const generateValidCode = (): string => {
+      // Generate 4-6 digit codes (Nuki prefers shorter codes)
+      const length = Math.random() < 0.7 ? 4 : (Math.random() < 0.8 ? 5 : 6);
+      const min = Math.pow(10, length - 1);
+      const max = Math.pow(10, length) - 1;
+
+      let code: string;
+      let attempts = 0;
+
+      do {
+        code = Math.floor(min + Math.random() * (max - min + 1)).toString();
+        attempts++;
+
+        // Safety check to avoid infinite loop
+        if (attempts > 100) {
+          // Fallback to a simple 4-digit code
+          code = Math.floor(1000 + Math.random() * 9000).toString();
+          break;
+        }
+      } while (!this.isValidKeypadCode(code));
+
+      return code;
+    };
+
+    return generateValidCode();
+  }
+
+  // Validate keypad code against common Nuki requirements
+  private isValidKeypadCode(code: string): boolean {
+    // Basic length check
+    if (code.length < 4 || code.length > 8) {
+      return false;
+    }
+
+    // Check for obvious patterns that might be rejected
+    const digits = code.split('');
+
+    // Avoid all same digits (1111, 0000, etc.)
+    if (new Set(digits).size === 1) {
+      return false;
+    }
+
+    // Avoid simple sequences (1234, 4321, etc.)
+    const isAscending = digits.every((digit, i) =>
+      i === 0 || parseInt(digit) === parseInt(digits[i - 1]) + 1
+    );
+    const isDescending = digits.every((digit, i) =>
+      i === 0 || parseInt(digit) === parseInt(digits[i - 1]) - 1
+    );
+
+    if (isAscending || isDescending) {
+      return false;
+    }
+
+    // Avoid codes with too many repeated digits (more than half)
+    const digitCounts = new Map<string, number>();
+    digits.forEach(digit => {
+      digitCounts.set(digit, (digitCounts.get(digit) || 0) + 1);
+    });
+
+    const maxRepeats = Math.max(...digitCounts.values());
+    if (maxRepeats > Math.ceil(digits.length / 2)) {
+      return false;
+    }
+
+    // Avoid obvious patterns like 1010, 2020, etc.
+    if (code.length === 4) {
+      const first = code.substring(0, 2);
+      const second = code.substring(2, 4);
+      if (first === second) {
+        return false;
+      }
+    }
+
+    return true;
   }
 
   // Batch revoke all keys for a booking

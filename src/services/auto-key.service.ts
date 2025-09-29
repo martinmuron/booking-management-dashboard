@@ -1,6 +1,7 @@
 import type { Prisma, VirtualKey as PrismaVirtualKeyModel } from '@prisma/client';
 import { prisma } from '@/lib/database';
 import { nukiApiService } from '@/services/nuki-api.service';
+import { hostAwayService } from '@/services/hostaway.service';
 import { resolveNukiPropertyCode, deriveRoomNumber } from '@/utils/nuki-resolver';
 import { getNukiPropertyType, hasNukiAccess } from '@/utils/nuki-properties';
 import type { VirtualKeyType } from '@/types';
@@ -62,7 +63,29 @@ export async function ensureNukiKeysForBooking(
     return { status: 'skipped', reason: 'property_not_authorized' };
   }
 
-  const expectedKeyTypes = nukiApi.getKeyTypesForProperty(propertyCode ?? booking.propertyName);
+  // Get the actual address from HostAway for accurate key type detection
+  let listingAddress: string | undefined;
+  try {
+    if (booking.hostAwayId) {
+      const reservationId = Number(booking.hostAwayId.replace(/[^0-9]/g, ''));
+      if (reservationId) {
+        const [reservation, listings] = await Promise.all([
+          hostAwayService.getReservationById(reservationId),
+          hostAwayService.getListings()
+        ]);
+
+        if (reservation?.listingMapId) {
+          const listing = listings.find(l => l.id === reservation.listingMapId);
+          listingAddress = listing?.address;
+          console.log(`📍 Found listing address for booking ${booking.id}: "${listingAddress}"`);
+        }
+      }
+    }
+  } catch (error) {
+    console.warn('Failed to fetch listing address, falling back to property name detection:', error);
+  }
+
+  const expectedKeyTypes = await nukiApi.getKeyTypesForProperty(propertyCode ?? booking.propertyName, listingAddress);
   const existingActiveKeys = booking.virtualKeys?.filter(key => key.isActive) ?? [];
   const existingActiveTypes = new Set(existingActiveKeys.map(key => key.keyType));
 
@@ -97,6 +120,7 @@ export async function ensureNukiKeysForBooking(
         {
           keyTypes: keyTypesToGenerate,
           keypadCode,
+          address: listingAddress,
         }
       );
 
@@ -165,6 +189,7 @@ export async function ensureNukiKeysForBooking(
         {
           keyTypes: retryKeyTypes,
           keypadCode: creationAttempt.universalKeypadCode,
+          address: listingAddress,
         }
       );
 
