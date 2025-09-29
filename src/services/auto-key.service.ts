@@ -117,7 +117,17 @@ export async function ensureNukiKeysForBooking(
         }
       );
 
-    let creationAttempt = await attemptWithCode(options.keypadCode ?? booking.universalKeypadCode ?? undefined);
+    let initialKeypadCode = options.keypadCode ?? booking.universalKeypadCode ?? undefined;
+    if (initialKeypadCode && !/^\d{6}$/.test(initialKeypadCode)) {
+      console.warn('⚠️ [NUKI] Stored keypad code does not meet 6-digit requirement, regenerating', {
+        bookingId: booking.id,
+        hostAwayId: booking.hostAwayId,
+        originalCode: initialKeypadCode,
+      });
+      initialKeypadCode = undefined;
+    }
+
+    let creationAttempt = await attemptWithCode(initialKeypadCode);
 
     const hasDuplicateCodeFailure = creationAttempt.failures.some((failure) =>
       failure.error.toLowerCase().includes("parameter 'code' is not valid") ||

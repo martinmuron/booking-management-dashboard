@@ -150,6 +150,50 @@ export async function POST(request: NextRequest) {
         continue;
       }
 
+      // Check if the failure is due to invalid keypad code format
+      // Generate a new keypad code and retry immediately
+      const isInvalidCodeError = result.status === 'failed' &&
+        result.error &&
+        (result.error.includes('is not valid') && result.error.includes('code'));
+
+      if (isInvalidCodeError && !reachedLimit) {
+        console.log(`[NUKI-RETRY] Invalid keypad code detected for ${retry.bookingId}:${retry.keyType}, generating new code`);
+
+        // Generate new keypad code (6-digit format)
+        const generateKeypadCode = (): string => {
+          const min = 100000;
+          const max = 999999;
+          let code: string;
+          let attempts = 0;
+
+          do {
+            code = Math.floor(min + Math.random() * (max - min + 1)).toString();
+            attempts++;
+            if (attempts > 100) {
+              code = '685247'; // fallback
+              break;
+            }
+          } while (!/^\d{6}$/.test(code) || new Set(code.split('')).size === 1);
+
+          return code;
+        };
+
+        const newKeypadCode = generateKeypadCode();
+
+        await prisma.nukiKeyRetry.update({
+          where: { id: retry.id },
+          data: {
+            status: 'PENDING',
+            attemptCount,
+            keypadCode: newKeypadCode,
+            lastError: `Generated new keypad code ${newKeypadCode} (previous code invalid)`,
+            nextAttemptAt: new Date(Date.now() + 30 * 1000), // retry in 30 seconds
+          }
+        });
+        rescheduled += 1;
+        continue;
+      }
+
       const errorMessage = result.status === 'failed'
         ? result.error ?? result.reason
         : 'Unexpected error generating key';

@@ -623,13 +623,12 @@ export class NukiApiService {
     return { results, universalKeypadCode, attemptedKeyTypes, failures };
   }
 
-  // Generate a random 4-6 digit keypad code that meets Nuki validation requirements
+  // Generate a random 6-digit keypad code that meets Nuki validation requirements
   private generateKeypadCode(): string {
     const generateValidCode = (): string => {
-      // Generate 4-6 digit codes (Nuki prefers shorter codes)
-      const length = Math.random() < 0.7 ? 4 : (Math.random() < 0.8 ? 5 : 6);
-      const min = Math.pow(10, length - 1);
-      const max = Math.pow(10, length) - 1;
+      // Generate 6-digit codes – required by latest Nuki keypad firmware
+      const min = 100000;
+      const max = 999999;
 
       let code: string;
       let attempts = 0;
@@ -640,8 +639,7 @@ export class NukiApiService {
 
         // Safety check to avoid infinite loop
         if (attempts > 100) {
-          // Fallback to a simple 4-digit code
-          code = Math.floor(1000 + Math.random() * 9000).toString();
+          code = '685247';
           break;
         }
       } while (!this.isValidKeypadCode(code));
@@ -654,8 +652,7 @@ export class NukiApiService {
 
   // Validate keypad code against common Nuki requirements
   private isValidKeypadCode(code: string): boolean {
-    // Basic length check
-    if (code.length < 4 || code.length > 8) {
+    if (!/^\d{6}$/.test(code)) {
       return false;
     }
 
@@ -688,15 +685,6 @@ export class NukiApiService {
     const maxRepeats = Math.max(...digitCounts.values());
     if (maxRepeats > Math.ceil(digits.length / 2)) {
       return false;
-    }
-
-    // Avoid obvious patterns like 1010, 2020, etc.
-    if (code.length === 4) {
-      const first = code.substring(0, 2);
-      const second = code.substring(2, 4);
-      if (first === second) {
-        return false;
-      }
     }
 
     return true;
