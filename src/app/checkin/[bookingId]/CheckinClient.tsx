@@ -85,9 +85,9 @@ interface BookingData {
   payments?: Array<{
     id: string;
     status: string;
-    amount?: number;
+    amount?: number | null;
     stripePaymentIntentId?: string | null;
-    currency?: string;
+    currency?: string | null;
   }>;
   guests?: ApiGuestPayload[];
 }
