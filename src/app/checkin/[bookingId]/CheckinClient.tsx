@@ -1075,7 +1075,7 @@ const applyServerValidationIssues = (issues?: ApiValidationIssue[]): ServerValid
   const showArrivalInstructions = shouldShowArrivalInstructions(booking);
   const showAppliancesInfo = shouldShowAppliancesInfo(booking);
 
-  const guestInfoCompleted = guests.every((guest) => {
+  const guestInfoCompleted = checkInCompleted || guests.every((guest) => {
     const firstName = sanitizeString(guest.firstName);
     const lastName = sanitizeString(guest.lastName);
     const dateOfBirth = sanitizeString(guest.dateOfBirth);
@@ -1099,7 +1099,7 @@ const applyServerValidationIssues = (issues?: ApiValidationIssue[]): ServerValid
     );
   });
 
-  const cityTaxCompleted = cityTaxAmount === 0 || Boolean(paymentIntentId);
+  const cityTaxCompleted = checkInCompleted || cityTaxAmount === 0 || Boolean(paymentIntentId);
   const checkInTaskCompleted = checkInCompleted;
 
   const tasks = [
