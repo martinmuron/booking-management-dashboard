@@ -1,4 +1,5 @@
 import { VirtualKeyType } from '@/types';
+import { hasNukiAccess } from '@/utils/nuki-properties';
 
 const PRAGUE_TIMEZONE = 'Europe/Prague';
 const DEFAULT_AUTHORIZATION_LIMIT = Number.parseInt(process.env.NUKI_AUTHORIZATION_LIMIT ?? '190', 10);
@@ -112,9 +113,46 @@ export class NukiApiService {
   // Device IDs - must be configured via environment variables
   private readonly deviceIds = {
     [VirtualKeyType.MAIN_ENTRANCE]: process.env.NUKI_MAIN_ENTRANCE_ID,
-    [VirtualKeyType.ROOM]: process.env.NUKI_ROOM_ID,
     [VirtualKeyType.LUGGAGE_ROOM]: process.env.NUKI_LUGGAGE_ROOM_ID,
     [VirtualKeyType.LAUNDRY_ROOM]: process.env.NUKI_LAUNDRY_ROOM_ID,
+  };
+
+  // Room-specific device IDs
+  private readonly roomDeviceIds = {
+    '001': process.env.NUKI_ROOM_001_ID,
+    '004': process.env.NUKI_ROOM_004_ID,
+    '101': process.env.NUKI_ROOM_101_ID,
+    '102': process.env.NUKI_ROOM_102_ID,
+    '103': process.env.NUKI_ROOM_103_ID,
+    '104': process.env.NUKI_ROOM_104_ID,
+    '201': process.env.NUKI_ROOM_201_ID,
+    '202': process.env.NUKI_ROOM_202_ID,
+    '203': process.env.NUKI_ROOM_203_ID,
+    '204': process.env.NUKI_ROOM_204_ID,
+    '301': process.env.NUKI_ROOM_301_ID,
+    '302': process.env.NUKI_ROOM_302_ID,
+    '303': process.env.NUKI_ROOM_303_ID,
+    '304': process.env.NUKI_ROOM_304_ID,
+    '401': process.env.NUKI_ROOM_401_ID,
+    '402': process.env.NUKI_ROOM_402_ID,
+    '403': process.env.NUKI_ROOM_403_ID,
+    '404': process.env.NUKI_ROOM_404_ID,
+    '501': process.env.NUKI_ROOM_501_ID,
+    '502': process.env.NUKI_ROOM_502_ID,
+    '503': process.env.NUKI_ROOM_503_ID,
+    '504': process.env.NUKI_ROOM_504_ID,
+    '601': process.env.NUKI_ROOM_601_ID,
+    '602': process.env.NUKI_ROOM_602_ID,
+    '604': process.env.NUKI_ROOM_604_ID,
+  };
+
+  // Special location device IDs
+  private readonly specialDeviceIds = {
+    'BORIVOJOVA_ENTRY': process.env.NUKI_BORIVOJOVA_ENTRY_ID,
+    'LAUNDRY': process.env.NUKI_LAUNDRY_ID,
+    'LUGGAGE': process.env.NUKI_LUGGAGE_ID,
+    'MAIN_DOOR': process.env.NUKI_MAIN_DOOR_ID,
+    'REHOROVA': process.env.NUKI_REHOROVA_ID,
   };
 
   constructor() {
@@ -173,6 +211,7 @@ export class NukiApiService {
   }
 
   getKeyTypesForProperty(propertyName?: string): VirtualKeyType[] {
+    // If no property name, assume it has Nuki access and return all key types
     if (!propertyName) {
       return [
         VirtualKeyType.MAIN_ENTRANCE,
@@ -182,16 +221,32 @@ export class NukiApiService {
       ];
     }
 
-    if (propertyName === 'Bořivojova 50' || propertyName === 'Řehořova') {
+    // Check if property has Nuki access at all
+    if (!hasNukiAccess(propertyName)) {
+      return []; // No keys should be generated for properties without Nuki access
+    }
+
+    // Normalize property name for case-insensitive matching
+    const normalizedProperty = propertyName.toLowerCase().trim();
+
+    // Special single-key properties
+    if (normalizedProperty === 'bořivojova 50' || normalizedProperty === 'borivojova 50' ||
+        normalizedProperty === 'řehořova' || normalizedProperty === 'rehorova') {
       return [VirtualKeyType.MAIN_ENTRANCE];
     }
 
-    return [
-      VirtualKeyType.MAIN_ENTRANCE,
-      VirtualKeyType.ROOM,
-      VirtualKeyType.LUGGAGE_ROOM,
-      VirtualKeyType.LAUNDRY_ROOM,
-    ];
+    // ONLY Prokopova properties get all 4 key types
+    if (normalizedProperty.includes('prokopova')) {
+      return [
+        VirtualKeyType.MAIN_ENTRANCE,
+        VirtualKeyType.ROOM,
+        VirtualKeyType.LUGGAGE_ROOM,
+        VirtualKeyType.LAUNDRY_ROOM,
+      ];
+    }
+
+    // All other properties with Nuki access get only main entrance key by default
+    return [VirtualKeyType.MAIN_ENTRANCE];
   }
 
   private async createVirtualKey(
@@ -427,13 +482,50 @@ export class NukiApiService {
     const resolveDevice = (keyType: VirtualKeyType): { deviceId: number; deviceName?: string } => {
       if (keyType === VirtualKeyType.ROOM) {
         const actualRoomNumber = extractRoomNumber(roomNumber, propertyName);
-        const roomDevice = devices.find(device => device.name === actualRoomNumber);
-        if (!roomDevice) {
-          throw new Error(`Room device not found for ${actualRoomNumber} (extracted from ${roomNumber})`);
+
+        // Normalize room number to 3-digit format (e.g., "1" -> "001", "102" -> "102")
+        const normalizedRoomNumber = actualRoomNumber.padStart(3, '0');
+
+        const roomDeviceId = this.roomDeviceIds[normalizedRoomNumber];
+        if (!roomDeviceId) {
+          throw new Error(`No Nuki device configured for room ${normalizedRoomNumber} (extracted from ${roomNumber})`);
         }
-        return { deviceId: roomDevice.smartlockId, deviceName: roomDevice.name };
+
+        return {
+          deviceId: Number.parseInt(roomDeviceId, 10),
+          deviceName: `Room ${normalizedRoomNumber}`
+        };
       }
 
+      // Handle property-specific devices for MAIN_ENTRANCE keys
+      if (keyType === VirtualKeyType.MAIN_ENTRANCE && propertyName) {
+        const normalizedProperty = propertyName.toLowerCase().trim();
+
+        // Use property-specific devices for special locations
+        if (normalizedProperty === 'bořivojova 50' || normalizedProperty === 'borivojova 50') {
+          const deviceId = this.specialDeviceIds.BORIVOJOVA_ENTRY;
+          if (!deviceId) {
+            throw new Error('No Nuki device configured for Bořivojova Entry');
+          }
+          return {
+            deviceId: Number.parseInt(deviceId, 10),
+            deviceName: 'Bořivojova Entry'
+          };
+        }
+
+        if (normalizedProperty === 'řehořova' || normalizedProperty === 'rehorova') {
+          const deviceId = this.specialDeviceIds.REHOROVA;
+          if (!deviceId) {
+            throw new Error('No Nuki device configured for Řehořova');
+          }
+          return {
+            deviceId: Number.parseInt(deviceId, 10),
+            deviceName: 'Řehořova'
+          };
+        }
+      }
+
+      // Default to configured device for the key type
       const configuredId = this.deviceIds[keyType];
       if (!configuredId) {
         throw new Error(`No Nuki device configured for key type ${keyType}`);
@@ -520,17 +612,38 @@ export class NukiApiService {
   }
 
   // Check device status for all key types
-  async checkAllDevicesStatus(): Promise<Record<VirtualKeyType, boolean>> {
-    const statusChecks = Object.entries(this.deviceIds).map(async ([keyType, deviceId]) => {
-      if (!deviceId) {
-        return [keyType as VirtualKeyType, false];
+  async checkAllDevicesStatus(): Promise<Record<string, boolean>> {
+    const statusChecks: Promise<[string, boolean]>[] = [];
+
+    // Check main device types
+    Object.entries(this.deviceIds).forEach(([keyType, deviceId]) => {
+      if (deviceId) {
+        statusChecks.push(
+          this.isDeviceOnline(parseInt(deviceId)).then(isOnline => [keyType, isOnline])
+        );
       }
-      const isOnline = await this.isDeviceOnline(parseInt(deviceId));
-      return [keyType as VirtualKeyType, isOnline];
+    });
+
+    // Check all room devices
+    Object.entries(this.roomDeviceIds).forEach(([roomNumber, deviceId]) => {
+      if (deviceId) {
+        statusChecks.push(
+          this.isDeviceOnline(parseInt(deviceId)).then(isOnline => [`ROOM_${roomNumber}`, isOnline])
+        );
+      }
+    });
+
+    // Check special location devices
+    Object.entries(this.specialDeviceIds).forEach(([deviceName, deviceId]) => {
+      if (deviceId) {
+        statusChecks.push(
+          this.isDeviceOnline(parseInt(deviceId)).then(isOnline => [deviceName, isOnline])
+        );
+      }
     });
 
     const results = await Promise.all(statusChecks);
-    return Object.fromEntries(results) as Record<VirtualKeyType, boolean>;
+    return Object.fromEntries(results);
   }
 }
 

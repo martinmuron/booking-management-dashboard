@@ -113,6 +113,26 @@ export async function POST(request: NextRequest) {
         continue;
       }
 
+      // Check if the failure is due to duplicate keypad code (409 conflict)
+      // This means the key effectively already exists and should be treated as success
+      const isDuplicateCodeError = result.status === 'failed' &&
+        result.error &&
+        (result.error.includes('code\' exists already') ||
+         result.error.includes('409') && result.error.includes('exists already'));
+
+      if (isDuplicateCodeError) {
+        await prisma.nukiKeyRetry.update({
+          where: { id: retry.id },
+          data: {
+            status: 'COMPLETED',
+            attemptCount,
+            lastError: `Completed: Keypad code already exists (key effectively created)`,
+          }
+        });
+        completed += 1;
+        continue;
+      }
+
       const errorMessage = result.status === 'failed'
         ? result.error ?? result.reason
         : 'Unexpected error generating key';

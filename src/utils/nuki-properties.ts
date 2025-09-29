@@ -34,8 +34,6 @@ export const NUKI_DEVICE_ROOM_CODES = new Set([
 const NUKI_SPECIAL_PROPERTY_NAMES = [
   'bořivojova 50',
   'borivojova 50',
-  'bořivojova 73',
-  'borivojova 73',
   'řehořova',
   'rehovorova',
   'rehorova',
@@ -49,7 +47,6 @@ const NUKI_SPECIAL_PROPERTY_NAMES = [
 const STATIC_NUKI_PROPERTY_LIST: readonly string[] = [
   ...Array.from(NUKI_DEVICE_ROOM_CODES).map((code) => `Ž${code}`),
   'Bořivojova 50',
-  'Bořivojova 73',
   'Řehořova',
   'Prokopova 197/9'
 ];

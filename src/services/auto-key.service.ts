@@ -103,15 +103,26 @@ export async function ensureNukiKeysForBooking(
     let creationAttempt = await attemptWithCode(options.keypadCode ?? booking.universalKeypadCode ?? undefined);
 
     const hasDuplicateCodeFailure = creationAttempt.failures.some((failure) =>
-      failure.error.toLowerCase().includes("parameter 'code' is not valid")
+      failure.error.toLowerCase().includes("parameter 'code' is not valid") ||
+      failure.error.toLowerCase().includes("code' exists already") ||
+      (failure.error.includes('409') && failure.error.toLowerCase().includes('exists already'))
     );
     let regeneratedCode = false;
 
     if (hasDuplicateCodeFailure) {
-      console.warn('[NUKI] Duplicate keypad code detected, regenerating...', {
+      console.warn('🔄 [NUKI] Duplicate keypad code detected, regenerating...', {
         bookingId: booking.id,
+        hostAwayId: booking.hostAwayId,
         guestName,
-        failures: creationAttempt.failures,
+        propertyName: booking.propertyName,
+        checkInDate: booking.checkInDate,
+        originalCode: booking.universalKeypadCode,
+        failures: creationAttempt.failures.map(f => ({
+          keyType: f.keyType,
+          deviceName: f.deviceName,
+          error: f.error
+        })),
+        timestamp: new Date().toISOString(),
       });
 
       creationAttempt = await attemptWithCode(undefined);
@@ -123,9 +134,22 @@ export async function ensureNukiKeysForBooking(
     );
 
     if (capacityFailures.length > 0) {
-      console.warn('[NUKI] Authorization capacity reached. Running cleanup before retrying...', {
+      console.warn('⚠️ [NUKI] Authorization capacity reached. Running cleanup before retrying...', {
         bookingId: booking.id,
-        failures: capacityFailures,
+        hostAwayId: booking.hostAwayId,
+        guestName,
+        propertyName: booking.propertyName,
+        checkInDate: booking.checkInDate,
+        affectedDevices: capacityFailures.map(f => ({
+          keyType: f.keyType,
+          deviceName: f.deviceName,
+          deviceId: f.deviceId,
+          currentCount: f.currentCount,
+          limit: f.limit,
+          utilizationRate: f.currentCount && f.limit ? `${Math.round((f.currentCount / f.limit) * 100)}%` : 'unknown'
+        })),
+        failureCount: capacityFailures.length,
+        timestamp: new Date().toISOString(),
       });
 
       const cleanupResult = await nukiApi.cleanupExpiredAuthorizations();
@@ -245,10 +269,25 @@ export async function ensureNukiKeysForBooking(
     });
 
     if (queuedKeyTypes.length > 0 && createdKeyTypes.length === 0) {
-      console.warn('[NUKI] Key generation queued', {
+      console.warn('⏳ [NUKI] Key generation queued for retry', {
         bookingId: booking.id,
+        hostAwayId: booking.hostAwayId,
+        guestName,
+        propertyName: booking.propertyName,
+        checkInDate: booking.checkInDate,
         queuedKeyTypes,
-        failures,
+        nextRetryIn: `${RETRY_INTERVAL_MINUTES} minutes`,
+        nextRetryAt: new Date(Date.now() + RETRY_INTERVAL_MINUTES * 60 * 1000).toISOString(),
+        failureDetails: failures.map(f => ({
+          keyType: f.keyType,
+          deviceName: f.deviceName,
+          deviceId: f.deviceId,
+          error: f.error,
+          errorCategory: f.error === 'authorization_capacity_reached' ? 'CAPACITY' :
+                        f.error.toLowerCase().includes('code') ? 'KEYPAD_CODE' :
+                        'OTHER'
+        })),
+        timestamp: new Date().toISOString(),
       });
       return {
         status: 'queued',
@@ -258,9 +297,28 @@ export async function ensureNukiKeysForBooking(
     }
 
     if (createdKeyTypes.length === 0) {
-      console.error('[NUKI] Key generation failed', {
+      console.error('❌ [NUKI] Key generation failed - REQUIRES ADMIN ATTENTION', {
+        severity: 'HIGH',
         bookingId: booking.id,
-        failures,
+        hostAwayId: booking.hostAwayId,
+        guestName,
+        propertyName: booking.propertyName,
+        checkInDate: booking.checkInDate,
+        daysUntilCheckIn: Math.ceil((new Date(booking.checkInDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)),
+        failureCount: failures.length,
+        failureDetails: failures.map(f => ({
+          keyType: f.keyType,
+          deviceName: f.deviceName,
+          deviceId: f.deviceId,
+          error: f.error,
+          errorCategory: f.error === 'authorization_capacity_reached' ? 'CAPACITY' :
+                        f.error.toLowerCase().includes('code') ? 'KEYPAD_CODE' :
+                        f.error.toLowerCase().includes('offline') ? 'DEVICE_OFFLINE' :
+                        'OTHER',
+          priority: f.keyType === 'MAIN_ENTRANCE' ? 'CRITICAL' : 'HIGH'
+        })),
+        actionRequired: 'Check device status, verify connectivity, or manually create keys in Nuki app',
+        timestamp: new Date().toISOString(),
       });
       const capacityFailure = failures.find(failure => failure.error === 'authorization_capacity_reached');
       if (capacityFailure) {
@@ -297,7 +355,14 @@ export async function ensureNukiKeysForBooking(
       queuedKeyTypes,
     };
   } catch (error) {
-    console.error('Failed to auto-generate Nuki keys for booking', bookingId, error);
+    console.error('🚨 [NUKI] Critical failure in auto-key generation - URGENT ADMIN ATTENTION REQUIRED', {
+      severity: 'CRITICAL',
+      bookingId,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      actionRequired: 'Investigate system error and retry key generation manually',
+      timestamp: new Date().toISOString(),
+    });
     return {
       status: 'failed',
       reason: 'nuki_error',

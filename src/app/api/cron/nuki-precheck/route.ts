@@ -63,28 +63,59 @@ export async function POST(request: NextRequest) {
 
         if (result.status === 'created') {
           created += 1;
+          console.log(`✅ [NUKI-PRECHECK] Keys created for booking ${booking.id} (${booking.propertyName})`);
           results.push({
             bookingId: booking.id,
+            hostAwayId: booking.hostAwayId,
+            propertyName: booking.propertyName,
+            checkInDate: booking.checkInDate,
             status: 'created',
             queuedKeyTypes: result.queuedKeyTypes,
           });
         } else if (result.status === 'already') {
           already += 1;
-          results.push({ bookingId: booking.id, status: 'already' });
-        } else if (result.status === 'queued') {
-          skipped += 1;
           results.push({
             bookingId: booking.id,
+            hostAwayId: booking.hostAwayId,
+            propertyName: booking.propertyName,
+            status: 'already'
+          });
+        } else if (result.status === 'queued') {
+          skipped += 1;
+          console.warn(`⏳ [NUKI-PRECHECK] Keys queued for retry: ${booking.id} (${booking.propertyName}) - missing: ${result.queuedKeyTypes.join(', ')}`);
+          results.push({
+            bookingId: booking.id,
+            hostAwayId: booking.hostAwayId,
+            propertyName: booking.propertyName,
+            checkInDate: booking.checkInDate,
             status: 'queued',
             reason: 'retry_scheduled',
             queuedKeyTypes: result.queuedKeyTypes,
           });
         } else if (result.status === 'skipped') {
           skipped += 1;
-          results.push({ bookingId: booking.id, status: 'skipped', reason: result.reason });
+          if (result.reason !== 'property_not_authorized') {
+            console.warn(`⚠️ [NUKI-PRECHECK] Booking skipped: ${booking.id} (${booking.propertyName}) - reason: ${result.reason}`);
+          }
+          results.push({
+            bookingId: booking.id,
+            hostAwayId: booking.hostAwayId,
+            propertyName: booking.propertyName,
+            status: 'skipped',
+            reason: result.reason
+          });
         } else if (result.status === 'failed') {
           failed += 1;
-          results.push({ bookingId: booking.id, status: 'failed', reason: result.reason, error: result.error });
+          console.error(`❌ [NUKI-PRECHECK] Key generation failed for booking ${booking.id} (${booking.propertyName}) - ${result.error}`);
+          results.push({
+            bookingId: booking.id,
+            hostAwayId: booking.hostAwayId,
+            propertyName: booking.propertyName,
+            checkInDate: booking.checkInDate,
+            status: 'failed',
+            reason: result.reason,
+            error: result.error
+          });
         }
       } catch (error) {
         failed += 1;
@@ -95,6 +126,27 @@ export async function POST(request: NextRequest) {
           error: error instanceof Error ? error.message : 'Unknown error',
         });
       }
+    }
+
+    // Log comprehensive summary for admin monitoring
+    const totalIssues = failed + results.filter(r => r.status === 'queued').length;
+    if (totalIssues > 0) {
+      console.warn(`🔍 [NUKI-PRECHECK] Summary - Issues detected requiring attention:`, {
+        totalProcessed: processed,
+        successRate: `${Math.round(((created + already) / processed) * 100)}%`,
+        issuesRequiringAttention: totalIssues,
+        breakdown: {
+          newKeysCreated: created,
+          alreadyExisted: already,
+          queuedForRetry: results.filter(r => r.status === 'queued').length,
+          failed: failed,
+          skippedNoAccess: results.filter(r => r.status === 'skipped' && r.reason === 'property_not_authorized').length
+        },
+        criticalBookings: results.filter(r => r.status === 'failed' || (r.status === 'queued' && r.queuedKeyTypes?.includes('MAIN_ENTRANCE'))),
+        timestamp: new Date().toISOString(),
+      });
+    } else {
+      console.log(`✅ [NUKI-PRECHECK] All bookings processed successfully - no issues detected`);
     }
 
     return NextResponse.json({
