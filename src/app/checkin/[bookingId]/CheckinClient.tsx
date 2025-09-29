@@ -208,13 +208,38 @@ const normalizeForMatch = (value: string) =>
     .replace(/\p{Diacritic}/gu, '')
     .toLowerCase();
 
-const isProkopovaField = (value?: string | null) => {
-  if (!value) {
+/**
+ * Check if a booking has Nuki access based on address (same logic as backend)
+ * @param booking - The booking data
+ * @returns true if property should have Nuki access
+ */
+const hasNukiAccessByAddress = (booking?: BookingData | null): boolean => {
+  if (!booking) {
     return false;
   }
 
-  const normalized = normalizeForMatch(value).replace(/[^a-z0-9]/g, '');
-  return normalized.includes('prokopova1979') || normalized.includes('prokopova9');
+  // Use address-based mapping for 100% accurate identification
+  if (booking.propertyAddress) {
+    const normalizedAddress = booking.propertyAddress.toLowerCase().trim();
+
+    // Prokopova 197/9 building - ALL units get Nuki access
+    if (normalizedAddress.includes('prokopova 197') || normalizedAddress.includes('prokopova197')) {
+      return true;
+    }
+
+    // Bořivojova 50 building
+    if (normalizedAddress.includes('bořivojova 50') || normalizedAddress.includes('borivojova 50')) {
+      return true;
+    }
+
+    // Řehořova building
+    if (normalizedAddress.includes('řehořova') || normalizedAddress.includes('rehorova')) {
+      return true;
+    }
+  }
+
+  // Fallback to property name parsing if no address available
+  return hasNukiAccess(booking.propertyName);
 };
 
 const isProkopovaBooking = (booking?: BookingData | null) => {
@@ -222,8 +247,19 @@ const isProkopovaBooking = (booking?: BookingData | null) => {
     return false;
   }
 
-  const fields = [booking.propertyName, booking.propertyAddress, booking.roomNumber];
-  return fields.some(field => isProkopovaField(field));
+  // Use address-based detection first
+  if (booking.propertyAddress) {
+    const normalizedAddress = booking.propertyAddress.toLowerCase().trim();
+    return normalizedAddress.includes('prokopova 197') || normalizedAddress.includes('prokopova197');
+  }
+
+  // Fallback to checking property name and room number
+  const fields = [booking.propertyName, booking.roomNumber];
+  return fields.some(field => {
+    if (!field) return false;
+    const normalized = normalizeForMatch(field).replace(/[^a-z0-9]/g, '');
+    return normalized.includes('prokopova197') || normalized.includes('prokopova1979') || normalized.includes('prokopova9');
+  });
 };
 
 const shouldShowArrivalInstructions = (booking?: BookingData | null) => {
@@ -1038,7 +1074,7 @@ const applyServerValidationIssues = (issues?: ApiValidationIssue[]): ServerValid
   const firstName = booking?.guestLeaderName.split(' ')[0] || 'Guest';
 
   const aroundAddress = booking?.propertyAddress || booking?.roomNumber || booking?.propertyName || 'Prague, Czechia';
-  const propertyHasNuki = booking ? hasNukiAccess(booking.propertyName) : false;
+  const propertyHasNuki = hasNukiAccessByAddress(booking);
   const canShowGuestKeys = Boolean(booking && propertyHasNuki && booking.status && ['CHECKED_IN', 'KEYS_DISTRIBUTED'].includes(booking.status));
   const showArrivalInstructions = shouldShowArrivalInstructions(booking);
   const showAppliancesInfo = shouldShowAppliancesInfo(booking);
