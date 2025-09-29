@@ -757,7 +757,7 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
 
   const requiredGuestCount = booking?.numberOfGuests ?? guests.length;
   const missingGuestCount = Math.max(requiredGuestCount - guests.length, 0);
-  const allGuestFormsPresent = missingGuestCount === 0;
+  const allGuestFormsPresent = checkInCompleted || missingGuestCount === 0;
 
   const cityTaxTitle = cityTaxPolicy.cityName
     ? `${cityTaxPolicy.cityName} City Tax`
@@ -1797,11 +1797,15 @@ const applyServerValidationIssues = (issues?: ApiValidationIssue[]): ServerValid
                         <Plus className="mr-2 h-4 w-4" />
                         Add Guest
                       </Button>
-                      {missingGuestCount > 0 && (
+                      {checkInCompleted ? (
+                        <p className="mt-3 text-sm text-muted-foreground">
+                          Guest details were provided earlier. Contact support if something needs updating.
+                        </p>
+                      ) : missingGuestCount > 0 ? (
                         <p className="mt-3 text-sm text-amber-600">
                           Add {missingGuestCount} more guest{missingGuestCount === 1 ? '' : 's'} to match the reservation.
                         </p>
-                      )}
+                      ) : null}
                     </div>
                   </CardContent>
                 </Card>
@@ -1835,11 +1839,15 @@ const applyServerValidationIssues = (issues?: ApiValidationIssue[]): ServerValid
                         <p className="text-sm text-muted-foreground">
                           Total tax amount: <strong>{cityTaxAmount} CZK</strong>
                         </p>
-                        {missingGuestCount > 0 && (
+                        {checkInCompleted ? (
+                          <p className="text-xs text-muted-foreground">
+                            Guest details already collected from the previous system.
+                          </p>
+                        ) : missingGuestCount > 0 ? (
                           <p className="text-xs text-amber-600">
                             Add {missingGuestCount} more guest{missingGuestCount === 1 ? '' : 's'} to enable payment.
                           </p>
-                        )}
+                        ) : null}
                         {!isGuestTaxInfoComplete && (
                           <p className="text-xs text-amber-600">
                             Please enter date of birth and residence city/country for each guest before paying the city tax.
@@ -1880,11 +1888,11 @@ const applyServerValidationIssues = (issues?: ApiValidationIssue[]): ServerValid
                         <p className="text-sm text-muted-foreground">
                           This stay has no city tax due. You can complete your check-in now.
                         </p>
-                        {missingGuestCount > 0 && (
+                        {checkInCompleted ? null : missingGuestCount > 0 ? (
                           <p className="text-xs text-amber-600">
                             Add {missingGuestCount} more guest{missingGuestCount === 1 ? '' : 's'} before completing check-in.
                           </p>
-                        )}
+                        ) : null}
                         <Button
                           onClick={() => finalizeCheckIn()}
                           disabled={submitting || !allGuestFormsPresent || !allGuestFormsValid}
