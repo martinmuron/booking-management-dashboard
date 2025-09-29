@@ -15,15 +15,20 @@ export interface NukiPropertyMapping {
   roomCode?: string; // Only for Prokopova properties
 }
 
-// Non-Prokopova Nuki properties from comprehensive listings
+// Non-Prokopova Nuki properties from other Prague listings
 export const OTHER_NUKI_PROPERTIES: Record<string, NukiPropertyMapping> = {
-  '228525': {
-    listingId: '228525',
+  '271444': {
+    listingId: '271444',
     name: 'Central, Spacious, Modern 5 Bedrm duplex w/Balcony',
-    address: 'Řehořova 6',
+    address: 'Řehořova',
     propertyType: 'rehorova'
+  },
+  '271479': {
+    listingId: '271479',
+    name: 'Skyline Nest on Borivojova',
+    address: 'Bořivojova 73',
+    propertyType: 'borivojova'
   }
-  // Add Bořivojova properties here when found
 };
 
 // Complete mapping combining Prokopova + Other Nuki properties
