@@ -4,6 +4,7 @@ import { nukiApiService } from '@/services/nuki-api.service';
 import { hostAwayService } from '@/services/hostaway.service';
 import { resolveNukiPropertyCode, deriveRoomNumber } from '@/utils/nuki-resolver';
 import { getNukiPropertyType, hasNukiAccess } from '@/utils/nuki-properties';
+import { hasNukiAccessByListingId, getNukiPropertyMapping } from '@/utils/nuki-properties-mapping';
 import type { VirtualKeyType } from '@/types';
 
 const KEY_GENERATION_STATUSES = new Set(['CHECKED_IN', 'PAYMENT_COMPLETED']);
@@ -63,8 +64,10 @@ export async function ensureNukiKeysForBooking(
     return { status: 'skipped', reason: 'property_not_authorized' };
   }
 
-  // Get the actual address from HostAway for accurate key type detection
+  // Get the actual address and listing mapping from HostAway for accurate key type detection
   let listingAddress: string | undefined;
+  let listingMapping: ReturnType<typeof getNukiPropertyMapping> = null;
+
   try {
     if (booking.hostAwayId) {
       const reservationId = Number(booking.hostAwayId.replace(/[^0-9]/g, ''));
@@ -78,11 +81,22 @@ export async function ensureNukiKeysForBooking(
           const listing = listings.find(l => l.id === reservation.listingMapId);
           listingAddress = listing?.address;
           console.log(`📍 Found listing address for booking ${booking.id}: "${listingAddress}"`);
+
+          // Check if this listing has Nuki access via our comprehensive mapping
+          listingMapping = getNukiPropertyMapping(reservation.listingMapId);
+          if (listingMapping) {
+            console.log(`✅ [NUKI] Property authorized via HostAway listing ID ${listingMapping.listingId}: ${listingMapping.name} (${listingMapping.propertyType})`);
+          }
         }
       }
     }
   } catch (error) {
     console.warn('Failed to fetch listing address, falling back to property name detection:', error);
+  }
+
+  // Primary authorization check: HostAway listing ID mapping or fallback to property name
+  if (!listingMapping && !hasNukiAccess(propertyCode ?? booking.propertyName)) {
+    return { status: 'skipped', reason: 'property_not_authorized' };
   }
 
   const expectedKeyTypes = await nukiApi.getKeyTypesForProperty(propertyCode ?? booking.propertyName, listingAddress);
