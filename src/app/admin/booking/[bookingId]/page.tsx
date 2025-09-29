@@ -100,6 +100,7 @@ interface BookingData {
   id: string;
   hostAwayId: string;
   propertyName: string;
+  propertyAddress?: string;
   guestLeaderName: string;
   guestLeaderEmail: string;
   checkInDate: string;
@@ -115,6 +116,40 @@ interface BookingData {
   payments?: Payment[];
   virtualKeys?: VirtualKey[];
 }
+
+/**
+ * Check if a booking has Nuki access based on address (same logic as backend and frontend)
+ * @param booking - The booking data
+ * @returns true if property should have Nuki access
+ */
+const hasNukiAccessByAddress = (booking?: BookingData | null): boolean => {
+  if (!booking) {
+    return false;
+  }
+
+  // Use address-based mapping for 100% accurate identification
+  if (booking.propertyAddress) {
+    const normalizedAddress = booking.propertyAddress.toLowerCase().trim();
+
+    // Prokopova 197/9 building - ALL units get Nuki access
+    if (normalizedAddress.includes('prokopova 197') || normalizedAddress.includes('prokopova197')) {
+      return true;
+    }
+
+    // Bořivojova 50 building
+    if (normalizedAddress.includes('bořivojova 50') || normalizedAddress.includes('borivojova 50')) {
+      return true;
+    }
+
+    // Řehořova building
+    if (normalizedAddress.includes('řehořova') || normalizedAddress.includes('rehorova')) {
+      return true;
+    }
+  }
+
+  // Fallback to property name parsing if no address available
+  return hasNukiAccess(booking.propertyName);
+};
 
 const getStatusColor = (status?: string) => {
   if (!status) return "bg-gray-100 text-gray-800 hover:bg-gray-100";
@@ -410,7 +445,7 @@ export default function BookingAdminPage() {
   const checkedInGuests = booking.guests || [];
   const fallbackGuestEmail = checkedInGuests.find((guest) => guest.email)?.email || null;
   const contactEmail = leadGuestEmail || fallbackGuestEmail;
-  const propertyHasNuki = existingKeys.booking?.isAuthorized ?? hasNukiAccess(booking.propertyName);
+  const propertyHasNuki = existingKeys.booking?.isAuthorized ?? hasNukiAccessByAddress(booking);
 
   return (
     <div className="min-h-screen bg-background">
