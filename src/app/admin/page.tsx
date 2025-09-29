@@ -122,6 +122,7 @@ export default function AdminDashboard() {
   const [dateFrom, setDateFrom] = useState<string>('');
   const [dateTo, setDateTo] = useState<string>('');
   const [timeFilter, setTimeFilter] = useState<'all' | 'past' | 'upcoming' | 'upcoming30' | 'inprogress'>('upcoming');
+  const [hideCancelled, setHideCancelled] = useState<boolean>(true);
   const [searchInput, setSearchInput] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
@@ -289,6 +290,13 @@ export default function AdminDashboard() {
       end.setHours(23, 59, 59, 999);
       if (checkInDate > end) return false;
     }
+
+    if (hideCancelled) {
+      const statusValue = booking.status?.toUpperCase?.() ?? '';
+      if (statusValue === 'CANCELLED' || statusValue === 'CANCELED') {
+        return false;
+      }
+    }
     return true;
   });
 
@@ -374,9 +382,33 @@ export default function AdminDashboard() {
                 <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-8 w-[160px]" />
                 <Label className="text-xs text-muted-foreground">to</Label>
                 <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="h-8 w-[160px]" />
-                {(dateFrom || dateTo || timeFilter !== 'upcoming') && (
-                  <Button variant="ghost" size="sm" className="h-8" onClick={() => { setDateFrom(''); setDateTo(''); setTimeFilter('upcoming'); }}>Clear All</Button>
+                {(dateFrom || dateTo || timeFilter !== 'upcoming' || !hideCancelled) && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8"
+                    onClick={() => {
+                      setDateFrom('');
+                      setDateTo('');
+                      setTimeFilter('upcoming');
+                      setHideCancelled(true);
+                    }}
+                  >
+                    Clear All
+                  </Button>
                 )}
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  id="hide-cancelled"
+                  type="checkbox"
+                  checked={hideCancelled}
+                  onChange={(event) => setHideCancelled(event.target.checked)}
+                  className="h-4 w-4 border-muted"
+                />
+                <Label htmlFor="hide-cancelled" className="text-sm text-muted-foreground">
+                  Hide cancelled reservations
+                </Label>
               </div>
             </div>
           </div>
