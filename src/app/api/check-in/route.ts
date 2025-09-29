@@ -409,8 +409,25 @@ export async function POST(request: NextRequest) {
       console.error('Failed to ensure NUKI keys during check-in:', keyError);
     }
 
-    const refreshedBooking = await prisma.booking.findUnique({
+    const keyStatus = keyDistribution?.status;
+    const distributedKeys = keyStatus === 'created' || keyStatus === 'already';
+    const nextStatus = distributedKeys ? 'KEYS_DISTRIBUTED' : 'CHECKED_IN';
+
+    const bookingUpdateData: Parameters<typeof prisma.booking.update>[0]['data'] = {
+      status: nextStatus,
+      updatedAt: new Date(),
+    };
+
+    if (keyDistribution && 'universalKeypadCode' in keyDistribution) {
+      const universalCode = keyDistribution.universalKeypadCode;
+      if (universalCode) {
+        bookingUpdateData.universalKeypadCode = universalCode;
+      }
+    }
+
+    const finalizedBooking = await prisma.booking.update({
       where: { id: booking.id },
+      data: bookingUpdateData,
       select: {
         status: true,
         universalKeypadCode: true,
@@ -425,7 +442,7 @@ export async function POST(request: NextRequest) {
           universalKeypadCode:
             'universalKeypadCode' in keyDistribution
               ? keyDistribution.universalKeypadCode
-              : refreshedBooking?.universalKeypadCode ?? null,
+              : finalizedBooking.universalKeypadCode ?? null,
           error: keyDistribution.status === 'failed' ? keyDistribution.error : undefined,
         }
       : null;
@@ -440,9 +457,9 @@ export async function POST(request: NextRequest) {
       success: true,
       data: {
         bookingId: booking.id,
-        status: refreshedBooking?.status ?? 'CHECKED_IN',
+        status: finalizedBooking.status,
         cityTaxAmount,
-        universalKeypadCode: refreshedBooking?.universalKeypadCode ?? null,
+        universalKeypadCode: finalizedBooking.universalKeypadCode ?? null,
         keyDistribution: keySummary,
       },
       message: responseMessage,
