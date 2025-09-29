@@ -7,6 +7,8 @@ import type { CityTaxGuestInput } from '@/lib/city-tax';
 import { z } from 'zod';
 import { ensureNukiKeysForBooking, EnsureNukiKeysResult } from '@/services/auto-key.service';
 
+const NUKI_LEAD_TIME_MS = 3 * 24 * 60 * 60 * 1000;
+
 const canonicalizePragueAddress = (value?: string | null): string | undefined => {
   if (!value) {
     return value ?? undefined;
@@ -404,20 +406,28 @@ export async function POST(request: NextRequest) {
       }
     });
 
+    const now = new Date();
+    const checkInDateValue = booking.checkInDate;
+    const msUntilCheckIn = checkInDateValue.getTime() - now.getTime();
+    const withinLeadWindow = msUntilCheckIn <= NUKI_LEAD_TIME_MS;
+
     let keyDistribution: EnsureNukiKeysResult | null = null;
-    try {
-      // Note: force=true bypasses status checks, but NOT date checks
-      // Keys will only generate within 3 days of check-in (unless admin overrides)
-      keyDistribution = await ensureNukiKeysForBooking(booking.id, { force: true });
-    } catch (keyError) {
-      console.error('Failed to ensure NUKI keys during check-in:', keyError);
+    if (withinLeadWindow) {
+      try {
+        keyDistribution = await ensureNukiKeysForBooking(booking.id, { force: true });
+      } catch (keyError) {
+        console.error('Failed to ensure NUKI keys during check-in:', keyError);
+      }
+    } else {
+      console.log('[NUKI] Skipping key generation outside lead window', {
+        bookingId: booking.id,
+        checkInDate: checkInDateValue.toISOString(),
+        msUntilCheckIn,
+      });
     }
 
     const keyStatus = keyDistribution?.status;
     const distributedKeys = keyStatus === 'created' || keyStatus === 'already';
-    const tooEarly = keyStatus === 'too_early';
-
-    // If keys are too early, that's okay - they'll be generated automatically 3 days before check-in
     const nextStatus = distributedKeys ? 'KEYS_DISTRIBUTED' : 'CHECKED_IN';
 
     const bookingUpdateData: Parameters<typeof prisma.booking.update>[0]['data'] = {
@@ -441,6 +451,12 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    const availability = {
+      availableFrom: new Date(Math.max(checkInDateValue.getTime() - NUKI_LEAD_TIME_MS, now.getTime())).toISOString(),
+      checkInDate: checkInDateValue.toISOString(),
+      leadTimeDays: 3,
+    };
+
     const keySummary = keyDistribution
       ? {
           status: keyDistribution.status,
@@ -461,8 +477,14 @@ export async function POST(request: NextRequest) {
                 deactivatedAt: key.deactivatedAt,
               }))
             : undefined,
+          ...availability,
         }
-      : null;
+      : {
+          status: withinLeadWindow ? 'pending' : 'scheduled',
+          reason: withinLeadWindow ? 'generation_pending' : 'outside_lead_window',
+          universalKeypadCode: finalizedBooking.universalKeypadCode ?? null,
+          ...availability,
+        };
 
     const responseMessage = keyDistribution?.status === 'created'
       ? 'Check-in completed and digital keys generated'

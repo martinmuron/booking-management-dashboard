@@ -1982,13 +1982,10 @@ const applyServerValidationIssues = (issues?: ApiValidationIssue[]): ServerValid
                               return (
                                 <>
                                   <p className="text-sm text-muted-foreground mb-2">
-                                    Your access code will be automatically generated and sent to you on:
+                                    We&apos;ll automatically show your universal code here starting {formattedDate} (three days before your arrival).
                                   </p>
-                                  <p className="text-sm font-semibold text-foreground mb-4">
-                                    {formattedDate}
-                                  </p>
-                                  <p className="text-xs text-muted-foreground mb-4">
-                                    (3 days before your check-in date)
+                                  <p className="text-sm text-muted-foreground mb-4">
+                                    Check this page again when you&apos;re checking in to see the code.
                                   </p>
                                   <Badge className="bg-amber-100 text-amber-800 border-amber-300">
                                     <Clock className="h-3 w-3 mr-1" />
@@ -2000,16 +1997,18 @@ const applyServerValidationIssues = (issues?: ApiValidationIssue[]): ServerValid
                             return (
                               <>
                                 <p className="text-sm text-muted-foreground mb-4">
-                                  Your digital keys will be activated automatically once check-in is completed. We will send a confirmation email with the code.
+                                  {checkInCompleted
+                                    ? 'Your digital keys are being prepared. We will email you as soon as they are active.'
+                                    : 'Complete your check-in to activate your digital keys. We will send a confirmation email with the code.'}
                                 </p>
                                 <Badge className="bg-blue-100 text-blue-800">
                                   <Clock className="h-3 w-3 mr-1" />
-                                  Awaiting Completion
+                                  {checkInCompleted ? 'Processing' : 'Awaiting Completion'}
                                 </Badge>
                               </>
                             );
                           })()}
-                    </div>
+                        </div>
                       )}
                     </CardContent>
                   </Card>
