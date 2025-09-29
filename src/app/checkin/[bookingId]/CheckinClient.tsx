@@ -1877,10 +1877,10 @@ const applyServerValidationIssues = (issues?: ApiValidationIssue[]): ServerValid
                               How to Use Your Code
                             </h4>
                             <ol className="text-sm text-amber-800 space-y-1">
-                              <li>1. Wake the keypad and enter your 6-digit code: <span className="font-mono font-bold">{booking.universalKeypadCode}</span></li>
-                              <li>2. Press the unlock key or wait for the green confirmation light.</li>
-                              <li>3. Turn the handle to open the door.</li>
-                              <li>4. Lock the door when leaving by pressing the lock button.</li>
+                              <li>1. On the black keypad, enter your 6-digit code: <span className="font-mono font-bold">{booking.universalKeypadCode}</span></li>
+                              <li>2. The lights will flash once and you&apos;ll hear the lock opening.</li>
+                              <li>3. Push the door to open.</li>
+                              <li>4. Lock the door from the inside by pressing the middle of the lock, or from the outside by pressing the triangle on the keypad.</li>
                             </ol>
                           </div>
                         </div>
