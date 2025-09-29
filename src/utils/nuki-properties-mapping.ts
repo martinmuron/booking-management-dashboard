@@ -23,12 +23,13 @@ export const OTHER_NUKI_PROPERTIES: Record<string, NukiPropertyMapping> = {
     address: 'Řehořova',
     propertyType: 'rehorova'
   },
-  '271479': {
-    listingId: '271479',
-    name: 'Skyline Nest on Borivojova',
-    address: 'Bořivojova 73',
+  '273353': {
+    listingId: '273353',
+    name: 'Big 4-bedroom flat, terrace with great Vítkov view',
+    address: 'Bořivojova 50',
     propertyType: 'borivojova'
   }
+  // Note: Bořivojova 73 (ID: 271479) does NOT have Nuki access
 };
 
 // Complete mapping combining Prokopova + Other Nuki properties
