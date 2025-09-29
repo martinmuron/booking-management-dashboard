@@ -2005,13 +2005,11 @@ const applyServerValidationIssues = (issues?: ApiValidationIssue[]): ServerValid
                             return (
                               <>
                                 <p className="text-sm text-muted-foreground mb-4">
-                                  {checkInCompleted
-                                    ? 'Your digital keys are being prepared. We will email you as soon as they are active.'
-                                    : 'Complete your check-in to activate your digital keys. We will send a confirmation email with the code.'}
+                                  Complete your check-in to activate your digital keys.
                                 </p>
                                 <Badge className="bg-blue-100 text-blue-800">
                                   <Clock className="h-3 w-3 mr-1" />
-                                  {checkInCompleted ? 'Processing' : 'Awaiting Completion'}
+                                  Awaiting Completion
                                 </Badge>
                               </>
                             );
