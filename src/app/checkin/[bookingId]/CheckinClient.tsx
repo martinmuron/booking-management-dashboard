@@ -1405,6 +1405,35 @@ const applyServerValidationIssues = (issues?: ApiValidationIssue[]): ServerValid
         </Button>
       </div>
 
+      {/* Mobile Menu Panel */}
+      {showMobileMenu && (
+        <div className="lg:hidden fixed inset-0 z-40 bg-background">
+          <div className="p-6 pt-20">
+            <h3 className="font-semibold text-lg mb-6">Check-in Navigation</h3>
+            <nav className="space-y-1">
+              {navigationItems.map(item => {
+                const Icon = item.icon;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => scrollToSection(item.id)}
+                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+                      activeSection === item.id
+                        ? 'bg-primary text-primary-foreground'
+                        : 'hover:bg-muted'
+                    }`}
+                  >
+                    <Icon className="h-4 w-4 flex-shrink-0" />
+                    <span className="text-left">{item.label}</span>
+                    {activeSection === item.id && <ChevronRight className="h-4 w-4 ml-auto" />}
+                  </button>
+                );
+              })}
+            </nav>
+          </div>
+        </div>
+      )}
+
       <div className="flex">
         {/* Desktop Sidebar Navigation */}
         <aside className="hidden lg:block w-64 fixed left-0 top-0 bottom-0 bg-background border-r overflow-y-auto">
