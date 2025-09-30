@@ -2,6 +2,7 @@ import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import CheckinClient from './CheckinClient';
 import { getCityTaxPolicy, calculateCityTaxForStay, type CityTaxGuestInput } from '@/lib/city-tax';
+import { hostAwayService } from '@/services/hostaway.service';
 
 interface VirtualKey {
   id: string;
@@ -16,8 +17,13 @@ interface BookingData {
   id: string;
   propertyName: string;
   propertyAddress?: string;
+  listingId?: number;
   checkInDate: string;
   checkOutDate: string;
+  checkInDateLabel: string;
+  checkOutDateLabel: string;
+  checkInTimeLabel: string;
+  checkOutTimeLabel: string;
   numberOfGuests: number;
   roomNumber?: string;
   guestLeaderName: string;
@@ -112,10 +118,45 @@ async function getBookingByToken(token: string): Promise<BookingData | null> {
       }
     );
 
+    const dateFormatter = new Intl.DateTimeFormat('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      timeZone: 'Europe/Prague'
+    });
+
+    const timeFormatter = new Intl.DateTimeFormat('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: 'Europe/Prague'
+    });
+
+    const checkInDateLabel = dateFormatter.format(booking.checkInDate);
+    const checkOutDateLabel = dateFormatter.format(booking.checkOutDate);
+    const checkInTimeLabel = timeFormatter.format(booking.checkInDate);
+    const checkOutTimeLabel = timeFormatter.format(booking.checkOutDate);
+
+    let listingId: number | undefined;
+    if (booking.hostAwayId) {
+      try {
+        const reservationId = Number(booking.hostAwayId.replace(/[^0-9]/g, ''));
+        if (reservationId) {
+          const reservation = await hostAwayService.getReservationById(reservationId);
+          if (reservation?.listingMapId) {
+            listingId = reservation.listingMapId;
+          }
+        }
+      } catch (hostAwayError) {
+        console.warn('Failed to resolve HostAway listing for check-in booking:', hostAwayError);
+      }
+    }
+
     return {
       id: booking.id,
       propertyName: booking.propertyName,
       propertyAddress: booking.roomNumber ?? undefined,
+      listingId,
       checkInDate: booking.checkInDate.toISOString(),
       checkOutDate: booking.checkOutDate.toISOString(),
       numberOfGuests: booking.numberOfGuests,
@@ -124,6 +165,10 @@ async function getBookingByToken(token: string): Promise<BookingData | null> {
       cityTaxAmount,
       cityTaxPerPerson: cityTaxPolicy.taxPerPersonPerNight,
       universalKeypadCode: booking.universalKeypadCode || undefined,
+      checkInDateLabel,
+      checkOutDateLabel,
+      checkInTimeLabel,
+      checkOutTimeLabel,
       status: booking.status,
       payments: booking.payments.map(payment => ({
         id: payment.id,

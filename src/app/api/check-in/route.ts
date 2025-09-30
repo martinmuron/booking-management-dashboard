@@ -121,9 +121,30 @@ export async function GET(request: NextRequest) {
       // Continue without address/listingId - this is not critical
     }
     
+    const dateFormatter = new Intl.DateTimeFormat('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      timeZone: 'Europe/Prague'
+    });
+
+    const timeFormatter = new Intl.DateTimeFormat('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: 'Europe/Prague'
+    });
+
+    const responseBooking = Object.assign({}, enrichedBooking, {
+      checkInDateLabel: dateFormatter.format(new Date(booking.checkInDate)),
+      checkOutDateLabel: dateFormatter.format(new Date(booking.checkOutDate)),
+      checkInTimeLabel: timeFormatter.format(new Date(booking.checkInDate)),
+      checkOutTimeLabel: timeFormatter.format(new Date(booking.checkOutDate))
+    });
+
     return NextResponse.json({
       success: true,
-      data: { booking: enrichedBooking },
+      data: { booking: responseBooking },
       message: 'Booking details fetched successfully'
     });
   } catch (error) {

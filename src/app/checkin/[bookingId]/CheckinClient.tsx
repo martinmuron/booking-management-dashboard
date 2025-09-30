@@ -75,6 +75,10 @@ interface BookingData {
   listingId?: number;
   checkInDate: string;
   checkOutDate: string;
+  checkInDateLabel?: string;
+  checkOutDateLabel?: string;
+  checkInTimeLabel?: string;
+  checkOutTimeLabel?: string;
   numberOfGuests: number;
   roomNumber?: string;
   guestLeaderName: string;
@@ -274,78 +278,21 @@ type ServerValidationSummary = {
   formMessages: string[];
 };
 
-const pad = (value: number) => value.toString().padStart(2, '0');
-
-const getPragueOffset = (date: Date) => {
-  const formatter = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'Europe/Prague',
-    hour12: false,
-    timeZoneName: 'short'
-  });
-
-  const tzName = formatter
-    .formatToParts(date)
-    .find((part) => part.type === 'timeZoneName')?.value ?? 'GMT+00';
-
-  const match = tzName.match(/GMT([+-])(\d{1,2})(?::(\d{2}))?/i);
-
-  if (!match) {
-    return '+00:00';
-  }
-
-  const sign = match[1] ?? '+';
-  const hours = pad(Number.parseInt(match[2] ?? '0', 10));
-  const minutes = pad(Number.parseInt(match[3] ?? '0', 10));
-
-  return `${sign}${hours}:${minutes}`;
-};
-
-const toPragueDateTime = (dateString: string, hours: number, minutes: number) => {
-  const baseDate = new Date(dateString);
-  if (Number.isNaN(baseDate.getTime())) {
-    return null;
-  }
-
-  const formatter = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Europe/Prague',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit'
-  });
-
-  const parts = formatter.formatToParts(baseDate);
-  const year = parts.find(part => part.type === 'year')?.value ?? '1970';
-  const month = parts.find(part => part.type === 'month')?.value ?? '01';
-  const day = parts.find(part => part.type === 'day')?.value ?? '01';
-  const offset = getPragueOffset(baseDate);
-
-  return new Date(`${year}-${month}-${day}T${pad(hours)}:${pad(minutes)}:00${offset}`);
-};
-
-const formatDate = (dateString: string) => {
-  return new Date(dateString).toLocaleDateString('en-US', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    timeZone: 'Europe/Prague'
-  });
-};
-
-const formatTime = (dateString: string, override?: { hour: number; minute: number }) => {
-  const target = override
-    ? toPragueDateTime(dateString, override.hour, override.minute)
-    : new Date(dateString);
-
-  if (!target || Number.isNaN(target.getTime())) {
+const fallbackIsoDateLabel = (iso?: string | null) => {
+  if (!iso) {
     return '—';
   }
+  return iso.split('T')[0];
+};
 
-  return target.toLocaleTimeString('en-US', {
-    hour: '2-digit',
-    minute: '2-digit',
-    timeZone: 'Europe/Prague'
-  });
+const FALLBACK_CHECK_IN_TIME = '15:00';
+const FALLBACK_CHECK_OUT_TIME = '10:00';
+
+const createGuestId = () => {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return `guest-${crypto.randomUUID()}`;
+  }
+  return `guest-${Math.random().toString(36).slice(2, 10)}`;
 };
 
 export default function CheckinClient({ initialBooking }: CheckinClientProps) {
@@ -377,15 +324,25 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
   const [guestDataDirty, setGuestDataDirty] = useState(true);
   const draftLoadedRef = useRef(false);
   const DRAFT_STORAGE_PREFIX = 'checkin-draft-';
+  const [isMounted, setIsMounted] = useState(false);
+
+  const checkInDateLabel = booking ? (booking.checkInDateLabel ?? fallbackIsoDateLabel(booking.checkInDate)) : '—';
+  const checkOutDateLabel = booking ? (booking.checkOutDateLabel ?? fallbackIsoDateLabel(booking.checkOutDate)) : '—';
+  const checkInTimeLabel = booking ? (booking.checkInTimeLabel ?? FALLBACK_CHECK_IN_TIME) : FALLBACK_CHECK_IN_TIME;
+  const checkOutTimeLabel = booking ? (booking.checkOutTimeLabel ?? FALLBACK_CHECK_OUT_TIME) : FALLBACK_CHECK_OUT_TIME;
 
   const initialiseGuestErrors = useCallback(
     (guestList: Guest[]) =>
       guestList.reduce<Record<string, GuestErrors>>((acc, guest) => {
         acc[guest.id] = {};
         return acc;
-      }, {}),
+    }, {}),
     []
   );
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Refs for sections
   const bookingDetailsRef = useRef<HTMLDivElement>(null);
@@ -418,7 +375,7 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
   const transformGuestsFromPayload = useCallback(
     (apiGuests: ApiGuestPayload[]): Guest[] =>
       apiGuests.map((guest, index) => ({
-        id: guest.id || `${Date.now()}-${index}`,
+        id: guest.id || `guest-${index}`,
         firstName: sanitizeString(guest.firstName) || '',
         lastName: sanitizeString(guest.lastName) || '',
         email: sanitizeString(guest.email ?? ''),
@@ -494,6 +451,13 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
       notes: ''
     };
   }, []);
+
+  const keyGenerationInfo = useMemo(() => {
+    if (!isMounted || !booking) {
+      return null;
+    }
+    return getKeyGenerationInfo(booking.checkInDate);
+  }, [isMounted, booking]);
 
   const applyBookingSnapshot = useCallback((snapshot: BookingData) => {
     setBooking(snapshot);
@@ -622,7 +586,7 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
 
   const addGuest = () => {
     const newGuest: Guest = {
-      id: Date.now().toString(),
+      id: createGuestId(),
       firstName: '',
       lastName: '',
       email: '',
@@ -1587,11 +1551,11 @@ const applyServerValidationIssues = (issues?: ApiValidationIssue[]): ServerValid
                         <div className="space-y-2">
                           <div className="flex items-center text-sm text-muted-foreground">
                             <Calendar className="mr-2 h-4 w-4" />
-                          Check-in: {formatDate(booking.checkInDate)} at {formatTime(booking.checkInDate, { hour: 15, minute: 0 })}
+                            Check-in: {checkInDateLabel} at {checkInTimeLabel}
                           </div>
                           <div className="flex items-center text-sm text-muted-foreground">
                             <Calendar className="mr-2 h-4 w-4" />
-                          Check-out: {formatDate(booking.checkOutDate)} at {formatTime(booking.checkOutDate, { hour: 10, minute: 0 })}
+                            Check-out: {checkOutDateLabel} at {checkOutTimeLabel}
                           </div>
                           <div className="flex items-center text-sm text-muted-foreground">
                             <Clock className="mr-2 h-4 w-4" />
@@ -2205,8 +2169,8 @@ const applyServerValidationIssues = (issues?: ApiValidationIssue[]): ServerValid
                           <Key className="mx-auto h-12 w-12 text-muted-foreground mb-3" />
                           <h4 className="font-medium mb-2">Access Code Pending</h4>
                           {(() => {
-                            const keyInfo = getKeyGenerationInfo(booking?.checkInDate);
-                            if (keyInfo.isTooEarly && keyInfo.generationDate) {
+                            const keyInfo = keyGenerationInfo;
+                            if (keyInfo && keyInfo.isTooEarly && keyInfo.generationDate) {
                               const formattedDate = keyInfo.generationDate.toLocaleDateString('en-US', {
                                 weekday: 'long',
                                 year: 'numeric',
