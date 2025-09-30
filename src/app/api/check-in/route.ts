@@ -27,10 +27,21 @@ const canonicalizePragueAddress = (value?: string | null): string | undefined =>
   return value;
 };
 
+const paymentIntentSchema = z
+  .union([z.string(), z.null(), z.undefined()])
+  .transform((value) => {
+    if (typeof value !== 'string') {
+      return undefined;
+    }
+
+    const trimmed = value.trim();
+    return trimmed === '' ? undefined : trimmed;
+  });
+
 const requestSchema = z.object({
   token: z.string().trim().min(1, 'Check-in token is required'),
   guests: z.array(guestSchema).min(1, 'At least one guest is required'),
-  paymentIntentId: z.string().trim().optional().transform((value) => value && value !== '' ? value : undefined)
+  paymentIntentId: paymentIntentSchema,
 });
 
 // GET /api/check-in - Get booking details for check-in

@@ -1682,13 +1682,31 @@ const applyServerValidationIssues = (issues?: ApiValidationIssue[]): ServerValid
                                   <Input
                                     id={`dateOfBirth-${guest.id}`}
                                     value={guest.dateOfBirth}
-                                    onChange={(e) => updateGuest(guest.id, 'dateOfBirth', e.target.value)}
+                                    onChange={(e) => {
+                                      let value = e.target.value.replace(/[^0-9]/g, ''); // Remove non-digits
+
+                                      // Auto-format as YYYY-MM-DD
+                                      if (value.length >= 4) {
+                                        value = value.slice(0, 4) + '-' + value.slice(4);
+                                      }
+                                      if (value.length >= 7) {
+                                        value = value.slice(0, 7) + '-' + value.slice(7);
+                                      }
+                                      if (value.length > 10) {
+                                        value = value.slice(0, 10);
+                                      }
+
+                                      updateGuest(guest.id, 'dateOfBirth', value);
+                                    }}
                                     required
                                     placeholder="YYYY-MM-DD"
                                     maxLength={10}
                                     aria-invalid={!!errors.dateOfBirth}
                                     className={errors.dateOfBirth ? 'border-red-500 focus-visible:ring-red-500' : ''}
                                   />
+                                  {!errors.dateOfBirth && (
+                                    <p className="mt-1 text-xs text-muted-foreground">Format: YYYY-MM-DD</p>
+                                  )}
                                   {errors.dateOfBirth && (
                                     <p className="mt-1 text-xs text-red-600">{errors.dateOfBirth}</p>
                                   )}
