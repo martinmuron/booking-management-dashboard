@@ -499,7 +499,7 @@ class BookingService {
           }
 
           const checkInDate = toPragueDate(reservation.arrivalDate, 15, 0);
-          const checkOutDate = toPragueDate(reservation.departureDate, 22, 0);
+          const checkOutDate = toPragueDate(reservation.departureDate, 10, 0);
 
           if (isNaN(checkInDate.getTime()) || isNaN(checkOutDate.getTime())) {
             console.log(`⚠️  Skipping reservation ${reservation.id}: Invalid dates`, {
@@ -863,7 +863,7 @@ class BookingService {
       }
 
       const checkInDate = toPragueDate(reservation.arrivalDate, 15, 0);
-      const checkOutDate = toPragueDate(reservation.departureDate, 22, 0);
+      const checkOutDate = toPragueDate(reservation.departureDate, 10, 0);
 
       if (isNaN(checkInDate.getTime()) || isNaN(checkOutDate.getTime())) {
         console.log(`⚠️  Skipping reservation ${reservation.id}: Invalid dates`);

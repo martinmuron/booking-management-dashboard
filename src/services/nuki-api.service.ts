@@ -178,7 +178,7 @@ export class NukiApiService {
   getAuthorizationWindow(checkInDate: Date, checkOutDate: Date) {
     return {
       allowedFromISO: toPragueDateTime(checkInDate, 15, 0),
-      allowedUntilISO: toPragueDateTime(checkOutDate, 22, 0),
+      allowedUntilISO: toPragueDateTime(checkOutDate, 10, 0),
     };
   }
 

@@ -293,6 +293,54 @@ type ServerValidationSummary = {
   formMessages: string[];
 };
 
+const pad = (value: number) => value.toString().padStart(2, '0');
+
+const getPragueOffset = (date: Date) => {
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Europe/Prague',
+    hour12: false,
+    timeZoneName: 'short'
+  });
+
+  const tzName = formatter
+    .formatToParts(date)
+    .find((part) => part.type === 'timeZoneName')?.value ?? 'GMT+00';
+
+  const match = tzName.match(/GMT([+-])(\d{1,2})(?::(\d{2}))?/i);
+
+  if (!match) {
+    return '+00:00';
+  }
+
+  const sign = match[1] ?? '+';
+  const hours = pad(Number.parseInt(match[2] ?? '0', 10));
+  const minutes = pad(Number.parseInt(match[3] ?? '0', 10));
+
+  return `${sign}${hours}:${minutes}`;
+};
+
+const toPragueDateTime = (dateString: string, hours: number, minutes: number) => {
+  const baseDate = new Date(dateString);
+  if (Number.isNaN(baseDate.getTime())) {
+    return null;
+  }
+
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Prague',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  });
+
+  const parts = formatter.formatToParts(baseDate);
+  const year = parts.find(part => part.type === 'year')?.value ?? '1970';
+  const month = parts.find(part => part.type === 'month')?.value ?? '01';
+  const day = parts.find(part => part.type === 'day')?.value ?? '01';
+  const offset = getPragueOffset(baseDate);
+
+  return new Date(`${year}-${month}-${day}T${pad(hours)}:${pad(minutes)}:00${offset}`);
+};
+
 const formatDate = (dateString: string) => {
   return new Date(dateString).toLocaleDateString('en-US', {
     weekday: 'long',
@@ -303,8 +351,16 @@ const formatDate = (dateString: string) => {
   });
 };
 
-const formatTime = (dateString: string) => {
-  return new Date(dateString).toLocaleTimeString('en-US', {
+const formatTime = (dateString: string, override?: { hour: number; minute: number }) => {
+  const target = override
+    ? toPragueDateTime(dateString, override.hour, override.minute)
+    : new Date(dateString);
+
+  if (!target || Number.isNaN(target.getTime())) {
+    return '—';
+  }
+
+  return target.toLocaleTimeString('en-US', {
     hour: '2-digit',
     minute: '2-digit',
     timeZone: 'Europe/Prague'
@@ -728,13 +784,25 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
 
     const checkIn = new Date(booking.checkInDate);
     const checkOut = new Date(booking.checkOutDate);
-    const diff = checkOut.getTime() - checkIn.getTime();
 
-    if (Number.isNaN(diff) || diff <= 0) {
+    if (Number.isNaN(checkIn.getTime()) || Number.isNaN(checkOut.getTime())) {
       return 0;
     }
 
-    return Math.ceil(diff / (1000 * 60 * 60 * 24));
+    const checkInMidnightUtc = Date.UTC(
+      checkIn.getUTCFullYear(),
+      checkIn.getUTCMonth(),
+      checkIn.getUTCDate()
+    );
+    const checkOutMidnightUtc = Date.UTC(
+      checkOut.getUTCFullYear(),
+      checkOut.getUTCMonth(),
+      checkOut.getUTCDate()
+    );
+
+    const diffDays = Math.floor((checkOutMidnightUtc - checkInMidnightUtc) / (1000 * 60 * 60 * 24));
+
+    return Math.max(diffDays, 0);
   }, [booking]);
 
   const cityTaxPolicy = useMemo(
@@ -1399,11 +1467,11 @@ const applyServerValidationIssues = (issues?: ApiValidationIssue[]): ServerValid
                         <div className="space-y-2">
                           <div className="flex items-center text-sm text-muted-foreground">
                             <Calendar className="mr-2 h-4 w-4" />
-                            Check-in: {formatDate(booking.checkInDate)} at {formatTime(booking.checkInDate)}
+                          Check-in: {formatDate(booking.checkInDate)} at {formatTime(booking.checkInDate, { hour: 15, minute: 0 })}
                           </div>
                           <div className="flex items-center text-sm text-muted-foreground">
                             <Calendar className="mr-2 h-4 w-4" />
-                            Check-out: {formatDate(booking.checkOutDate)} at {formatTime(booking.checkOutDate)}
+                          Check-out: {formatDate(booking.checkOutDate)} at {formatTime(booking.checkOutDate, { hour: 10, minute: 0 })}
                           </div>
                           <div className="flex items-center text-sm text-muted-foreground">
                             <Clock className="mr-2 h-4 w-4" />
