@@ -10,7 +10,7 @@ function getExpectedLink(token: string) {
   return `${CHECK_IN_BASE_URL}/checkin/${token}`;
 }
 
-export async function POST() {
+async function handler() {
   try {
     const now = new Date();
     const createdWindow = new Date(now.getTime() - 1000 * 60 * 60 * 24 * 3); // last 3 days
@@ -119,3 +119,6 @@ export async function POST() {
     );
   }
 }
+
+export const GET = handler;
+export const POST = handler;

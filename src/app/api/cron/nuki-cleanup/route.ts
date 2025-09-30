@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { nukiApiService } from '@/services/nuki-api.service';
 
-// POST /api/cron/nuki-cleanup - Permanently delete expired Nuki authorizations
-export async function POST() {
+// GET/POST /api/cron/nuki-cleanup - Permanently delete expired Nuki authorizations
+async function handler() {
   try {
     console.log('🧹 Running Nuki expired authorization cleanup cron...');
 
@@ -25,3 +25,6 @@ export async function POST() {
     }, { status: 500 });
   }
 }
+
+export const GET = handler;
+export const POST = handler;

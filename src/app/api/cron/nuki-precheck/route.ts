@@ -2,8 +2,8 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/database';
 import { ensureNukiKeysForBooking } from '@/services/auto-key.service';
 
-// POST /api/cron/nuki-precheck - Pre-generate Nuki keys 3 days before arrival
-export async function POST() {
+// GET/POST /api/cron/nuki-precheck - Pre-generate Nuki keys 3 days before arrival
+async function handler() {
   try {
     const now = new Date();
     const windowStart = new Date(now);
@@ -181,3 +181,6 @@ export async function POST() {
     );
   }
 }
+
+export const GET = handler;
+export const POST = handler;

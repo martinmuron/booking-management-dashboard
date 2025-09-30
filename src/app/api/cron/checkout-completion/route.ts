@@ -3,8 +3,8 @@ import { prisma } from '@/lib/database';
 import { VirtualKeyService } from '@/services/virtual-key.service';
 import { nukiApiService } from '@/services/nuki-api.service';
 
-// POST /api/cron/checkout-completion - Automatically mark bookings as COMPLETED after checkout date
-export async function POST() {
+// GET/POST /api/cron/checkout-completion - Automatically mark bookings as COMPLETED after checkout date
+async function handler() {
   try {
     console.log('🕐 Running checkout completion cron job...');
 
@@ -106,3 +106,6 @@ export async function POST() {
     }, { status: 500 });
   }
 }
+
+export const GET = handler;
+export const POST = handler;

@@ -7,7 +7,7 @@ import { nukiApiService } from '@/services/nuki-api.service';
 
 const RETRY_INTERVAL_MINUTES = 15;
 
-export async function POST() {
+async function handler() {
   try {
     const now = new Date();
     const retries = await prisma.nukiKeyRetry.findMany({
@@ -283,3 +283,6 @@ export async function POST() {
     );
   }
 }
+
+export const GET = handler;
+export const POST = handler;

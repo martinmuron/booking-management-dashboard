@@ -2,43 +2,35 @@
   "crons": [
     {
       "path": "/api/cron/ubyport-exports",
-      "schedule": "0 22 * * *",
-      "method": "POST"
+      "schedule": "0 22 * * *"
     },
     {
       "path": "/api/cron/checkout-completion",
-      "schedule": "0 5 * * *",
-      "method": "POST"
+      "schedule": "0 5 * * *"
     },
     {
       "path": "/api/cron/nuki-precheck",
-      "schedule": "0 1 * * *",
-      "method": "POST"
+      "schedule": "0 1 * * *"
     },
     {
       "path": "/api/cron/nuki-cleanup",
-      "schedule": "0 2 * * *",
-      "method": "POST"
+      "schedule": "0 2 * * *"
     },
     {
       "path": "/api/cron/ensure-hostaway-links",
-      "schedule": "*/30 * * * *",
-      "method": "POST"
+      "schedule": "*/30 * * * *"
     },
     {
       "path": "/api/cron/hostaway-sync",
-      "schedule": "15 2 * * *",
-      "method": "POST"
+      "schedule": "15 2 * * *"
     },
     {
       "path": "/api/cron/nuki-retry",
-      "schedule": "*/15 * * * *",
-      "method": "POST"
+      "schedule": "*/15 * * * *"
     },
     {
       "path": "/api/cron/nuki-expired-cleanup",
-      "schedule": "0 3 * * *",
-      "method": "POST"
+      "schedule": "0 3 * * *"
     }
   ]
 }

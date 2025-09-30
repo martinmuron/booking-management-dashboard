@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { bookingService } from '@/services/booking.service';
 
-export async function POST() {
+async function handler() {
   try {
     const syncResult = await bookingService.syncBookingsFromHostAway();
 
@@ -25,3 +25,6 @@ export async function POST() {
     );
   }
 }
+
+export const GET = handler;
+export const POST = handler;

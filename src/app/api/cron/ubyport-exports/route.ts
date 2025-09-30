@@ -2,8 +2,8 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/database';
 import { ubyPortService } from '@/services/ubyport.service';
 
-// POST /api/cron/ubyport-exports - Process UbyPort exports for bookings that checked in today
-export async function POST() {
+// GET/POST /api/cron/ubyport-exports - Process UbyPort exports for bookings that checked in today
+async function handler() {
   try {
     console.log('🕐 Running UbyPort export cron job...');
 
@@ -96,3 +96,6 @@ export async function POST() {
     }, { status: 500 });
   }
 }
+
+export const GET = handler;
+export const POST = handler;

@@ -4,7 +4,7 @@ import { nukiApiService } from '@/services/nuki-api.service';
 
 const BUFFER_HOURS = 4; // allow a short grace period after checkout
 
-export async function POST() {
+async function handler() {
   try {
     const now = new Date();
     const cutoff = new Date(now.getTime() - BUFFER_HOURS * 60 * 60 * 1000);
@@ -87,3 +87,6 @@ export async function POST() {
     );
   }
 }
+
+export const GET = handler;
+export const POST = handler;
