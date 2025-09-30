@@ -51,6 +51,24 @@ const toPragueDateTime = (input: Date, hours: number, minutes: number): string =
   return `${year}-${month}-${day}T${pad(hours)}:${pad(minutes)}:00${offset}`;
 };
 
+interface NukiApiError {
+  message: string;
+  errorCode?: string;
+  field?: string;
+  details?: string;
+}
+
+class NukiApiException extends Error {
+  constructor(
+    public statusCode: number,
+    public nukiError: NukiApiError | null,
+    public rawResponse: string
+  ) {
+    super(nukiError?.message || `Nuki API error (${statusCode})`);
+    this.name = 'NukiApiException';
+  }
+}
+
 export interface NukiDevice {
   smartlockId: number;
   name: string;
@@ -196,7 +214,33 @@ export class NukiApiService {
     const text = await response.text();
 
     if (!response.ok) {
-      throw new Error(`Nuki API error (${response.status}): ${text}`);
+      // Try to parse Nuki error structure
+      let nukiError: NukiApiError | null = null;
+      try {
+        const parsed = JSON.parse(text);
+        nukiError = {
+          message: parsed.message || 'Unknown error',
+          errorCode: parsed.errorCode,
+          field: parsed.field,
+          details: parsed.details
+        };
+      } catch {
+        // Not JSON, use raw text as message
+        nukiError = {
+          message: text || 'No error message provided'
+        };
+      }
+
+      // Log detailed error
+      console.error('[NUKI API ERROR]', {
+        endpoint,
+        method: options.method || 'GET',
+        statusCode: response.status,
+        nukiError,
+        rawResponse: text.substring(0, 500) // Limit log size
+      });
+
+      throw new NukiApiException(response.status, nukiError, text);
     }
 
     if (!text) {
@@ -206,6 +250,11 @@ export class NukiApiService {
     try {
       return JSON.parse(text) as T;
     } catch (error) {
+      console.error('[NUKI PARSE ERROR]', {
+        endpoint,
+        parseError: error instanceof Error ? error.message : 'Unknown',
+        responsePreview: text.substring(0, 200)
+      });
       throw new Error(`Failed to parse Nuki API response: ${error instanceof Error ? error.message : 'Unknown error'} | Body: ${text}`);
     }
   }
@@ -242,6 +291,14 @@ export class NukiApiService {
     const normalizedCode = keypadCode ? String(keypadCode) : undefined;
     const normalizedNameHint = this.normalizeName(nameHint);
 
+    console.log('[NUKI] Starting authorization search', {
+      deviceId,
+      code: normalizedCode,
+      nameHint: normalizedNameHint,
+      dateRange: allowedFromISO && allowedUntilISO ? `${allowedFromISO} to ${allowedUntilISO}` : 'any',
+      maxRetries: retryScheduleMs.length
+    });
+
     const matches = (auth: NukiAuthorization) => {
       const codeMatches = normalizedCode !== undefined && auth.code !== undefined
         ? String(auth.code) === normalizedCode
@@ -277,21 +334,61 @@ export class NukiApiService {
       return false;
     };
 
-    for (const delay of retryScheduleMs) {
+    for (let i = 0; i < retryScheduleMs.length; i++) {
+      const delay = retryScheduleMs[i];
+
       if (delay > 0) {
+        console.log(`[NUKI] Retry ${i + 1}/${retryScheduleMs.length} - waiting ${delay}ms`);
         await sleep(delay);
       }
 
       try {
         const authorizations = await this.makeRequest<NukiAuthorization[]>(`/smartlock/${deviceId}/auth`);
+
+        console.log('[NUKI] Fetched authorizations', {
+          deviceId,
+          count: authorizations.length,
+          searchingForCode: normalizedCode,
+          attempt: i + 1
+        });
+
         const match = authorizations.find(matches);
         if (match) {
+          console.log('[NUKI] Match found!', {
+            authId: match.id,
+            code: match.code,
+            name: match.name,
+            attempt: i + 1
+          });
           return match;
         }
+
+        // Log why no match was found
+        if (normalizedCode) {
+          const codesOnDevice = authorizations
+            .filter(a => a.code)
+            .map(a => String(a.code));
+          console.warn('[NUKI] Code not found on device', {
+            searchCode: normalizedCode,
+            existingCodes: codesOnDevice.slice(0, 10), // Limit to first 10 for readability
+            totalAuthsOnDevice: authorizations.length,
+            attempt: i + 1
+          });
+        }
+
       } catch (error) {
-        console.warn(`[NUKI] Failed to poll authorizations for device ${deviceId}:`, error);
+        console.error(`[NUKI] Failed to poll authorizations (attempt ${i + 1})`, {
+          deviceId,
+          error: error instanceof Error ? error.message : 'Unknown'
+        });
       }
     }
+
+    console.error('[NUKI] Authorization search exhausted all retries', {
+      deviceId,
+      code: normalizedCode,
+      totalAttempts: retryScheduleMs.length
+    });
 
     return null;
   }
@@ -367,14 +464,78 @@ export class NukiApiService {
       allowedWeekDays: 127,
     };
 
-    const created = await this.makeRequest<NukiAuth | undefined>('/smartlock/auth', {
-      method: 'PUT',
-      body: JSON.stringify(authRequest),
+    console.log('[NUKI] Creating authorization', {
+      deviceId,
+      keyType,
+      code: keypadCode,
+      guestName,
+      roomNumber,
+      dateRange: `${allowedFromISO} to ${allowedUntilISO}`
     });
 
-    if (created && created.id) {
-      return created;
+    let creationError: Error | null = null;
+
+    try {
+      const created = await this.makeRequest<NukiAuth | undefined>('/smartlock/auth', {
+        method: 'PUT',
+        body: JSON.stringify(authRequest),
+      });
+
+      if (created && created.id) {
+        console.log('[NUKI] Authorization created successfully', {
+          authId: created.id,
+          deviceId,
+          code: keypadCode,
+          keyType
+        });
+        return created;
+      }
+
+      console.warn('[NUKI] PUT returned success but no ID', {
+        deviceId,
+        code: keypadCode,
+        response: created
+      });
+    } catch (error) {
+      creationError = error instanceof Error ? error : new Error('Unknown error');
+
+      // Log specific error details
+      if (error instanceof NukiApiException) {
+        console.error('[NUKI] Authorization creation failed', {
+          deviceId,
+          code: keypadCode,
+          keyType,
+          statusCode: error.statusCode,
+          nukiErrorCode: error.nukiError?.errorCode,
+          nukiMessage: error.nukiError?.message,
+          field: error.nukiError?.field
+        });
+
+        // Check for specific error types
+        if (error.nukiError?.errorCode === 'LIMIT_EXCEEDED' ||
+            error.nukiError?.message?.toLowerCase().includes('limit')) {
+          throw new Error(`nuki_authorization_limit_reached: ${error.nukiError.message}`);
+        }
+
+        if (error.nukiError?.field === 'code' ||
+            error.nukiError?.message?.toLowerCase().includes('code')) {
+          throw new Error(`nuki_invalid_keypad_code: ${error.nukiError.message}`);
+        }
+      } else {
+        console.error('[NUKI] Unexpected error during authorization creation', {
+          deviceId,
+          code: keypadCode,
+          error: error instanceof Error ? error.message : 'Unknown'
+        });
+      }
     }
+
+    // Try to locate existing authorization
+    console.log('[NUKI] Searching for existing authorization', {
+      deviceId,
+      code: keypadCode,
+      nameHint: authRequest.name
+    });
 
     const located = await this.locateAuthorization({
       deviceId,
@@ -385,10 +546,31 @@ export class NukiApiService {
     });
 
     if (located) {
+      console.log('[NUKI] Found existing authorization', {
+        authId: located.id,
+        deviceId,
+        code: keypadCode,
+        keyType
+      });
       return located;
     }
 
-    throw new Error('nuki_authorization_not_found');
+    // Build detailed error message
+    const errorDetails = creationError instanceof NukiApiException
+      ? `Nuki API error: ${creationError.nukiError?.message || creationError.message} (Code: ${creationError.nukiError?.errorCode || 'unknown'})`
+      : creationError
+      ? `Creation error: ${creationError.message}`
+      : 'Unknown reason - authorization was not created and could not be found';
+
+    console.error('[NUKI] Authorization not found after creation and retry', {
+      deviceId,
+      code: keypadCode,
+      keyType,
+      errorDetails,
+      retryAttempts: LOOKUP_RETRY_SCHEDULE_MS.length
+    });
+
+    throw new Error(`nuki_authorization_not_found: ${errorDetails}`);
   }
 
   // Delete/revoke authorization
