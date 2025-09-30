@@ -1928,7 +1928,7 @@ const applyServerValidationIssues = (issues?: ApiValidationIssue[]): ServerValid
                         );
                       })}
 
-                      <div className="flex flex-col md:flex-row gap-2">
+                      <div className="flex flex-col md:flex-row md:items-center gap-2">
                         <Button
                           type="button"
                           onClick={saveGuestDetails}
@@ -1948,7 +1948,7 @@ const applyServerValidationIssues = (issues?: ApiValidationIssue[]): ServerValid
                           type="button"
                           variant="outline"
                           onClick={addGuest}
-                          className="w-full"
+                          className="w-full md:w-fit md:px-4"
                           disabled={checkInCompleted}
                         >
                           <Plus className="mr-2 h-4 w-4" />
@@ -1973,7 +1973,7 @@ const applyServerValidationIssues = (issues?: ApiValidationIssue[]): ServerValid
                         </p>
                       ) : missingGuestCount > 0 ? (
                         <p className="mt-3 text-sm text-amber-600">
-                          Add {missingGuestCount} more guest{missingGuestCount === 1 ? '' : 's'} to match the reservation.
+                          Add {missingGuestCount} more guest{missingGuestCount === 1 ? '' : 's'} to complete check-in.
                         </p>
                       ) : null}
                     </div>
@@ -2015,7 +2015,7 @@ const applyServerValidationIssues = (issues?: ApiValidationIssue[]): ServerValid
                           </p>
                         ) : missingGuestCount > 0 ? (
                           <p className="text-xs text-amber-600">
-                            Add {missingGuestCount} more guest{missingGuestCount === 1 ? '' : 's'} to enable payment.
+                            Add {missingGuestCount} more guest{missingGuestCount === 1 ? '' : 's'} to complete check-in.
                           </p>
                         ) : null}
                         {!isGuestTaxInfoComplete && (
