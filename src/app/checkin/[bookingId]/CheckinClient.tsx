@@ -1681,10 +1681,11 @@ const applyServerValidationIssues = (issues?: ApiValidationIssue[]): ServerValid
                                   <Label htmlFor={`dateOfBirth-${guest.id}`}>Date of Birth *</Label>
                                   <Input
                                     id={`dateOfBirth-${guest.id}`}
-                                    type="date"
                                     value={guest.dateOfBirth}
                                     onChange={(e) => updateGuest(guest.id, 'dateOfBirth', e.target.value)}
                                     required
+                                    placeholder="YYYY-MM-DD"
+                                    maxLength={10}
                                     aria-invalid={!!errors.dateOfBirth}
                                     className={errors.dateOfBirth ? 'border-red-500 focus-visible:ring-red-500' : ''}
                                   />
