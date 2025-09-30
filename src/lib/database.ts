@@ -3,6 +3,7 @@ import { PrismaClient } from '@prisma/client';
 // Global variable to store the Prisma client instance
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
+  prismaKeepAlive?: NodeJS.Timeout;
 };
 
 // Create a single instance of PrismaClient
@@ -15,6 +16,20 @@ export const prisma =
 // In development, store the instance globally to prevent multiple instances
 if (process.env.NODE_ENV !== 'production') {
   globalForPrisma.prisma = prisma;
+}
+
+const KEEP_ALIVE_INTERVAL_MS = Number(process.env.PRISMA_KEEP_ALIVE_MS ?? 20_000);
+
+if (!globalForPrisma.prismaKeepAlive && KEEP_ALIVE_INTERVAL_MS > 0) {
+  globalForPrisma.prismaKeepAlive = setInterval(() => {
+    prisma.$queryRaw`SELECT 1`.catch((error) => {
+      console.warn('[PRISMA] Keep-alive ping failed:', error instanceof Error ? error.message : error);
+    });
+  }, KEEP_ALIVE_INTERVAL_MS);
+
+  if (typeof globalForPrisma.prismaKeepAlive.unref === 'function') {
+    globalForPrisma.prismaKeepAlive.unref();
+  }
 }
 
 // Database connection test function
@@ -76,9 +91,23 @@ export function calculateTouristTax(guests: Array<{ birthDate: Date }>, checkInD
     const age = new Date().getFullYear() - guest.birthDate.getFullYear();
     return age >= 18;
   });
-  
-  const nights = Math.ceil((checkOutDate.getTime() - checkInDate.getTime()) / (1000 * 60 * 60 * 24));
+
+  const checkInMidnightUtc = Date.UTC(
+    checkInDate.getUTCFullYear(),
+    checkInDate.getUTCMonth(),
+    checkInDate.getUTCDate()
+  );
+  const checkOutMidnightUtc = Date.UTC(
+    checkOutDate.getUTCFullYear(),
+    checkOutDate.getUTCMonth(),
+    checkOutDate.getUTCDate()
+  );
+
+  const nights = Math.max(
+    Math.floor((checkOutMidnightUtc - checkInMidnightUtc) / (1000 * 60 * 60 * 24)),
+    0
+  );
   const taxPerAdultPerNight = 50; // 50 CZK
-  
+
   return adultGuests.length * nights * taxPerAdultPerNight;
 }

@@ -24,6 +24,7 @@ import {
   AlertTriangle,
   CheckCircle,
   XCircle,
+  X,
   Eye,
   Key,
   Smartphone,
@@ -156,6 +157,7 @@ export default function NukiManagementPage() {
   const [keyToDelete, setKeyToDelete] = useState<KeyEntry | null>(null);
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
   const [bulkDeleteInProgress, setBulkDeleteInProgress] = useState(false);
+  const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'warning' | 'error'; message: string } | null>(null);
 
   const fetchOverviewData = async () => {
     try {
@@ -263,22 +265,43 @@ export default function NukiManagementPage() {
         method: 'DELETE'
       });
 
-      if (response.ok) {
-        // Immediately remove the key from the local state for instant UI update
+      if (response.status === 404) {
+        setStatusMessage({
+          type: 'warning',
+          message: `Key ${key.name} was already removed from Nuki. Refreshing list.`,
+        });
         setKeys(prevKeys => prevKeys.filter(k => k.id !== key.id));
-
-        // Also refresh all data to ensure consistency
         fetchOverviewData();
-
-        // Close dialogs
-        setShowDeleteConfirm(false);
-        setKeyToDelete(null);
-        setShowKeyDetails(false);
+      } else if (response.status === 409) {
+        setStatusMessage({
+          type: 'warning',
+          message: `Nuki is still syncing this key (${key.name}). Refreshed data—please retry in a moment if it persists.`,
+        });
+        fetchOverviewData();
+      } else if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        const message = payload?.error || `Failed to delete key (status ${response.status})`;
+        setStatusMessage({ type: 'error', message });
+        console.error('Failed to delete key', message);
+        return;
       } else {
-        console.error('Failed to delete key');
+        setStatusMessage({
+          type: 'success',
+          message: `Key ${key.name} deleted successfully.`,
+        });
+        setKeys(prevKeys => prevKeys.filter(k => k.id !== key.id));
+        fetchOverviewData();
       }
+
+      setShowDeleteConfirm(false);
+      setKeyToDelete(null);
+      setShowKeyDetails(false);
     } catch (error) {
       console.error('Error deleting key:', error);
+      setStatusMessage({
+        type: 'error',
+        message: error instanceof Error ? error.message : 'Unexpected error deleting key',
+      });
     }
   };
 
@@ -299,6 +322,19 @@ export default function NukiManagementPage() {
           const response = await fetch(`/api/nuki/keys/${key.id}?deviceId=${key.deviceId}`, {
             method: 'DELETE'
           });
+
+          if (response.status === 404) {
+            successCount++;
+            deletedIds.push(key.id);
+            continue;
+          }
+
+          if (response.status === 409) {
+            const reason = 'Nuki is still syncing this authorization';
+            failedKeys.push({ key, reason });
+            console.warn(`Conflict deleting key ${key.name} (ID: ${key.id}): ${reason}`);
+            continue;
+          }
 
           if (!response.ok) {
             const errorBody = await response.json().catch(() => null);
@@ -342,12 +378,19 @@ export default function NukiManagementPage() {
       fetchOverviewData();
 
       if (failedKeys.length > 0) {
-        console.warn(`Bulk delete completed with issues: ${successCount} deleted, ${failedKeys.length} failed`);
+        const summary = `${successCount} deleted, ${failedKeys.length} skipped`;
+        setStatusMessage({
+          type: 'warning',
+          message: `Bulk delete completed with issues: ${summary}. Check the console for details.`,
+        });
         failedKeys.forEach(({ key, reason }) => {
           console.warn(`- ${key.name} (ID: ${key.id}) on device ${key.deviceId}: ${reason}`);
         });
       } else {
-        console.log(`Bulk delete completed: ${successCount} expired keys removed`);
+        setStatusMessage({
+          type: 'success',
+          message: `Bulk delete completed: ${successCount} expired keys removed.`,
+        });
       }
 
       // Close dialog
@@ -355,6 +398,10 @@ export default function NukiManagementPage() {
 
     } catch (error) {
       console.error('Error during bulk delete:', error);
+      setStatusMessage({
+        type: 'error',
+        message: error instanceof Error ? error.message : 'Unexpected error during bulk delete',
+      });
     } finally {
       setBulkDeleteInProgress(false);
     }
@@ -530,6 +577,17 @@ export default function NukiManagementPage() {
               )}
             </div>
           </div>
+
+          {statusMessage && (
+            <Alert variant={statusMessage.type === 'error' ? 'destructive' : 'default'} className="flex items-start justify-between">
+              <AlertDescription className="pr-4">
+                {statusMessage.message}
+              </AlertDescription>
+              <Button variant="ghost" size="sm" onClick={() => setStatusMessage(null)}>
+                <X className="h-4 w-4" />
+              </Button>
+            </Alert>
+          )}
 
           {stats && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
