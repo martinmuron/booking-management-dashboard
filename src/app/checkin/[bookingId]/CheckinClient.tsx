@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,6 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import StripePayment from "@/components/ui/stripe-payment";
 import { hasNukiAccessByListingId, getNukiPropertyMapping } from "@/utils/nuki-properties-mapping";
-import { hasNukiAccess as hasNukiAccessByName } from "@/utils/nuki-properties";
 import { NUKI_KEY_LEAD_DAYS } from "@/config/nuki";
 import {
   Calendar,
@@ -207,44 +206,26 @@ const sanitizeIsoAlpha3 = (value: string) => sanitizeString(value).toUpperCase()
 
 const sanitizeDocumentNumber = (value: string) => sanitizeString(value).toUpperCase();
 
-const normalizeForMatch = (value: string) =>
-  value
-    .normalize('NFD')
-    .replace(/\p{Diacritic}/gu, '')
-    .toLowerCase();
-
 /**
  * Check if a booking has Nuki access based on address (same logic as backend)
  * @param booking - The booking data
  * @returns true if property should have Nuki access
  */
 const bookingHasNukiAccess = (booking?: BookingData | null): boolean => {
-  if (!booking) {
+  if (!booking?.listingId) {
     return false;
   }
 
-  if (booking.listingId && hasNukiAccessByListingId(booking.listingId)) {
-    return true;
-  }
-
-  const candidates = [booking.propertyName, booking.propertyAddress, booking.roomNumber];
-  return candidates.some((value) => value && hasNukiAccessByName(value));
+  return hasNukiAccessByListingId(booking.listingId);
 };
 
 const isProkopovaBooking = (booking?: BookingData | null) => {
-  if (!booking) {
+  if (!booking?.listingId) {
     return false;
   }
 
-  if (booking.listingId) {
-    const mapping = getNukiPropertyMapping(booking.listingId);
-    if (mapping?.propertyType === 'prokopova') {
-      return true;
-    }
-  }
-
-  const candidates = [booking.propertyName, booking.propertyAddress, booking.roomNumber];
-  return candidates.some((value) => value?.toLowerCase().includes('prokopova'));
+  const mapping = getNukiPropertyMapping(booking.listingId);
+  return mapping?.propertyType === 'prokopova';
 };
 
 const shouldShowArrivalInstructions = (booking?: BookingData | null) => {
@@ -389,14 +370,22 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
   const [successMessage, setSuccessMessage] = useState<string | null>(
     initialCheckInCompleted ? 'Check-in already completed.' : null
   );
+  const [savingGuests, setSavingGuests] = useState(false);
+  const [guestSaveMessage, setGuestSaveMessage] = useState<string | null>(null);
+  const [guestSaveError, setGuestSaveError] = useState<string | null>(null);
+  const [savedGuestSignature, setSavedGuestSignature] = useState<string | null>(null);
+  const [guestDataDirty, setGuestDataDirty] = useState(true);
   const draftLoadedRef = useRef(false);
   const DRAFT_STORAGE_PREFIX = 'checkin-draft-';
 
-  const initialiseGuestErrors = (guestList: Guest[]) =>
-    guestList.reduce<Record<string, GuestErrors>>((acc, guest) => {
-      acc[guest.id] = {};
-      return acc;
-    }, {});
+  const initialiseGuestErrors = useCallback(
+    (guestList: Guest[]) =>
+      guestList.reduce<Record<string, GuestErrors>>((acc, guest) => {
+        acc[guest.id] = {};
+        return acc;
+      }, {}),
+    []
+  );
 
   // Refs for sections
   const bookingDetailsRef = useRef<HTMLDivElement>(null);
@@ -426,28 +415,31 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
     }
   };
 
-  const transformGuestsFromPayload = (apiGuests: ApiGuestPayload[]): Guest[] =>
-    apiGuests.map((guest, index) => ({
-      id: guest.id || `${Date.now()}-${index}`,
-      firstName: sanitizeString(guest.firstName) || '',
-      lastName: sanitizeString(guest.lastName) || '',
-      email: sanitizeString(guest.email ?? ''),
-      phone: sanitizeString(guest.phone ?? ''),
-      phoneCountryCode: sanitizeString(guest.phoneCountryCode ?? '+420') || '+420',
-      dateOfBirth: guest.dateOfBirth ? new Date(guest.dateOfBirth).toISOString().split('T')[0] : '',
-      nationality: sanitizeIsoAlpha3(guest.nationality ?? ''),
-      citizenship: sanitizeIsoAlpha3(guest.citizenship ?? ''),
-      residenceCountry: sanitizeIsoAlpha3(guest.residenceCountry ?? ''),
-      residenceCity: sanitizeString(guest.residenceCity ?? ''),
-      residenceAddress: sanitizeString(guest.residenceAddress ?? ''),
-      purposeOfStay: sanitizeString(guest.purposeOfStay ?? ''),
-      documentType: sanitizeString(guest.documentType ?? ''),
-      documentNumber: sanitizeDocumentNumber(guest.documentNumber ?? ''),
-      visaNumber: sanitizeString(guest.visaNumber ?? ''),
-      notes: sanitizeString(guest.notes ?? '')
-    }));
+  const transformGuestsFromPayload = useCallback(
+    (apiGuests: ApiGuestPayload[]): Guest[] =>
+      apiGuests.map((guest, index) => ({
+        id: guest.id || `${Date.now()}-${index}`,
+        firstName: sanitizeString(guest.firstName) || '',
+        lastName: sanitizeString(guest.lastName) || '',
+        email: sanitizeString(guest.email ?? ''),
+        phone: sanitizeString(guest.phone ?? ''),
+        phoneCountryCode: sanitizeString(guest.phoneCountryCode ?? '+420') || '+420',
+        dateOfBirth: guest.dateOfBirth ? new Date(guest.dateOfBirth).toISOString().split('T')[0] : '',
+        nationality: sanitizeIsoAlpha3(guest.nationality ?? ''),
+        citizenship: sanitizeIsoAlpha3(guest.citizenship ?? ''),
+        residenceCountry: sanitizeIsoAlpha3(guest.residenceCountry ?? ''),
+        residenceCity: sanitizeString(guest.residenceCity ?? ''),
+        residenceAddress: sanitizeString(guest.residenceAddress ?? ''),
+        purposeOfStay: sanitizeString(guest.purposeOfStay ?? ''),
+        documentType: sanitizeString(guest.documentType ?? ''),
+        documentNumber: sanitizeDocumentNumber(guest.documentNumber ?? ''),
+        visaNumber: sanitizeString(guest.visaNumber ?? ''),
+        notes: sanitizeString(guest.notes ?? '')
+      })),
+    []
+  );
 
-  const createDefaultGuest = (guestName: string): Guest => {
+  const createDefaultGuest = useCallback((guestName: string): Guest => {
     const sanitized = sanitizeString(guestName) || 'Guest';
     const nameParts = sanitized.split(' ');
     const firstName = nameParts[0] || 'Guest';
@@ -472,9 +464,9 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
       visaNumber: '',
       notes: ''
     };
-  };
+  }, []);
 
-  const applyBookingSnapshot = (snapshot: BookingData) => {
+  const applyBookingSnapshot = useCallback((snapshot: BookingData) => {
     setBooking(snapshot);
 
     const paidPayment = snapshot.payments?.find(payment => payment.status?.toLowerCase() === 'paid');
@@ -492,6 +484,9 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
       setPaymentIntentAmount(paidPayment.amount ?? null);
     }
 
+    setGuestSaveMessage(null);
+    setGuestSaveError(null);
+
     if (draftLoadedRef.current) {
       return;
     }
@@ -502,12 +497,22 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
       const normalized = transformGuestsFromPayload(payloadGuests as ApiGuestPayload[]);
       setGuests(normalized);
       setGuestErrors(initialiseGuestErrors(normalized));
+      const normalizedPayload = buildNormalizedGuests(normalized);
+      setSavedGuestSignature(JSON.stringify(normalizedPayload));
+      setGuestDataDirty(false);
     } else {
       const fallbackGuest = createDefaultGuest(snapshot.guestLeaderName || 'Guest');
       setGuests([fallbackGuest]);
       setGuestErrors({ [fallbackGuest.id]: {} });
+      setSavedGuestSignature(null);
+      setGuestDataDirty(!completed);
     }
-  };
+  }, [
+    buildNormalizedGuests,
+    createDefaultGuest,
+    initialiseGuestErrors,
+    transformGuestsFromPayload
+  ]);
 
   // Track active section on scroll
   useEffect(() => {
@@ -584,7 +589,7 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
     return () => {
       cancelled = true;
     };
-  }, [bookingToken, initialBooking]);
+  }, [bookingToken, initialBooking, applyBookingSnapshot]);
 
   const addGuest = () => {
     const newGuest: Guest = {
@@ -608,6 +613,9 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
     };
     setGuests([...guests, newGuest]);
     setGuestErrors((prev) => ({ ...prev, [newGuest.id]: {} }));
+    setGuestDataDirty(true);
+    setGuestSaveMessage(null);
+    setGuestSaveError(null);
   };
 
   const removeGuest = (guestId: string) => {
@@ -618,8 +626,29 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
         delete updated[guestId];
         return updated;
       });
+      setGuestDataDirty(true);
+      setGuestSaveMessage(null);
+      setGuestSaveError(null);
     }
   };
+
+  useEffect(() => {
+    if (checkInCompleted) {
+      setGuestDataDirty(false);
+      return;
+    }
+
+    const normalizedGuests = buildNormalizedGuests();
+    const signature = JSON.stringify(normalizedGuests);
+
+    if (!savedGuestSignature) {
+      setGuestDataDirty(true);
+      return;
+    }
+
+    const dirty = signature !== savedGuestSignature;
+    setGuestDataDirty((prev) => (prev === dirty ? prev : dirty));
+  }, [savedGuestSignature, checkInCompleted, buildNormalizedGuests]);
 
   const applyFieldSanitizers = (field: keyof Guest, value: string): string => {
     if (field === 'nationality' || field === 'citizenship' || field === 'residenceCountry') {
@@ -658,6 +687,9 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
       }
       return guest;
     }));
+    setGuestDataDirty(true);
+    setGuestSaveMessage(null);
+    setGuestSaveError(null);
   };
 
   const validateGuest = (guest: Guest): GuestErrors => {
@@ -853,7 +885,11 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
     return guests.every(guest => Object.keys(validateGuest(guest)).length === 0);
   }, [guests, allGuestFormsPresent]);
 
-  const canInitiatePayment = cityTaxAmount > 0 && isGuestTaxInfoComplete && allGuestFormsValid;
+  const canInitiatePayment = cityTaxAmount > 0
+    && isGuestTaxInfoComplete
+    && allGuestFormsValid
+    && missingGuestCount === 0
+    && !guestDataDirty;
 
   useEffect(() => {
     if (checkInCompleted) {
@@ -904,7 +940,7 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
     } catch (storageError) {
       console.error('Failed to load saved check-in progress:', storageError);
     }
-  }, [bookingToken]);
+  }, [bookingToken, initialiseGuestErrors]);
 
   useEffect(() => {
     if (!bookingToken || typeof window === 'undefined') {
@@ -995,8 +1031,8 @@ const applyServerValidationIssues = (issues?: ApiValidationIssue[]): ServerValid
     return undefined;
   };
 
-  const buildNormalizedGuests = () => {
-    return guests.map((guest) => {
+  const buildNormalizedGuests = useCallback((guestList: Guest[] = guests) => {
+    return guestList.map((guest) => {
       const sanitizedNationality = sanitizeIsoAlpha3(guest.nationality);
       const sanitizedCitizenship = guest.citizenship ? sanitizeIsoAlpha3(guest.citizenship) : sanitizedNationality;
       const sanitizedResidenceCountry = sanitizeIsoAlpha3(guest.residenceCountry);
@@ -1022,6 +1058,84 @@ const applyServerValidationIssues = (issues?: ApiValidationIssue[]): ServerValid
         notes: sanitizeString(guest.notes)
       };
     });
+  }, [guests]);
+
+  const saveGuestDetails = async () => {
+    if (checkInCompleted) {
+      setGuestSaveMessage('Guest details are already stored.');
+      setGuestSaveError(null);
+      return;
+    }
+
+    setGuestSaveMessage(null);
+    setGuestSaveError(null);
+
+    if (missingGuestCount > 0) {
+      setGuestSaveError(`Add ${missingGuestCount} more guest${missingGuestCount === 1 ? '' : 's'} before saving.`);
+      return;
+    }
+
+    const guestsValid = validateAllGuests(guests);
+    if (!guestsValid) {
+      setGuestSaveError('Please fix the highlighted guest details before saving.');
+      return;
+    }
+
+    const normalizedGuests = buildNormalizedGuests();
+
+    setSavingGuests(true);
+
+    try {
+      const response = await fetch('/api/guests', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          token: bookingToken,
+          guests: normalizedGuests
+        })
+      });
+
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok || !data?.success) {
+        if (response.status === 422 && Array.isArray(data?.issues)) {
+          applyServerValidationIssues(data.issues);
+        }
+
+        const message = data?.error || data?.message || 'Failed to save guest information.';
+        throw new Error(message);
+      }
+
+      const signature = JSON.stringify(normalizedGuests);
+      setSavedGuestSignature(signature);
+      setGuestDataDirty(false);
+      setGuestSaveMessage('Guest details saved successfully.');
+      setGuestSaveError(null);
+
+      setBooking((prev) => {
+        if (!prev) {
+          return prev;
+        }
+
+        return {
+          ...prev,
+          guests: normalizedGuests.map((guest, index) => ({
+            id: prev.guests?.[index]?.id ?? guests[index]?.id ?? `guest-${index}`,
+            ...guest,
+            dateOfBirth: guest.dateOfBirth,
+            phoneCountryCode: guest.phoneCountryCode || '+420'
+          }))
+        };
+      });
+    } catch (saveError) {
+      const message = saveError instanceof Error ? saveError.message : 'Failed to save guest information.';
+      setGuestSaveError(message);
+      setGuestSaveMessage(null);
+    } finally {
+      setSavingGuests(false);
+    }
   };
 
   const finalizeCheckIn = async (intentIdOverride?: string) => {
@@ -1034,6 +1148,11 @@ const applyServerValidationIssues = (issues?: ApiValidationIssue[]): ServerValid
 
     if (!allGuestFormsPresent) {
       setError(`Please add ${missingGuestCount} more guest${missingGuestCount === 1 ? '' : 's'} before completing check-in.`);
+      return false;
+    }
+
+    if (guestDataDirty) {
+      setError('Please save guest details before completing check-in.');
       return false;
     }
 
@@ -1164,7 +1283,9 @@ const applyServerValidationIssues = (issues?: ApiValidationIssue[]): ServerValid
     }
 
     if (!canInitiatePayment) {
-      if (!allGuestFormsValid) {
+      if (guestDataDirty) {
+        setError('Please save guest details before paying the city tax.');
+      } else if (!allGuestFormsValid) {
         setError('Please fix the highlighted guest details before paying the city tax.');
       } else {
         setError('Please complete guest details (date of birth and city/country of residence) before paying the city tax.');
@@ -1856,15 +1977,45 @@ const applyServerValidationIssues = (issues?: ApiValidationIssue[]): ServerValid
                         );
                       })}
 
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={addGuest}
-                        className="w-full"
-                      >
-                        <Plus className="mr-2 h-4 w-4" />
-                        Add Guest
-                      </Button>
+                      <div className="flex flex-col md:flex-row gap-2">
+                        <Button
+                          type="button"
+                          onClick={saveGuestDetails}
+                          disabled={savingGuests || checkInCompleted}
+                          className="w-full md:w-auto"
+                        >
+                          {savingGuests ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Saving...
+                            </>
+                          ) : (
+                            <>Save Guest Details</>
+                          )}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={addGuest}
+                          className="w-full"
+                          disabled={checkInCompleted}
+                        >
+                          <Plus className="mr-2 h-4 w-4" />
+                          Add Guest
+                        </Button>
+                      </div>
+                      {!checkInCompleted && guestSaveMessage && (
+                        <p className="mt-3 text-sm text-green-600">{guestSaveMessage}</p>
+                      )}
+                      {!checkInCompleted && guestSaveError && (
+                        <p className="mt-3 text-sm text-red-600">{guestSaveError}</p>
+                      )}
+                      {!checkInCompleted && !guestSaveError && !guestSaveMessage && guestDataDirty && savedGuestSignature && (
+                        <p className="mt-3 text-sm text-amber-600">Guest details changed. Please save before proceeding.</p>
+                      )}
+                      {!checkInCompleted && !guestSaveError && !guestSaveMessage && guestDataDirty && !savedGuestSignature && missingGuestCount === 0 && allGuestFormsValid && (
+                        <p className="mt-3 text-sm text-amber-600">Save guest details to continue.</p>
+                      )}
                       {checkInCompleted ? (
                         <p className="mt-3 text-sm text-muted-foreground">
                           Guest details were provided earlier. Contact support if something needs updating.
@@ -1921,6 +2072,11 @@ const applyServerValidationIssues = (issues?: ApiValidationIssue[]): ServerValid
                             Please enter date of birth and residence city/country for each guest before paying the city tax.
                           </p>
                         )}
+                        {guestDataDirty && !checkInCompleted && missingGuestCount === 0 && isGuestTaxInfoComplete && (
+                          <p className="text-xs text-amber-600">
+                            Save guest details before paying the city tax.
+                          </p>
+                        )}
                         {showPaymentForm ? (
                           <StripePayment
                             amount={cityTaxAmount}
@@ -1960,10 +2116,14 @@ const applyServerValidationIssues = (issues?: ApiValidationIssue[]): ServerValid
                           <p className="text-xs text-amber-600">
                             Add {missingGuestCount} more guest{missingGuestCount === 1 ? '' : 's'} before completing check-in.
                           </p>
+                        ) : guestDataDirty && allGuestFormsValid ? (
+                          <p className="text-xs text-amber-600">
+                            Save guest details before completing check-in.
+                          </p>
                         ) : null}
                         <Button
                           onClick={() => finalizeCheckIn()}
-                          disabled={submitting || !allGuestFormsPresent || !allGuestFormsValid}
+                          disabled={submitting || !allGuestFormsPresent || !allGuestFormsValid || guestDataDirty}
                         >
                           {submitting ? (
                             <>

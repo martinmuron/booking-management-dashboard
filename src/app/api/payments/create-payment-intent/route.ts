@@ -24,7 +24,10 @@ export async function POST(request: NextRequest) {
 
     const booking = await prisma.booking.findUnique({
       where: { id: bookingId },
-      select: { status: true },
+      select: {
+        status: true,
+        numberOfGuests: true
+      },
     });
 
     if (!booking) {
@@ -44,6 +47,46 @@ export async function POST(request: NextRequest) {
     if (booking.status === 'COMPLETED') {
       return NextResponse.json(
         { error: 'Booking is already completed' },
+        { status: 400 }
+      );
+    }
+
+    const guests = await prisma.guest.findMany({
+      where: { bookingId },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        dateOfBirth: true,
+        residenceCity: true,
+        residenceCountry: true,
+        documentNumber: true
+      }
+    });
+
+    if (guests.length !== booking.numberOfGuests) {
+      return NextResponse.json(
+        {
+          error: `Please register exactly ${booking.numberOfGuests} guest${booking.numberOfGuests === 1 ? '' : 's'} before paying the city tax.`
+        },
+        { status: 400 }
+      );
+    }
+
+    const incompleteGuest = guests.find((guest) => (
+      !guest.firstName
+      || !guest.lastName
+      || !guest.dateOfBirth
+      || !guest.residenceCity
+      || !guest.residenceCountry
+      || !guest.documentNumber
+    ));
+
+    if (incompleteGuest) {
+      return NextResponse.json(
+        {
+          error: 'Guest registration is incomplete. Please verify all guest details before paying the city tax.'
+        },
         { status: 400 }
       );
     }

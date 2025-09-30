@@ -1,45 +1,115 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 
-// GET /api/guests - Fetch guests for a booking
-export async function GET(request: NextRequest) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const bookingId = searchParams.get('bookingId');
-    
-    if (!bookingId) {
-      return NextResponse.json(
-        { success: false, error: 'Booking ID is required' },
-        { status: 400 }
-      );
-    }
-    
-    // TODO: Implement guest data fetching from database
-    
-    return NextResponse.json({
-      success: true,
-      data: [],
-      message: 'Guests fetched successfully'
-    });
-  } catch (error) {
-    console.error('Error fetching guests:', error);
-    return NextResponse.json(
-      { success: false, error: 'Failed to fetch guests' },
-      { status: 500 }
-    );
-  }
-}
+import { prisma } from '@/lib/database';
+import { guestSchema, type GuestSubmission } from '@/lib/guest-validation';
 
-// POST /api/guests - Create or update guest information
+const saveGuestsSchema = z.object({
+  token: z.string().trim().min(1, 'Check-in token is required'),
+  guests: z.array(guestSchema).min(1, 'At least one guest is required')
+});
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    
-    // TODO: Implement guest data creation/update in database
-    console.log('Guest data received:', body);
-    
+    const parsed = saveGuestsSchema.safeParse(body);
+
+    if (!parsed.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Guest information is invalid',
+          details: parsed.error.flatten(),
+          issues: parsed.error.issues
+        },
+        { status: 422 }
+      );
+    }
+
+    const { token, guests } = parsed.data;
+
+    const booking = await prisma.booking.findUnique({
+      where: { checkInToken: token },
+      select: {
+        id: true,
+        numberOfGuests: true,
+        status: true,
+        guestLeaderEmail: true,
+        guestLeaderPhone: true
+      }
+    });
+
+    if (!booking) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid check-in token' },
+        { status: 404 }
+      );
+    }
+
+    if (guests.length !== booking.numberOfGuests) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Please register exactly ${booking.numberOfGuests} guest${booking.numberOfGuests === 1 ? '' : 's'} before continuing.`
+        },
+        { status: 400 }
+      );
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.guest.deleteMany({
+        where: { bookingId: booking.id }
+      });
+
+      await tx.guest.createMany({
+        data: guests.map((guest: GuestSubmission, index: number) => ({
+          bookingId: booking.id,
+          firstName: guest.firstName,
+          lastName: guest.lastName,
+          email: guest.email ?? null,
+          phone: guest.phone ?? null,
+          phoneCountryCode: guest.phoneCountryCode ?? '+420',
+          dateOfBirth: guest.dateOfBirth,
+          nationality: guest.nationality,
+          citizenship: guest.citizenship ?? guest.nationality,
+          residenceCountry: guest.residenceCountry,
+          residenceCity: guest.residenceCity,
+          residenceAddress: guest.residenceAddress,
+          purposeOfStay: guest.purposeOfStay,
+          documentType: guest.documentType,
+          documentNumber: guest.documentNumber,
+          visaNumber: guest.visaNumber ?? null,
+          notes: guest.notes ?? null,
+          isLeadGuest: index === 0
+        }))
+      });
+
+      // Keep lead contact in sync when provided
+      const leadGuest = guests[0];
+      if (leadGuest) {
+        const contactUpdates: Record<string, string | null> = {};
+        if (leadGuest.email && leadGuest.email !== booking.guestLeaderEmail) {
+          contactUpdates.guestLeaderEmail = leadGuest.email;
+        }
+        if (leadGuest.phone && leadGuest.phone !== booking.guestLeaderPhone) {
+          contactUpdates.guestLeaderPhone = leadGuest.phone;
+        }
+
+        if (Object.keys(contactUpdates).length > 0) {
+          await tx.booking.update({
+            where: { id: booking.id },
+            data: contactUpdates
+          });
+        }
+      }
+    });
+
     return NextResponse.json({
       success: true,
-      message: 'Guest information saved successfully'
+      data: {
+        guestCount: guests.length
+      },
+      message: 'Guest details saved successfully'
     });
   } catch (error) {
     console.error('Error saving guest information:', error);
