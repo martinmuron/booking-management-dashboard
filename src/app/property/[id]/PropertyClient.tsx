@@ -4,7 +4,8 @@ import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { MapPin, ArrowLeft, Loader2 } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
+import { MapPin, ArrowLeft, Loader2, ExternalLink } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { ImageModal } from "@/components/ImageModal";
 import Link from "next/link";
@@ -206,6 +207,53 @@ export default function PropertyClient({ initialProperty }: PropertyClientProps)
                   </div>
                 )}
 
+                {/* Booking Channels */}
+                <div>
+                  <h3 className="font-semibold mb-3">Book This Property</h3>
+                  <div className="space-y-2">
+                    {property.airbnbListingUrl && (
+                      <a
+                        href={property.airbnbListingUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block"
+                      >
+                        <Button variant="outline" className="w-full justify-between">
+                          <span>View on Airbnb</span>
+                          <ExternalLink className="w-4 h-4" />
+                        </Button>
+                      </a>
+                    )}
+                    {property.vrboListingUrl && (
+                      <a
+                        href={property.vrboListingUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block"
+                      >
+                        <Button variant="outline" className="w-full justify-between">
+                          <span>View on VRBO</span>
+                          <ExternalLink className="w-4 h-4" />
+                        </Button>
+                      </a>
+                    )}
+                    {property.expediaListingUrl && (
+                      <a
+                        href={property.expediaListingUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block"
+                      >
+                        <Button variant="outline" className="w-full justify-between">
+                          <span>View on Expedia</span>
+                          <ExternalLink className="w-4 h-4" />
+                        </Button>
+                      </a>
+                    )}
+                  </div>
+                </div>
+
+                <Separator />
 
                 {/* Amenities */}
                 {property.listingAmenities && property.listingAmenities.length > 0 && (
