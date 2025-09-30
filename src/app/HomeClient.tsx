@@ -79,20 +79,53 @@ export default function HomeClient() {
     setSearchCriteria(criteria);
 
     try {
-      // Show properties with availability status
-      const propertiesWithAvailability: PropertyWithAvailability[] = properties.map(property => ({
-        ...property,
-        availability: {
-          available: Math.random() > 0.3, // Simulate availability
-          unavailableDates: [],
-          minimumStay: Math.floor(Math.random() * 3) + 1,
-          averagePrice: property.price ? property.price + Math.floor(Math.random() * 50) : undefined,
-        }
-      }));
+      if (!criteria.checkInDate || !criteria.checkOutDate) {
+        setError('Please select check-in and check-out dates');
+        setSearching(false);
+        return;
+      }
 
-      setDisplayProperties(propertiesWithAvailability);
-    } catch {
-      setError('Failed to check availability');
+      // Format dates as YYYY-MM-DD
+      const checkIn = criteria.checkInDate.toISOString().split('T')[0];
+      const checkOut = criteria.checkOutDate.toISOString().split('T')[0];
+
+      // Call the real availability API
+      const response = await fetch(
+        `/api/properties/availability?checkIn=${checkIn}&checkOut=${checkOut}&guests=${criteria.guests}`
+      );
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Combine available and unavailable properties into a single list
+        const allProperties = [
+          ...data.data.availableProperties,
+          ...data.data.unavailableProperties
+        ];
+
+        // Map the API response to our display format
+        const propertiesWithAvailability: PropertyWithAvailability[] = allProperties.map(item => ({
+          id: item.listing.id,
+          name: item.listing.name,
+          address: item.listing.address,
+          thumbnailUrl: item.listing.thumbnailUrl,
+          listingImages: item.listing.listingImages,
+          personCapacity: item.listing.personCapacity,
+          bedroomsNumber: item.listing.bedroomsNumber,
+          bathroomsNumber: item.listing.bathroomsNumber,
+          airbnbListingUrl: item.listing.airbnbListingUrl,
+          vrboListingUrl: item.listing.vrboListingUrl,
+          availability: item.availability
+        }));
+
+        setDisplayProperties(propertiesWithAvailability);
+        setError(null);
+      } else {
+        setError(data.error || 'Failed to check availability');
+      }
+    } catch (err) {
+      console.error('Availability search error:', err);
+      setError('Failed to check availability. Please try again.');
     } finally {
       setSearching(false);
     }
