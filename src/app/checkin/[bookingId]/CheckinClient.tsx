@@ -439,6 +439,35 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
     []
   );
 
+  const buildNormalizedGuests = useCallback((guestList: Guest[] = guests) => {
+    return guestList.map((guest) => {
+      const sanitizedNationality = sanitizeIsoAlpha3(guest.nationality);
+      const sanitizedCitizenship = guest.citizenship ? sanitizeIsoAlpha3(guest.citizenship) : sanitizedNationality;
+      const sanitizedResidenceCountry = sanitizeIsoAlpha3(guest.residenceCountry);
+      const sanitizedPhoneCode = sanitizeString(guest.phoneCountryCode) || '+420';
+      const normalizedPhoneCode = sanitizedPhoneCode.startsWith('+') ? sanitizedPhoneCode : `+${sanitizedPhoneCode}`;
+
+      return {
+        ...guest,
+        firstName: sanitizeString(guest.firstName),
+        lastName: sanitizeString(guest.lastName),
+        email: sanitizeString(guest.email),
+        phone: sanitizeString(guest.phone),
+        phoneCountryCode: normalizedPhoneCode,
+        nationality: sanitizedNationality,
+        citizenship: sanitizedCitizenship,
+        residenceCountry: sanitizedResidenceCountry,
+        residenceCity: sanitizeString(guest.residenceCity),
+        residenceAddress: sanitizeString(guest.residenceAddress),
+        purposeOfStay: sanitizeString(guest.purposeOfStay),
+        documentType: sanitizeString(guest.documentType).toUpperCase(),
+        documentNumber: sanitizeDocumentNumber(guest.documentNumber),
+        visaNumber: sanitizeString(guest.visaNumber).toUpperCase(),
+        notes: sanitizeString(guest.notes)
+      };
+    });
+  }, [guests]);
+
   const createDefaultGuest = useCallback((guestName: string): Guest => {
     const sanitized = sanitizeString(guestName) || 'Guest';
     const nameParts = sanitized.split(' ');
@@ -1030,35 +1059,6 @@ const applyServerValidationIssues = (issues?: ApiValidationIssue[]): ServerValid
 
     return undefined;
   };
-
-  const buildNormalizedGuests = useCallback((guestList: Guest[] = guests) => {
-    return guestList.map((guest) => {
-      const sanitizedNationality = sanitizeIsoAlpha3(guest.nationality);
-      const sanitizedCitizenship = guest.citizenship ? sanitizeIsoAlpha3(guest.citizenship) : sanitizedNationality;
-      const sanitizedResidenceCountry = sanitizeIsoAlpha3(guest.residenceCountry);
-      const sanitizedPhoneCode = sanitizeString(guest.phoneCountryCode) || '+420';
-      const normalizedPhoneCode = sanitizedPhoneCode.startsWith('+') ? sanitizedPhoneCode : `+${sanitizedPhoneCode}`;
-
-      return {
-        ...guest,
-        firstName: sanitizeString(guest.firstName),
-        lastName: sanitizeString(guest.lastName),
-        email: sanitizeString(guest.email),
-        phone: sanitizeString(guest.phone),
-        phoneCountryCode: normalizedPhoneCode,
-        nationality: sanitizedNationality,
-        citizenship: sanitizedCitizenship,
-        residenceCountry: sanitizedResidenceCountry,
-        residenceCity: sanitizeString(guest.residenceCity),
-        residenceAddress: sanitizeString(guest.residenceAddress),
-        purposeOfStay: sanitizeString(guest.purposeOfStay),
-        documentType: sanitizeString(guest.documentType).toUpperCase(),
-        documentNumber: sanitizeDocumentNumber(guest.documentNumber),
-        visaNumber: sanitizeString(guest.visaNumber).toUpperCase(),
-        notes: sanitizeString(guest.notes)
-      };
-    });
-  }, [guests]);
 
   const saveGuestDetails = async () => {
     if (checkInCompleted) {
