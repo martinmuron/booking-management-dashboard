@@ -3,8 +3,12 @@ import { getNukiPropertyMapping } from '@/utils/nuki-properties-mapping';
 
 const PRAGUE_TIMEZONE = 'Europe/Prague';
 const DEFAULT_AUTHORIZATION_LIMIT = Number.parseInt(process.env.NUKI_AUTHORIZATION_LIMIT ?? '190', 10);
+const LOOKUP_RETRY_SCHEDULE_MS = [0, 400, 900, 1800, 3200, 5000];
+const AUTH_MATCH_TOLERANCE_MS = 5 * 60 * 1000; // 5 minutes drift tolerance
 
 const pad = (value: number) => value.toString().padStart(2, '0');
+
+const sleep = (duration: number) => new Promise(resolve => setTimeout(resolve, duration));
 
 const getPragueOffset = (date: Date): string => {
   const formatter = new Intl.DateTimeFormat('en-US', {
@@ -106,6 +110,15 @@ type CreateKeyResult = {
   nukiAuth: NukiAuth;
 };
 
+type AuthorizationLookupOptions = {
+  deviceId: number;
+  keypadCode?: string;
+  allowedFromISO?: string;
+  allowedUntilISO?: string;
+  nameHint?: string;
+  retryScheduleMs?: number[];
+};
+
 export class NukiApiService {
   private readonly baseUrl = 'https://api.nuki.io';
   private readonly apiKey: string;
@@ -162,6 +175,13 @@ export class NukiApiService {
     }
   }
 
+  getAuthorizationWindow(checkInDate: Date, checkOutDate: Date) {
+    return {
+      allowedFromISO: toPragueDateTime(checkInDate, 15, 0),
+      allowedUntilISO: toPragueDateTime(checkOutDate, 22, 0),
+    };
+  }
+
   private async makeRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
     const response = await fetch(url, {
@@ -188,6 +208,96 @@ export class NukiApiService {
     } catch (error) {
       throw new Error(`Failed to parse Nuki API response: ${error instanceof Error ? error.message : 'Unknown error'} | Body: ${text}`);
     }
+  }
+
+  private normalizeName(value?: string | null) {
+    return value?.trim().toLowerCase() ?? '';
+  }
+
+  private datesRoughlyMatch(expectedISO?: string, actualISO?: string): boolean {
+    if (!expectedISO || !actualISO) {
+      return false;
+    }
+
+    const expected = new Date(expectedISO).getTime();
+    const actual = new Date(actualISO).getTime();
+
+    if (Number.isNaN(expected) || Number.isNaN(actual)) {
+      return false;
+    }
+
+    return Math.abs(actual - expected) <= AUTH_MATCH_TOLERANCE_MS;
+  }
+
+  private async locateAuthorization(options: AuthorizationLookupOptions): Promise<NukiAuthorization | null> {
+    const {
+      deviceId,
+      keypadCode,
+      allowedFromISO,
+      allowedUntilISO,
+      nameHint,
+      retryScheduleMs = LOOKUP_RETRY_SCHEDULE_MS,
+    } = options;
+
+    const normalizedCode = keypadCode ? String(keypadCode) : undefined;
+    const normalizedNameHint = this.normalizeName(nameHint);
+
+    const matches = (auth: NukiAuthorization) => {
+      const codeMatches = normalizedCode !== undefined && auth.code !== undefined
+        ? String(auth.code) === normalizedCode
+        : false;
+
+      const nameMatches = normalizedNameHint
+        ? ((): boolean => {
+            const candidate = this.normalizeName(auth.name);
+            if (!candidate) {
+              return false;
+            }
+            return candidate === normalizedNameHint
+              || candidate.startsWith(normalizedNameHint)
+              || normalizedNameHint.startsWith(candidate);
+          })()
+        : false;
+
+      const windowMatches = this.datesRoughlyMatch(allowedFromISO, auth.allowedFromDate)
+        && this.datesRoughlyMatch(allowedUntilISO, auth.allowedUntilDate);
+
+      if (codeMatches && (!allowedFromISO || !allowedUntilISO)) {
+        return true;
+      }
+
+      if (codeMatches && windowMatches) {
+        return true;
+      }
+
+      if (nameMatches && windowMatches) {
+        return true;
+      }
+
+      return false;
+    };
+
+    for (const delay of retryScheduleMs) {
+      if (delay > 0) {
+        await sleep(delay);
+      }
+
+      try {
+        const authorizations = await this.makeRequest<NukiAuthorization[]>(`/smartlock/${deviceId}/auth`);
+        const match = authorizations.find(matches);
+        if (match) {
+          return match;
+        }
+      } catch (error) {
+        console.warn(`[NUKI] Failed to poll authorizations for device ${deviceId}:`, error);
+      }
+    }
+
+    return null;
+  }
+
+  async findAuthorizationOnDevice(options: AuthorizationLookupOptions): Promise<NukiAuthorization | null> {
+    return this.locateAuthorization(options);
   }
 
   // Get all smart locks
@@ -266,34 +376,19 @@ export class NukiApiService {
       return created;
     }
 
-    // When Nuki returns 204 (no content), fall back to locating the authorization manually
-    const attemptLookup = async () => {
-      const authorizations = await this.makeRequest<NukiAuthorization[]>(`/smartlock/${deviceId}/auth`);
-      return authorizations.find((auth) => {
-        const sameCode = auth.code !== undefined && String(auth.code) === String(keypadCode);
-        const sameName = auth.name === authRequest.name;
-        const withinWindow = auth.allowedFromDate === allowedFromISO && auth.allowedUntilDate === allowedUntilISO;
-        return sameCode || (sameName && withinWindow);
-      });
-    };
+    const located = await this.locateAuthorization({
+      deviceId,
+      keypadCode,
+      allowedFromISO,
+      allowedUntilISO,
+      nameHint: authRequest.name,
+    });
 
-    let match = await attemptLookup();
-
-    if (!match) {
-      await new Promise(resolve => setTimeout(resolve, 500));
-      match = await attemptLookup();
+    if (located) {
+      return located;
     }
 
-    if (!match) {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      match = await attemptLookup();
-    }
-
-    if (!match) {
-      throw new Error('nuki_authorization_not_found');
-    }
-
-    return match;
+    throw new Error('nuki_authorization_not_found');
   }
 
   // Delete/revoke authorization
@@ -446,7 +541,6 @@ export class NukiApiService {
   }> {
     const attemptedKeyTypes = options.keyTypes ?? await this.getKeyTypesForProperty(listingId);
     const universalKeypadCode = options.keypadCode ?? this.generateKeypadCode();
-    const devices = await this.getDevices();
     const failures: CreateKeyFailure[] = [];
     const results: CreateKeyResult[] = [];
     const deviceAuthCounts = new Map<number, number>();
@@ -464,8 +558,7 @@ export class NukiApiService {
       return deviceAuthCounts.get(deviceId) ?? 0;
     };
 
-    const allowedFromISO = toPragueDateTime(checkInDate, 15, 0);
-    const allowedUntilISO = toPragueDateTime(checkOutDate, 22, 0);
+    const { allowedFromISO, allowedUntilISO } = this.getAuthorizationWindow(checkInDate, checkOutDate);
 
     // Extract actual room number from property name or room number field
     const extractRoomNumber = (roomNumber: string, propertyName?: string): string => {
@@ -564,6 +657,7 @@ export class NukiApiService {
 
     for (const keyType of attemptedKeyTypes) {
       let deviceContext: { deviceId: number; deviceName?: string } | null = null;
+      const authorizationName = `${guestName} – ${keyType}${roomNumber ? ` ${roomNumber}` : ''}`;
 
       try {
         deviceContext = resolveDevice(keyType);
@@ -609,11 +703,49 @@ export class NukiApiService {
 
         deviceAuthCounts.set(deviceContext.deviceId, currentCount + 1);
       } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+        if (deviceContext && errorMessage === 'nuki_authorization_not_found') {
+          try {
+            const reconciliation = await this.findAuthorizationOnDevice({
+              deviceId: deviceContext.deviceId,
+              keypadCode: universalKeypadCode,
+              allowedFromISO,
+              allowedUntilISO,
+              nameHint: authorizationName,
+            });
+
+            if (reconciliation) {
+              console.warn('[NUKI] Recovered authorization after delayed listing', {
+                keyType,
+                deviceId: deviceContext.deviceId,
+                authId: reconciliation.id,
+              });
+
+              results.push({
+                keyType,
+                deviceId: deviceContext.deviceId,
+                deviceName: deviceContext.deviceName,
+                nukiAuth: reconciliation,
+              });
+
+              deviceAuthCounts.delete(deviceContext.deviceId);
+              continue;
+            }
+          } catch (lookupError) {
+            console.warn('[NUKI] Follow-up authorization lookup failed', {
+              keyType,
+              deviceId: deviceContext.deviceId,
+              error: lookupError instanceof Error ? lookupError.message : lookupError,
+            });
+          }
+        }
+
         failures.push({
           keyType,
           deviceId: deviceContext?.deviceId,
           deviceName: deviceContext?.deviceName,
-          error: error instanceof Error ? error.message : 'Unknown error',
+          error: errorMessage,
           currentCount: deviceContext?.deviceId ? await getAuthorizationCount(deviceContext.deviceId) : undefined,
           limit: Number.isFinite(DEFAULT_AUTHORIZATION_LIMIT) ? DEFAULT_AUTHORIZATION_LIMIT : undefined,
         });

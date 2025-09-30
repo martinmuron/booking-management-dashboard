@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import type { VirtualKeyType } from '@prisma/client';
+
 import { prisma } from '@/lib/database';
 import { ensureNukiKeysForBooking } from '@/services/auto-key.service';
 import { nukiApiService } from '@/services/nuki-api.service';
@@ -118,6 +120,66 @@ export async function POST() {
         });
         completed += 1;
         continue;
+      }
+
+      if (result.status === 'failed' && result.error === 'nuki_authorization_not_found') {
+        const deviceId = Number.parseInt(retry.deviceId ?? '', 10);
+        const booking = await prisma.booking.findUnique({
+          where: { id: retry.bookingId },
+          select: {
+            checkInDate: true,
+            checkOutDate: true,
+            universalKeypadCode: true,
+          },
+        });
+
+        const keypadCode = retry.keypadCode ?? booking?.universalKeypadCode ?? undefined;
+
+        if (booking && keypadCode && Number.isFinite(deviceId)) {
+          const { allowedFromISO, allowedUntilISO } = nukiApiService.getAuthorizationWindow(booking.checkInDate, booking.checkOutDate);
+
+          try {
+            const reconciliation = await nukiApiService.findAuthorizationOnDevice({
+              deviceId,
+              keypadCode,
+              allowedFromISO,
+              allowedUntilISO,
+            });
+
+            if (reconciliation) {
+              await prisma.virtualKey.upsert({
+                where: { nukiKeyId: reconciliation.id },
+                update: {
+                  bookingId: retry.bookingId,
+                  keyType: retry.keyType as VirtualKeyType,
+                  isActive: true,
+                  deactivatedAt: null,
+                },
+                create: {
+                  bookingId: retry.bookingId,
+                  keyType: retry.keyType as VirtualKeyType,
+                  nukiKeyId: reconciliation.id,
+                  isActive: true,
+                },
+              });
+
+              await prisma.nukiKeyRetry.update({
+                where: { id: retry.id },
+                data: {
+                  status: 'COMPLETED',
+                  attemptCount,
+                  lastError: 'Recovered existing Nuki authorization',
+                  updatedAt: new Date(),
+                },
+              });
+
+              completed += 1;
+              continue;
+            }
+          } catch (lookupError) {
+            console.warn(`[NUKI-RETRY] Follow-up lookup failed for ${retry.bookingId}:${retry.keyType}`, lookupError);
+          }
+        }
       }
 
       // Check if the failure is due to duplicate keypad code (409 conflict)
