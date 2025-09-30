@@ -306,16 +306,6 @@ export default function HomeClient() {
                         )}
                       </div>
 
-                      {/* Price */}
-                      {(property.price || property.availability?.averagePrice) && (
-                        <div className="flex items-baseline gap-1">
-                          <span className="text-2xl font-bold text-black">
-                            {property.currencyCode || 'EUR'} {property.availability?.averagePrice || property.price}
-                          </span>
-                          <span className="text-sm text-gray-600">/ night</span>
-                        </div>
-                      )}
-
                       <Separator />
 
                       {/* Action buttons */}

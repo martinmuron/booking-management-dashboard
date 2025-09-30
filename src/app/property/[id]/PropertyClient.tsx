@@ -197,16 +197,6 @@ export default function PropertyClient({ initialProperty }: PropertyClientProps)
                   </div>
                 </div>
 
-                {/* Price */}
-                {(property.price && property.currencyCode) && (
-                  <div className="text-center p-4 border rounded-lg">
-                    <div className="text-3xl font-bold text-blue-600">
-                      {property.currencyCode} {property.price}
-                    </div>
-                    <div className="text-sm text-gray-600">per night</div>
-                  </div>
-                )}
-
                 {/* Booking Channels */}
                 <div>
                   <h3 className="font-semibold mb-3">Book This Property</h3>
