@@ -1,5 +1,7 @@
 import type Stripe from 'stripe';
 
+import type { BookingStatus } from '@prisma/client';
+
 import { stripe } from '@/lib/stripe-server';
 import { prisma } from '@/lib/database';
 import { addWebhookLog } from '@/lib/webhook-logs';
@@ -11,6 +13,27 @@ type HandlerResult = {
   handled: boolean;
   message: string;
 };
+
+const STATUS_PRIORITY: Record<BookingStatus, number> = {
+  PENDING: 0,
+  CONFIRMED: 1,
+  PAYMENT_PENDING: 2,
+  PAYMENT_COMPLETED: 3,
+  CHECKED_IN: 4,
+  KEYS_DISTRIBUTED: 5,
+  COMPLETED: 6,
+  CANCELLED: 99,
+};
+
+function pickHigherStatus(current: BookingStatus, proposed: BookingStatus): BookingStatus {
+  if (current === 'CANCELLED') {
+    return current;
+  }
+
+  return (STATUS_PRIORITY[proposed] ?? -1) > (STATUS_PRIORITY[current] ?? -1)
+    ? proposed
+    : current;
+}
 
 export async function handleStripeEvent(
   event: Stripe.Event,
@@ -106,29 +129,68 @@ async function handlePaymentIntentEvent(
 
   // If payment succeeded, update booking status and generate keys
   if (status === 'paid') {
-    try {
-      // Update booking status to PAYMENT_COMPLETED
-      await prisma.booking.update({
-        where: { id: bookingId },
-        data: { status: 'PAYMENT_COMPLETED' },
-      });
+    const booking = await prisma.booking.findUnique({
+      where: { id: bookingId },
+      select: {
+        status: true,
+        universalKeypadCode: true,
+      },
+    });
 
-      // Generate Nuki keys automatically
-      const keyResult = await ensureNukiKeysForBooking(bookingId, { force: true });
+    if (!booking) {
+      await addWebhookLog({
+        eventType: event.type,
+        status: 'error',
+        message: 'Payment processed but booking record was not found',
+        reservationId: bookingId,
+      });
+    } else {
+      let keyResult: Awaited<ReturnType<typeof ensureNukiKeysForBooking>> | null = null;
+      try {
+        // Generate Nuki keys automatically (force ensures we retry even if the
+        // booking status is still pending)
+        keyResult = await ensureNukiKeysForBooking(bookingId, { force: true });
+      } catch (keyError) {
+        await addWebhookLog({
+          eventType: event.type,
+          status: 'error',
+          message: 'Payment processed but key generation failed',
+          reservationId: bookingId,
+          error: keyError instanceof Error ? keyError.message : 'Unknown error',
+        });
+      }
+
+      const proposedStatus: BookingStatus = keyResult && (keyResult.status === 'created' || keyResult.status === 'already')
+        ? 'KEYS_DISTRIBUTED'
+        : 'PAYMENT_COMPLETED';
+
+      const finalStatus = pickHigherStatus(booking.status, proposedStatus);
+
+      const updateData: Parameters<typeof prisma.booking.update>[0]['data'] = {};
+
+      if (finalStatus !== booking.status) {
+        updateData.status = finalStatus;
+      }
+
+      if (keyResult && 'universalKeypadCode' in keyResult) {
+        const code = keyResult.universalKeypadCode;
+        if (code && code !== booking.universalKeypadCode) {
+          updateData.universalKeypadCode = code;
+        }
+      }
+
+      if (Object.keys(updateData).length > 0) {
+        await prisma.booking.update({
+          where: { id: bookingId },
+          data: updateData,
+        });
+      }
 
       await addWebhookLog({
         eventType: event.type,
         status: 'success',
-        message: `Payment completed - booking status updated and keys generated: ${keyResult.status}`,
+        message: `Payment completed - booking status now ${finalStatus}${keyResult ? ` (key result: ${keyResult.status})` : ''}`,
         reservationId: bookingId,
-      });
-    } catch (keyError) {
-      await addWebhookLog({
-        eventType: event.type,
-        status: 'error',
-        message: 'Payment processed but key generation failed',
-        reservationId: bookingId,
-        error: keyError instanceof Error ? keyError.message : 'Unknown error',
       });
     }
   }
