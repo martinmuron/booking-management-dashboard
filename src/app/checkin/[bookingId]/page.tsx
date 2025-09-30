@@ -120,35 +120,42 @@ async function getBookingByToken(token: string): Promise<BookingData | null> {
     );
 
     // Manual date/time formatting to ensure server/client consistency
+    // Use Intl.DateTimeFormat parts to extract timezone-aware values
     const formatDateLabel = (date: Date): string => {
-      const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-      const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+      const formatter = new Intl.DateTimeFormat('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        timeZone: 'Europe/Prague'
+      });
 
-      // Convert to Prague timezone
-      const pragueDate = new Date(date.toLocaleString('en-US', { timeZone: 'Europe/Prague' }));
+      const parts = formatter.formatToParts(date);
+      const weekday = parts.find(p => p.type === 'weekday')?.value || '';
+      const month = parts.find(p => p.type === 'month')?.value || '';
+      const day = parts.find(p => p.type === 'day')?.value || '';
+      const year = parts.find(p => p.type === 'year')?.value || '';
 
-      const dayName = days[pragueDate.getDay()];
-      const monthName = months[pragueDate.getMonth()];
-      const day = pragueDate.getDate();
-      const year = pragueDate.getFullYear();
-
-      return `${dayName}, ${monthName} ${day}, ${year}`;
+      return `${weekday}, ${month} ${day}, ${year}`;
     };
 
     const formatTimeLabel = (date: Date): string => {
-      // Convert to Prague timezone
-      const pragueDate = new Date(date.toLocaleString('en-US', { timeZone: 'Europe/Prague' }));
+      const formatter = new Intl.DateTimeFormat('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
+        timeZone: 'Europe/Prague'
+      });
 
-      let hours = pragueDate.getHours();
-      const minutes = pragueDate.getMinutes();
-      const ampm = hours >= 12 ? 'PM' : 'AM';
+      const parts = formatter.formatToParts(date);
+      const hour = parts.find(p => p.type === 'hour')?.value || '';
+      const minute = parts.find(p => p.type === 'minute')?.value || '';
+      const dayPeriod = parts.find(p => p.type === 'dayPeriod')?.value || '';
 
-      hours = hours % 12;
-      hours = hours ? hours : 12; // 0 should be 12
+      // Pad hour to 2 digits
+      const hourPadded = hour.padStart(2, '0');
 
-      const minutesStr = minutes < 10 ? '0' + minutes : minutes.toString();
-
-      return `${hours.toString().padStart(2, '0')}:${minutesStr} ${ampm}`;
+      return `${hourPadded}:${minute} ${dayPeriod.toUpperCase()}`;
     };
 
     const checkInDateLabel = formatDateLabel(booking.checkInDate);
