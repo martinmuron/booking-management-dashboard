@@ -48,7 +48,7 @@ export function PropertySearch({ onSearch, isSearching = false }: PropertySearch
             Check-in
           </Label>
           <div className="relative">
-            <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
+            <Calendar className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
             <DatePicker
               selected={checkInDate}
               onChange={(date) => setCheckInDate(date)}
@@ -57,7 +57,7 @@ export function PropertySearch({ onSearch, isSearching = false }: PropertySearch
               endDate={checkOutDate}
               minDate={new Date()}
               placeholderText="Select date"
-              className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent"
+              className="w-full h-12 rounded-md border border-gray-300 bg-white pl-12 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent"
               dateFormat="MMM d, yyyy"
             />
           </div>
@@ -69,7 +69,7 @@ export function PropertySearch({ onSearch, isSearching = false }: PropertySearch
             Check-out
           </Label>
           <div className="relative">
-            <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
+            <Calendar className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
             <DatePicker
               selected={checkOutDate}
               onChange={(date) => setCheckOutDate(date)}
@@ -78,7 +78,7 @@ export function PropertySearch({ onSearch, isSearching = false }: PropertySearch
               endDate={checkOutDate}
               minDate={checkInDate || new Date()}
               placeholderText="Select date"
-              className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent"
+              className="w-full h-12 rounded-md border border-gray-300 bg-white pl-12 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent"
               dateFormat="MMM d, yyyy"
             />
           </div>
@@ -89,21 +89,21 @@ export function PropertySearch({ onSearch, isSearching = false }: PropertySearch
           <Label htmlFor="guests" className="text-sm font-medium text-gray-700">
             Guests
           </Label>
-          <Select value={guests.toString()} onValueChange={(value) => setGuests(parseInt(value))}>
-            <SelectTrigger className="w-full">
-              <div className="flex items-center gap-2">
-                <Users className="w-4 h-4 text-gray-400" />
-                <SelectValue />
-              </div>
-            </SelectTrigger>
-            <SelectContent>
-              {Array.from({ length: 12 }, (_, i) => i + 1).map((num) => (
-                <SelectItem key={num} value={num.toString()}>
-                  {num} {num === 1 ? 'guest' : 'guests'}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="relative">
+            <Users className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <Select value={guests.toString()} onValueChange={(value) => setGuests(parseInt(value))}>
+              <SelectTrigger className="w-full h-12 pl-12 text-sm">
+                <SelectValue placeholder="Select guests" />
+              </SelectTrigger>
+              <SelectContent>
+                {Array.from({ length: 12 }, (_, i) => i + 1).map((num) => (
+                  <SelectItem key={num} value={num.toString()}>
+                    {num} {num === 1 ? 'guest' : 'guests'}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         {/* Search Button */}

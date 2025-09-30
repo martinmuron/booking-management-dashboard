@@ -22,7 +22,6 @@ import {
   ArrowLeft
 } from 'lucide-react';
 import { SiteHeader } from '@/components/SiteHeader';
-import { Logo } from '@/components/Logo';
 
 interface FormData {
   name: string;
@@ -93,9 +92,6 @@ export default function ContactClient() {
 
         {/* Header */}
         <div className="text-center py-8">
-          <div className="mb-6">
-            <Logo size="lg" />
-          </div>
           <h1 className="text-4xl font-bold mb-4">Get in Touch</h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
             Have questions about our properties or need assistance? We&apos;re here to help make your Prague experience perfect.
@@ -118,7 +114,11 @@ export default function ContactClient() {
                   <Mail className="h-5 w-5 text-muted-foreground mt-1" />
                   <div>
                     <div className="font-medium">Email</div>
-                    <div className="text-sm text-muted-foreground">hello@nickandjenny.cz</div>
+                    <div className="text-sm text-muted-foreground">
+                      <a href="mailto:nick@investmentsolutions.cz" className="hover:underline">
+                        nick@investmentsolutions.cz
+                      </a>
+                    </div>
                   </div>
                 </div>
 
@@ -126,7 +126,16 @@ export default function ContactClient() {
                   <Phone className="h-5 w-5 text-muted-foreground mt-1" />
                   <div>
                     <div className="font-medium">Phone</div>
-                    <div className="text-sm text-muted-foreground">+420 XXX XXX XXX</div>
+                    <div className="space-y-1 text-sm text-muted-foreground">
+                      <div>
+                        <a href="tel:+420736535556" className="hover:underline font-medium text-foreground">+420 736 535 556</a>
+                        <span className="block text-xs text-muted-foreground">Daily from 06:00 – 22:00</span>
+                      </div>
+                      <div>
+                        <a href="tel:+420608706441" className="hover:underline font-medium text-foreground">+420 608 706 441</a>
+                        <span className="block text-xs text-muted-foreground">Night support from 22:00 – 06:00</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -142,7 +151,7 @@ export default function ContactClient() {
                   <Clock className="h-5 w-5 text-muted-foreground mt-1" />
                   <div>
                     <div className="font-medium">Response Time</div>
-                    <div className="text-sm text-muted-foreground">Usually within 24 hours</div>
+                    <div className="text-sm text-muted-foreground">We respond to most enquiries within a few hours.</div>
                   </div>
                 </div>
               </CardContent>
