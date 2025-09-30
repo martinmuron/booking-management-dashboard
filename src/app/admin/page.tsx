@@ -580,7 +580,108 @@ export default function AdminDashboard() {
                   No reservations found
                 </div>
               ) : (
-                <div className="rounded-md border overflow-x-auto md:overflow-x-visible">
+                <>
+                  {/* Mobile Card View */}
+                  <div className="lg:hidden space-y-3">
+                    {filteredBookings.map((booking) => {
+                      const statusInfo = getStatusInfo(booking.status);
+                      const StatusIcon = statusInfo.icon;
+
+                      return (
+                        <Card
+                          key={booking.id}
+                          className="cursor-pointer hover:bg-muted/50 transition-colors"
+                          onClick={() => router.push(`/admin/booking/${booking.id}`)}
+                        >
+                          <CardContent className="p-4">
+                            <div className="space-y-3">
+                              {/* Header: Guest Name & Status */}
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex-1 min-w-0">
+                                  <h3 className="font-semibold text-base truncate" title={booking.guestLeaderName}>
+                                    {booking.guestLeaderName}
+                                  </h3>
+                                  <p className="text-sm text-muted-foreground truncate" title={booking.propertyName}>
+                                    {booking.propertyName}
+                                  </p>
+                                </div>
+                                <Badge className={`${statusInfo.color} text-xs shrink-0`}>
+                                  <StatusIcon className="h-3 w-3 mr-1" />
+                                  {statusInfo.text}
+                                </Badge>
+                              </div>
+
+                              {/* Dates & Guests */}
+                              <div className="grid grid-cols-2 gap-3 text-sm">
+                                <div>
+                                  <p className="text-xs text-muted-foreground mb-1">Check-in</p>
+                                  <p className="font-medium">{formatDate(booking.checkInDate)}</p>
+                                </div>
+                                <div>
+                                  <p className="text-xs text-muted-foreground mb-1">Check-out</p>
+                                  <p className="font-medium">{formatDate(booking.checkOutDate)}</p>
+                                </div>
+                              </div>
+
+                              {/* Guests Count & Room */}
+                              <div className="flex items-center gap-4 text-sm">
+                                <div className="flex items-center gap-1">
+                                  <Users className="h-4 w-4 text-muted-foreground" />
+                                  <span>{booking.numberOfGuests} {booking.numberOfGuests === 1 ? 'guest' : 'guests'}</span>
+                                </div>
+                                {booking.roomNumber && (
+                                  <div className="flex items-center gap-1">
+                                    <Home className="h-4 w-4 text-muted-foreground" />
+                                    <span>Room {booking.roomNumber}</span>
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Actions */}
+                              <div className="flex gap-2 pt-2 border-t">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    copyCheckInLink(booking.id, booking.checkInToken);
+                                  }}
+                                  className="flex-1"
+                                >
+                                  {copiedLinks[booking.id] ? (
+                                    <>
+                                      <Check className="h-4 w-4 mr-2" />
+                                      Copied Link
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Copy className="h-4 w-4 mr-2" />
+                                      Copy Link
+                                    </>
+                                  )}
+                                </Button>
+                                <Button
+                                  variant="default"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    router.push(`/admin/booking/${encodeURIComponent(booking.id)}`);
+                                  }}
+                                  className="flex-1"
+                                >
+                                  <ExternalLink className="h-4 w-4 mr-2" />
+                                  Manage
+                                </Button>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
+
+                  {/* Desktop Table View */}
+                  <div className="hidden lg:block rounded-md border overflow-x-auto md:overflow-x-visible">
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -714,6 +815,7 @@ export default function AdminDashboard() {
                     </TableBody>
                   </Table>
                 </div>
+                </>
               )}
             </CardContent>
           </Card>
