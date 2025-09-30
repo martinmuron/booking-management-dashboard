@@ -90,7 +90,8 @@ async function getBookingByToken(token: string): Promise<BookingData | null> {
       email: guest.email,
       phone: guest.phone,
       phoneCountryCode: guest.phoneCountryCode,
-      dateOfBirth: guest.dateOfBirth ? guest.dateOfBirth.toISOString() : null,
+      // Format dateOfBirth as YYYY-MM-DD to match client expectation (prevents hydration mismatch)
+      dateOfBirth: guest.dateOfBirth ? guest.dateOfBirth.toISOString().split('T')[0] : '',
       nationality: guest.nationality,
       citizenship: guest.citizenship,
       residenceCountry: guest.residenceCountry,
