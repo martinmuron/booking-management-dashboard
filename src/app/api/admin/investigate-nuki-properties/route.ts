@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/database';
 import { NUKI_AUTHORIZED_PROPERTIES, hasNukiAccess } from '@/utils/nuki-properties';
 import { nukiService } from '@/services/nuki.service';
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     console.log('🔍 Investigating Nuki property matching issues...');
 

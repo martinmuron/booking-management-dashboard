@@ -560,25 +560,6 @@ export class NukiApiService {
 
     const { allowedFromISO, allowedUntilISO } = this.getAuthorizationWindow(checkInDate, checkOutDate);
 
-    // Extract actual room number from property name or room number field
-    const extractRoomNumber = (roomNumber: string, propertyName?: string): string => {
-      // Try to extract from property name first (e.g., "8 bed apartment in Zizkov (402)" -> "402")
-      if (propertyName) {
-        const propertyMatch = propertyName.match(/\((\d+)\)$/);
-        if (propertyMatch) {
-          return propertyMatch[1];
-        }
-      }
-
-      // Try to extract from room number field (e.g., "Prokopova 197/9" -> look for numbers)
-      const roomMatch = roomNumber.match(/(\d+)/);
-      if (roomMatch) {
-        return roomMatch[1];
-      }
-
-      return roomNumber; // fallback to original
-    };
-
     const resolveDevice = (keyType: VirtualKeyType): { deviceId: number; deviceName?: string } => {
       const mapping = listingId ? getNukiPropertyMapping(listingId) : null;
 

@@ -82,20 +82,8 @@ type PendingExport = PrismaUbyPortExport & {
 class UbyPortService {
 
   private getApiUrl(): string {
-    // UbyPort 2.0 endpoint - try different variations
-    const baseUrl = 'https://ubyport.policie.cz';
-
-    // Try most likely paths for UbyPort 2.0
-    const endpointVariations = [
-      '/ws_uby/ws_uby.svc',
-      '/ws_uby.svc',
-      '/WS_UBY/WS_UBY.svc',
-      '/ws_uby',
-      '/WS_UBY'
-    ];
-
-    // For now, try the original path first
-    return `${baseUrl}/ws_uby/ws_uby.svc`;
+    // Primary UbyPort 2.0 endpoint path
+    return 'https://ubyport.policie.cz/ws_uby/ws_uby.svc';
   }
 
   private getAuthCode(): string {
