@@ -15,6 +15,14 @@ export interface NukiPropertyMapping {
   roomCode?: string; // Only for Prokopova properties
 }
 
+export function formatRoomAlias(roomCode: string): string {
+  const cleaned = roomCode.replace(/[^0-9A-Za-z]/g, '');
+  if (/^\d+$/.test(cleaned)) {
+    return `Ž${cleaned}`;
+  }
+  return cleaned;
+}
+
 // Non-Prokopova Nuki properties from other Prague listings
 export const OTHER_NUKI_PROPERTIES: Record<string, NukiPropertyMapping> = {
   '271444': {

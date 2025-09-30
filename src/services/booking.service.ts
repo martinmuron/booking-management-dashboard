@@ -5,6 +5,7 @@ import { ubyPortService } from './ubyport.service';
 import { VirtualKeyService } from './virtual-key.service';
 import { nukiApiService } from './nuki-api.service';
 import { ensureNukiKeysForBooking } from './auto-key.service';
+import { getNukiPropertyMapping, formatRoomAlias } from '@/utils/nuki-properties-mapping';
 
 interface BookingData {
   id: string;
@@ -51,6 +52,32 @@ const canonicalizePragueAddress = (value?: string | null): string | null => {
   }
 
   return value;
+};
+
+const resolvePropertyIdentity = (
+  listingMapId: number | null | undefined,
+  fallbackName?: string | null,
+  fallbackAddress?: string | null
+) => {
+  if (listingMapId !== null && listingMapId !== undefined) {
+    const mapping = getNukiPropertyMapping(listingMapId);
+    if (mapping) {
+      const alias = mapping.roomCode ? formatRoomAlias(mapping.roomCode) : mapping.name;
+      const roomLabel = mapping.roomCode
+        ? formatRoomAlias(mapping.roomCode)
+        : canonicalizePragueAddress(mapping.address) ?? mapping.address ?? alias;
+
+      return {
+        propertyName: alias ?? fallbackName ?? `Property ${listingMapId}`,
+        roomNumber: roomLabel ?? fallbackAddress ?? alias ?? fallbackName ?? null,
+      };
+    }
+  }
+
+  return {
+    propertyName: fallbackName ?? fallbackAddress ?? 'Unknown Property',
+    roomNumber: fallbackAddress ?? fallbackName ?? null,
+  };
 };
 
 const pad = (value: number) => value.toString().padStart(2, '0');
@@ -526,17 +553,22 @@ class BookingService {
           const checkInToken = existingBooking?.checkInToken ?? await this.generateCheckInToken();
 
           const canonicalAddress = canonicalizePragueAddress(listing?.address);
+          const identity = resolvePropertyIdentity(
+            reservation.listingMapId,
+            reservation.listingName || listing?.name || `Property ${reservation.listingMapId}`,
+            canonicalAddress
+          );
 
           const bookingData = {
             hostAwayId: reservation.id.toString(),
-            propertyName: reservation.listingName || listing?.name || `Property ${reservation.listingMapId}`,
+            propertyName: identity.propertyName,
             guestLeaderName: reservation.guestName || `${reservation.guestFirstName || ''} ${reservation.guestLastName || ''}`.trim() || 'Guest Name Not Available',
             guestLeaderEmail: reservation.guestEmail || 'noemail@example.com',
             guestLeaderPhone: reservation.phone || null,
             checkInDate,
             checkOutDate,
             numberOfGuests: reservation.numberOfGuests || reservation.adults || 1,
-            roomNumber: canonicalAddress,
+            roomNumber: identity.roomNumber ?? canonicalAddress,
             checkInToken,
             // Use existing check-in status for new bookings, preserve existing status for updates
             // This handles the seamless transition from checkin.io
@@ -899,17 +931,22 @@ class BookingService {
       const isCancelled = hostawayStatus === 'cancelled' || hostawayStatus === 'canceled';
 
       const canonicalAddress = canonicalizePragueAddress(listing?.address);
+      const identity = resolvePropertyIdentity(
+        reservation.listingMapId,
+        reservation.listingName || listing?.name || `Property ${reservation.listingMapId}`,
+        canonicalAddress
+      );
 
       const bookingData = {
         hostAwayId: reservation.id.toString(),
-        propertyName: reservation.listingName || listing?.name || `Property ${reservation.listingMapId}`,
+        propertyName: identity.propertyName,
         guestLeaderName: reservation.guestName || `${reservation.guestFirstName || ''} ${reservation.guestLastName || ''}`.trim() || 'Guest Name Not Available',
         guestLeaderEmail: reservation.guestEmail || 'noemail@example.com',
         guestLeaderPhone: reservation.phone || null,
         checkInDate,
         checkOutDate,
         numberOfGuests: reservation.numberOfGuests || reservation.adults || 1,
-        roomNumber: canonicalAddress,
+        roomNumber: identity.roomNumber ?? canonicalAddress,
         checkInToken,
         // Use existing check-in status for new bookings, preserve existing status for updates
         status: isCancelled ? 'CANCELLED' : existingBooking?.status || checkInInfo.status
