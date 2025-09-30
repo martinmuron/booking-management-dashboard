@@ -149,6 +149,27 @@ export async function ensureNukiKeysForBooking(
       );
 
     let initialKeypadCode = options.keypadCode ?? booking.universalKeypadCode ?? undefined;
+
+    if (initialKeypadCode) {
+      const conflictingBooking = await client.booking.findFirst({
+        where: {
+          id: { not: booking.id },
+          universalKeypadCode: initialKeypadCode,
+          checkOutDate: { gte: new Date() },
+        },
+        select: { id: true },
+      });
+
+      if (conflictingBooking) {
+        console.warn('[NUKI] Existing booking already uses this keypad code. Generating a new one.', {
+          bookingId: booking.id,
+          conflictingBookingId: conflictingBooking.id,
+          keypadCode: initialKeypadCode,
+        });
+        initialKeypadCode = undefined;
+      }
+    }
+
     if (initialKeypadCode && !/^\d{6}$/.test(initialKeypadCode)) {
       console.warn('⚠️ [NUKI] Stored keypad code does not meet 6-digit requirement, regenerating', {
         bookingId: booking.id,
@@ -252,6 +273,20 @@ export async function ensureNukiKeysForBooking(
           nukiKeyId: result.nukiAuth.id,
         })),
         skipDuplicates: true,
+      });
+
+      await client.nukiKeyRetry.updateMany({
+        where: {
+          bookingId: booking.id,
+          keyType: { in: createdKeyTypes },
+          status: { in: ['PENDING', 'PROCESSING', 'FAILED'] },
+        },
+        data: {
+          status: 'COMPLETED',
+          keypadCode: universalKeypadCode,
+          lastError: null,
+          updatedAt: new Date(),
+        },
       });
     }
 

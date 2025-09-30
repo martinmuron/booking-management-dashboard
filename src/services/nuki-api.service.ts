@@ -540,7 +540,7 @@ export class NukiApiService {
     failures: CreateKeyFailure[];
   }> {
     const attemptedKeyTypes = options.keyTypes ?? await this.getKeyTypesForProperty(listingId);
-    const universalKeypadCode = options.keypadCode ?? this.generateKeypadCode();
+    let universalKeypadCode = options.keypadCode ?? this.generateKeypadCode();
     const failures: CreateKeyFailure[] = [];
     const results: CreateKeyResult[] = [];
     const deviceAuthCounts = new Map<number, number>();
@@ -655,6 +655,51 @@ export class NukiApiService {
       return { deviceId: Number.parseInt(configuredId, 10), deviceName: keyType };
     };
 
+    const deviceContexts = attemptedKeyTypes.map((keyType) => ({
+      keyType,
+      ...resolveDevice(keyType),
+    }));
+
+    const uniqueDeviceIds = Array.from(new Set(deviceContexts.map(context => context.deviceId)));
+
+    const codeExistsOnDevices = async (code: string): Promise<boolean> => {
+      if (!code) {
+        return false;
+      }
+
+      for (const deviceId of uniqueDeviceIds) {
+        const existing = await this.findAuthorizationOnDevice({
+          deviceId,
+          keypadCode: code,
+          retryScheduleMs: [0],
+        });
+
+        if (existing) {
+          return true;
+        }
+      }
+
+      return false;
+    };
+
+    if (await codeExistsOnDevices(universalKeypadCode)) {
+      console.warn(`[NUKI] Supplied keypad code ${universalKeypadCode} already exists on one of the target devices. Generating a new code.`);
+
+      let attempts = 0;
+      let candidate = this.generateKeypadCode();
+
+      while (attempts < 10 && (await codeExistsOnDevices(candidate))) {
+        candidate = this.generateKeypadCode();
+        attempts += 1;
+      }
+
+      if (attempts >= 10 && (await codeExistsOnDevices(candidate))) {
+        throw new Error('nuki_code_conflict');
+      }
+
+      universalKeypadCode = candidate;
+    }
+
     for (const keyType of attemptedKeyTypes) {
       let deviceContext: { deviceId: number; deviceName?: string } | null = null;
       const authorizationName = `${guestName} – ${keyType}${roomNumber ? ` ${roomNumber}` : ''}`;
@@ -758,25 +803,35 @@ export class NukiApiService {
   // Generate a random 6-digit keypad code that meets Nuki validation requirements
   private generateKeypadCode(): string {
     const generateValidCode = (): string => {
-      // Generate 6-digit codes – required by latest Nuki keypad firmware
-      const min = 100000;
-      const max = 999999;
-
-      let code: string;
+      const digits = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
       let attempts = 0;
 
-      do {
-        code = Math.floor(min + Math.random() * (max - min + 1)).toString();
-        attempts++;
+      while (attempts < 100) {
+        let code = '';
 
-        // Safety check to avoid infinite loop
-        if (attempts > 100) {
-          code = '685247';
-          break;
+        for (let i = 0; i < 6; i += 1) {
+          const candidate = digits[Math.floor(Math.random() * digits.length)];
+
+          if (
+            code.length >= 2 &&
+            candidate === code[code.length - 1] &&
+            candidate === code[code.length - 2]
+          ) {
+            i -= 1;
+            continue;
+          }
+
+          code += candidate;
         }
-      } while (!this.isValidKeypadCode(code));
 
-      return code;
+        if (this.isValidKeypadCode(code)) {
+          return code;
+        }
+
+        attempts += 1;
+      }
+
+      return '685247';
     };
 
     return generateValidCode();
