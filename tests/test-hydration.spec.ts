@@ -3,17 +3,20 @@ import { test, expect } from '@playwright/test';
 test('check for hydration errors on check-in page', async ({ page, browser }) => {
   test.setTimeout(60000);
 
+  const baseURL = test.info().project.use.baseURL ?? 'http://localhost:3000';
+  const targetUrl = new URL('/checkin/AV4BQJ7AKS', baseURL).toString();
+
   // First, get the server-rendered HTML
   const context1 = await browser.newContext({ javaScriptEnabled: false });
   const page1 = await context1.newPage();
-  await page1.goto('http://localhost:3000/checkin/AV4BQJ7AKS');
+  await page1.goto(targetUrl);
   const serverHTML = await page1.content();
   await context1.close();
 
   console.log('\n=== Server HTML Sample ===');
   // Extract key parts
-  const checkInDateMatch = serverHTML.match(/Check-in: ([^<]+)</);
-  const checkInTimeMatch = serverHTML.match(/at ([0-9:]+\s*[AP]M)/);
+  const checkInDateMatch = serverHTML.match(/Check-in: ([^<]+) at/);
+  const checkInTimeMatch = serverHTML.match(/Check-in: [^<]+ at ([^<]+)/);
   console.log('Server check-in date:', checkInDateMatch ? checkInDateMatch[1] : 'NOT FOUND');
   console.log('Server check-in time:', checkInTimeMatch ? checkInTimeMatch[1] : 'NOT FOUND');
 
@@ -32,8 +35,8 @@ test('check for hydration errors on check-in page', async ({ page, browser }) =>
     errors.push(error.message);
   });
 
-  console.log('\nNavigating to LOCAL check-in page with JS...');
-  await page.goto('http://localhost:3000/checkin/AV4BQJ7AKS', { waitUntil: 'domcontentloaded' });
+  console.log(`\nNavigating to check-in page with JS... (${targetUrl})`);
+  await page.goto(targetUrl, { waitUntil: 'domcontentloaded' });
 
   await page.waitForTimeout(3000);
 

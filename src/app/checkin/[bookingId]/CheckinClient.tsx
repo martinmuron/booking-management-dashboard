@@ -295,6 +295,88 @@ const createGuestId = () => {
   return `guest-${Math.random().toString(36).slice(2, 10)}`;
 };
 
+const mapGuestsFromPayload = (apiGuests: ApiGuestPayload[]): Guest[] =>
+  apiGuests.map((guest, index) => ({
+    id: guest.id || `guest-${index}`,
+    firstName: sanitizeString(guest.firstName) || '',
+    lastName: sanitizeString(guest.lastName) || '',
+    email: sanitizeString(guest.email ?? ''),
+    phone: sanitizeString(guest.phone ?? ''),
+    phoneCountryCode: sanitizeString(guest.phoneCountryCode ?? '+420') || '+420',
+    dateOfBirth: guest.dateOfBirth ? new Date(guest.dateOfBirth).toISOString().split('T')[0] : '',
+    nationality: sanitizeIsoAlpha3(guest.nationality ?? ''),
+    citizenship: sanitizeIsoAlpha3(guest.citizenship ?? ''),
+    residenceCountry: sanitizeIsoAlpha3(guest.residenceCountry ?? ''),
+    residenceCity: sanitizeString(guest.residenceCity ?? ''),
+    residenceAddress: sanitizeString(guest.residenceAddress ?? ''),
+    purposeOfStay: sanitizeString(guest.purposeOfStay ?? ''),
+    documentType: sanitizeString(guest.documentType ?? ''),
+    documentNumber: sanitizeDocumentNumber(guest.documentNumber ?? ''),
+    visaNumber: sanitizeString(guest.visaNumber ?? ''),
+    notes: sanitizeString(guest.notes ?? '')
+  }));
+
+const normalizeGuestsForSignature = (guestList: Guest[]) =>
+  guestList.map((guest) => {
+    const sanitizedNationality = sanitizeIsoAlpha3(guest.nationality);
+    const sanitizedCitizenship = guest.citizenship ? sanitizeIsoAlpha3(guest.citizenship) : sanitizedNationality;
+    const sanitizedResidenceCountry = sanitizeIsoAlpha3(guest.residenceCountry);
+    const sanitizedPhoneCode = sanitizeString(guest.phoneCountryCode) || '+420';
+    const normalizedPhoneCode = sanitizedPhoneCode.startsWith('+') ? sanitizedPhoneCode : `+${sanitizedPhoneCode}`;
+
+    return {
+      ...guest,
+      firstName: sanitizeString(guest.firstName),
+      lastName: sanitizeString(guest.lastName),
+      email: sanitizeString(guest.email),
+      phone: sanitizeString(guest.phone),
+      phoneCountryCode: normalizedPhoneCode,
+      nationality: sanitizedNationality,
+      citizenship: sanitizedCitizenship,
+      residenceCountry: sanitizedResidenceCountry,
+      residenceCity: sanitizeString(guest.residenceCity),
+      residenceAddress: sanitizeString(guest.residenceAddress),
+      purposeOfStay: sanitizeString(guest.purposeOfStay),
+      documentType: sanitizeString(guest.documentType).toUpperCase(),
+      documentNumber: sanitizeDocumentNumber(guest.documentNumber),
+      visaNumber: sanitizeString(guest.visaNumber).toUpperCase(),
+      notes: sanitizeString(guest.notes)
+    };
+  });
+
+const createPlaceholderGuest = (guestName: string): Guest => {
+  const sanitized = sanitizeString(guestName) || 'Guest';
+  const nameParts = sanitized.split(' ');
+  const firstName = nameParts[0] || 'Guest';
+  const lastName = nameParts.slice(1).join(' ');
+
+  return {
+    id: 'guest-default',
+    firstName,
+    lastName,
+    email: '',
+    phone: '',
+    phoneCountryCode: '+420',
+    dateOfBirth: '',
+    nationality: '',
+    citizenship: '',
+    residenceCountry: '',
+    residenceCity: '',
+    residenceAddress: '',
+    purposeOfStay: '',
+    documentType: '',
+    documentNumber: '',
+    visaNumber: '',
+    notes: ''
+  };
+};
+
+const initialiseGuestErrorsMap = (guestList: Guest[]) =>
+  guestList.reduce<Record<string, GuestErrors>>((acc, guest) => {
+    acc[guest.id] = {};
+    return acc;
+  }, {});
+
 export default function CheckinClient({ initialBooking }: CheckinClientProps) {
   const params = useParams();
   const bookingToken = params.bookingId as string;
@@ -331,15 +413,6 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
   const checkInTimeLabel = booking ? (booking.checkInTimeLabel ?? FALLBACK_CHECK_IN_TIME) : FALLBACK_CHECK_IN_TIME;
   const checkOutTimeLabel = booking ? (booking.checkOutTimeLabel ?? FALLBACK_CHECK_OUT_TIME) : FALLBACK_CHECK_OUT_TIME;
 
-  const initialiseGuestErrors = useCallback(
-    (guestList: Guest[]) =>
-      guestList.reduce<Record<string, GuestErrors>>((acc, guest) => {
-        acc[guest.id] = {};
-        return acc;
-    }, {}),
-    []
-  );
-
   useEffect(() => {
     setIsMounted(true);
   }, []);
@@ -371,86 +444,6 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
       setShowMobileMenu(false);
     }
   };
-
-  const transformGuestsFromPayload = useCallback(
-    (apiGuests: ApiGuestPayload[]): Guest[] =>
-      apiGuests.map((guest, index) => ({
-        id: guest.id || `guest-${index}`,
-        firstName: sanitizeString(guest.firstName) || '',
-        lastName: sanitizeString(guest.lastName) || '',
-        email: sanitizeString(guest.email ?? ''),
-        phone: sanitizeString(guest.phone ?? ''),
-        phoneCountryCode: sanitizeString(guest.phoneCountryCode ?? '+420') || '+420',
-        dateOfBirth: guest.dateOfBirth ? new Date(guest.dateOfBirth).toISOString().split('T')[0] : '',
-        nationality: sanitizeIsoAlpha3(guest.nationality ?? ''),
-        citizenship: sanitizeIsoAlpha3(guest.citizenship ?? ''),
-        residenceCountry: sanitizeIsoAlpha3(guest.residenceCountry ?? ''),
-        residenceCity: sanitizeString(guest.residenceCity ?? ''),
-        residenceAddress: sanitizeString(guest.residenceAddress ?? ''),
-        purposeOfStay: sanitizeString(guest.purposeOfStay ?? ''),
-        documentType: sanitizeString(guest.documentType ?? ''),
-        documentNumber: sanitizeDocumentNumber(guest.documentNumber ?? ''),
-        visaNumber: sanitizeString(guest.visaNumber ?? ''),
-        notes: sanitizeString(guest.notes ?? '')
-      })),
-    []
-  );
-
-  const buildNormalizedGuests = useCallback((guestList: Guest[] = guests) => {
-    return guestList.map((guest) => {
-      const sanitizedNationality = sanitizeIsoAlpha3(guest.nationality);
-      const sanitizedCitizenship = guest.citizenship ? sanitizeIsoAlpha3(guest.citizenship) : sanitizedNationality;
-      const sanitizedResidenceCountry = sanitizeIsoAlpha3(guest.residenceCountry);
-      const sanitizedPhoneCode = sanitizeString(guest.phoneCountryCode) || '+420';
-      const normalizedPhoneCode = sanitizedPhoneCode.startsWith('+') ? sanitizedPhoneCode : `+${sanitizedPhoneCode}`;
-
-      return {
-        ...guest,
-        firstName: sanitizeString(guest.firstName),
-        lastName: sanitizeString(guest.lastName),
-        email: sanitizeString(guest.email),
-        phone: sanitizeString(guest.phone),
-        phoneCountryCode: normalizedPhoneCode,
-        nationality: sanitizedNationality,
-        citizenship: sanitizedCitizenship,
-        residenceCountry: sanitizedResidenceCountry,
-        residenceCity: sanitizeString(guest.residenceCity),
-        residenceAddress: sanitizeString(guest.residenceAddress),
-        purposeOfStay: sanitizeString(guest.purposeOfStay),
-        documentType: sanitizeString(guest.documentType).toUpperCase(),
-        documentNumber: sanitizeDocumentNumber(guest.documentNumber),
-        visaNumber: sanitizeString(guest.visaNumber).toUpperCase(),
-        notes: sanitizeString(guest.notes)
-      };
-    });
-  }, [guests]);
-
-  const createDefaultGuest = useCallback((guestName: string): Guest => {
-    const sanitized = sanitizeString(guestName) || 'Guest';
-    const nameParts = sanitized.split(' ');
-    const firstName = nameParts[0] || 'Guest';
-    const lastName = nameParts.slice(1).join(' ');
-
-    return {
-      id: 'guest-default',
-      firstName,
-      lastName,
-      email: '',
-      phone: '',
-      phoneCountryCode: '+420',
-      dateOfBirth: '',
-      nationality: '',
-      citizenship: '',
-      residenceCountry: '',
-      residenceCity: '',
-      residenceAddress: '',
-      purposeOfStay: '',
-      documentType: '',
-      documentNumber: '',
-      visaNumber: '',
-      notes: ''
-    };
-  }, []);
 
   const keyGenerationInfo = useMemo(() => {
     if (!isMounted || !booking) {
@@ -487,25 +480,20 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
     const payloadGuests = Array.isArray(snapshot.guests) ? snapshot.guests : [];
 
     if (payloadGuests.length > 0) {
-      const normalized = transformGuestsFromPayload(payloadGuests as ApiGuestPayload[]);
+      const normalized = mapGuestsFromPayload(payloadGuests as ApiGuestPayload[]);
       setGuests(normalized);
-      setGuestErrors(initialiseGuestErrors(normalized));
-      const normalizedPayload = buildNormalizedGuests(normalized);
+      setGuestErrors(initialiseGuestErrorsMap(normalized));
+      const normalizedPayload = normalizeGuestsForSignature(normalized);
       setSavedGuestSignature(JSON.stringify(normalizedPayload));
       setGuestDataDirty(false);
     } else {
-      const fallbackGuest = createDefaultGuest(snapshot.guestLeaderName || 'Guest');
+      const fallbackGuest = createPlaceholderGuest(snapshot.guestLeaderName || 'Guest');
       setGuests([fallbackGuest]);
       setGuestErrors({ [fallbackGuest.id]: {} });
       setSavedGuestSignature(null);
       setGuestDataDirty(!completed);
     }
-  }, [
-    buildNormalizedGuests,
-    createDefaultGuest,
-    initialiseGuestErrors,
-    transformGuestsFromPayload
-  ]);
+  }, []);
 
   // Track active section on scroll
   useEffect(() => {
@@ -631,7 +619,7 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
       return;
     }
 
-    const normalizedGuests = buildNormalizedGuests();
+    const normalizedGuests = normalizeGuestsForSignature(guests);
     const signature = JSON.stringify(normalizedGuests);
 
     if (!savedGuestSignature) {
@@ -641,7 +629,7 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
 
     const dirty = signature !== savedGuestSignature;
     setGuestDataDirty((prev) => (prev === dirty ? prev : dirty));
-  }, [savedGuestSignature, checkInCompleted, buildNormalizedGuests]);
+  }, [savedGuestSignature, checkInCompleted, guests]);
 
   const applyFieldSanitizers = (field: keyof Guest, value: string): string => {
     if (field === 'nationality' || field === 'citizenship' || field === 'residenceCountry') {
@@ -929,11 +917,11 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
       draftLoadedRef.current = true;
       const draftGuests = parsedDraft as Guest[];
       setGuests(draftGuests);
-      setGuestErrors(initialiseGuestErrors(draftGuests));
+      setGuestErrors(initialiseGuestErrorsMap(draftGuests));
     } catch (storageError) {
       console.error('Failed to load saved check-in progress:', storageError);
     }
-  }, [bookingToken, initialiseGuestErrors]);
+  }, [bookingToken]);
 
   useEffect(() => {
     if (!bookingToken || typeof window === 'undefined') {
@@ -1045,7 +1033,7 @@ const applyServerValidationIssues = (issues?: ApiValidationIssue[]): ServerValid
       return;
     }
 
-    const normalizedGuests = buildNormalizedGuests();
+    const normalizedGuests = normalizeGuestsForSignature(guests);
 
     setSavingGuests(true);
 
@@ -1132,7 +1120,7 @@ const applyServerValidationIssues = (issues?: ApiValidationIssue[]): ServerValid
       return false;
     }
 
-    const normalizedGuests = buildNormalizedGuests();
+      const normalizedGuests = normalizeGuestsForSignature(guests);
 
     setSubmitting(true);
     setError(null);

@@ -8,7 +8,7 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: 'html',
   use: {
-    baseURL: 'https://www.nickandjenny.cz',
+    baseURL: process.env.PLAYWRIGHT_BASE_URL ?? 'https://www.nickandjenny.cz',
     trace: 'on-first-retry',
   },
 
