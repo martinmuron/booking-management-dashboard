@@ -11,7 +11,8 @@
     "db:generate": "prisma generate",
     "db:studio": "prisma studio",
     "postinstall": "prisma generate",
-    "nuki:backfill": "tsx scripts/backfill-nuki-authorizations.ts"
+    "nuki:backfill": "tsx scripts/backfill-nuki-authorizations.ts",
+    "nuki:regen-window": "tsx scripts/regenerate-nuki-window.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.10.0",
