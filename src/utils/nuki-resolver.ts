@@ -1,6 +1,7 @@
 import type { Booking } from '@prisma/client';
 import { hostAwayService } from '@/services/hostaway.service';
-import { hasNukiAccess, NUKI_DEVICE_ROOM_CODES } from '@/utils/nuki-properties';
+import { NUKI_DEVICE_ROOM_CODES } from '@/utils/nuki-properties';
+import { getNukiPropertyMapping } from '@/utils/nuki-properties-mapping';
 import { getRoomCodeFromListingId } from '@/utils/prokopova-room-mapping';
 
 function normalize(input: string) {
@@ -35,10 +36,6 @@ function findThreeDigitCode(value: string): string | null {
  * Attempt to resolve a canonical Nuki property identifier for the given booking.
  */
 export async function resolveNukiPropertyCode(booking: Booking): Promise<string | null> {
-  if (booking.propertyName && hasNukiAccess(booking.propertyName)) {
-    return booking.propertyName;
-  }
-
   if (!booking.hostAwayId) {
     return null;
   }
@@ -48,56 +45,18 @@ export async function resolveNukiPropertyCode(booking: Booking): Promise<string 
     return null;
   }
 
-  const [reservation, listings] = await Promise.all([
-    hostAwayService.getReservationById(reservationId),
-    hostAwayService.getListings(),
-  ]);
+  try {
+    const reservation = await hostAwayService.getReservationById(reservationId);
+    if (!reservation?.listingMapId) {
+      return null;
+    }
 
-  if (!reservation?.listingMapId) {
+    const mapping = getNukiPropertyMapping(reservation.listingMapId);
+    return mapping ? mapping.name : null;
+  } catch (error) {
+    console.warn('Failed to resolve Nuki property from HostAway listing ID:', error);
     return null;
   }
-
-  const listing = listings.find(item => item.id === reservation.listingMapId);
-  const internalName = (listing?.internalListingName || listing?.name)?.trim();
-
-  if (internalName && hasNukiAccess(internalName)) {
-    return internalName;
-  }
-
-  const candidates: string[] = [];
-
-  if (internalName) {
-    candidates.push(internalName);
-  }
-
-  if (listing?.address) {
-    candidates.push(listing.address);
-  }
-
-  if (booking.propertyName) {
-    candidates.push(booking.propertyName);
-  }
-
-  if (booking.roomNumber) {
-    candidates.push(booking.roomNumber);
-  }
-
-  for (const candidate of candidates) {
-    if (!candidate) {
-      continue;
-    }
-
-    if (hasNukiAccess(candidate)) {
-      return candidate;
-    }
-
-    const normalizedCandidate = normalize(candidate);
-    if (normalizedCandidate.includes('PROKOPOVA')) {
-      return 'Prokopova 197/9';
-    }
-  }
-
-  return null;
 }
 
 /**
@@ -110,11 +69,7 @@ export async function deriveRoomNumber(booking: Booking, propertyCode?: string |
     try {
       const reservationId = Number(booking.hostAwayId.replace(/[^0-9]/g, ''));
       if (reservationId) {
-        const [reservation, listings] = await Promise.all([
-          hostAwayService.getReservationById(reservationId),
-          hostAwayService.getListings(),
-        ]);
-
+        const reservation = await hostAwayService.getReservationById(reservationId);
         if (reservation?.listingMapId) {
           const roomCode = getRoomCodeFromListingId(reservation.listingMapId);
           if (roomCode && NUKI_DEVICE_ROOM_CODES.has(roomCode)) {

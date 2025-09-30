@@ -119,24 +119,42 @@ async function getBookingByToken(token: string): Promise<BookingData | null> {
       }
     );
 
-    const dateFormatter = new Intl.DateTimeFormat('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      timeZone: 'Europe/Prague'
-    });
+    // Manual date/time formatting to ensure server/client consistency
+    const formatDateLabel = (date: Date): string => {
+      const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
-    const timeFormatter = new Intl.DateTimeFormat('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-      timeZone: 'Europe/Prague'
-    });
+      // Convert to Prague timezone
+      const pragueDate = new Date(date.toLocaleString('en-US', { timeZone: 'Europe/Prague' }));
 
-    const checkInDateLabel = dateFormatter.format(booking.checkInDate);
-    const checkOutDateLabel = dateFormatter.format(booking.checkOutDate);
-    const checkInTimeLabel = timeFormatter.format(booking.checkInDate);
-    const checkOutTimeLabel = timeFormatter.format(booking.checkOutDate);
+      const dayName = days[pragueDate.getDay()];
+      const monthName = months[pragueDate.getMonth()];
+      const day = pragueDate.getDate();
+      const year = pragueDate.getFullYear();
+
+      return `${dayName}, ${monthName} ${day}, ${year}`;
+    };
+
+    const formatTimeLabel = (date: Date): string => {
+      // Convert to Prague timezone
+      const pragueDate = new Date(date.toLocaleString('en-US', { timeZone: 'Europe/Prague' }));
+
+      let hours = pragueDate.getHours();
+      const minutes = pragueDate.getMinutes();
+      const ampm = hours >= 12 ? 'PM' : 'AM';
+
+      hours = hours % 12;
+      hours = hours ? hours : 12; // 0 should be 12
+
+      const minutesStr = minutes < 10 ? '0' + minutes : minutes.toString();
+
+      return `${hours.toString().padStart(2, '0')}:${minutesStr} ${ampm}`;
+    };
+
+    const checkInDateLabel = formatDateLabel(booking.checkInDate);
+    const checkOutDateLabel = formatDateLabel(booking.checkOutDate);
+    const checkInTimeLabel = formatTimeLabel(booking.checkInDate);
+    const checkOutTimeLabel = formatTimeLabel(booking.checkOutDate);
 
     let listingId: number | undefined;
     if (booking.hostAwayId) {

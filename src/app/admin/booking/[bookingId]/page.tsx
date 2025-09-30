@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { hasNukiAccessByListingId } from "@/utils/nuki-properties-mapping";
-import { hasNukiAccess as hasNukiAccessByName } from "@/utils/nuki-properties";
 import { AdminNav } from "@/components/admin/AdminNav";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -126,16 +125,11 @@ interface BookingData {
  * @returns true if property should have Nuki access
  */
 const bookingHasNukiAccess = (booking?: BookingData | null): boolean => {
-  if (!booking) {
+  if (!booking?.listingId) {
     return false;
   }
 
-  if (booking.listingId && hasNukiAccessByListingId(booking.listingId)) {
-    return true;
-  }
-
-  const candidates = [booking.propertyName, booking.propertyAddress, booking.roomNumber];
-  return candidates.some((value) => value && hasNukiAccessByName(value));
+  return hasNukiAccessByListingId(booking.listingId);
 };
 
 const getStatusColor = (status?: string) => {

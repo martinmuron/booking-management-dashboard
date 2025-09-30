@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/database';
-import { hasNukiAccess } from '@/utils/nuki-properties';
 import { resolveNukiPropertyCode } from '@/utils/nuki-resolver';
 import { VirtualKeyType } from '@/types';
 
@@ -42,7 +41,7 @@ export async function GET(
     }
 
     const propertyCode = await resolveNukiPropertyCode(booking);
-    const isAuthorized = propertyCode ? hasNukiAccess(propertyCode) : false;
+    const isAuthorized = Boolean(propertyCode);
     const hasKeys = booking.virtualKeys.length > 0;
     const pendingRetries = await prisma.nukiKeyRetry.findMany({
       where: {
