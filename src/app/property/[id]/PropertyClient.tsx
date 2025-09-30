@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { MapPin, ArrowLeft, Loader2, ExternalLink } from "lucide-react";
+import { MapPin, ArrowLeft, Loader2, ExternalLink, ChevronLeft, ChevronRight } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { ImageModal } from "@/components/ImageModal";
 import Link from "next/link";
@@ -24,6 +24,7 @@ export default function PropertyClient({ initialProperty }: PropertyClientProps)
   const [error, setError] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [carouselIndex, setCarouselIndex] = useState(0);
 
   useEffect(() => {
     if (!initialProperty) {
@@ -67,10 +68,22 @@ export default function PropertyClient({ initialProperty }: PropertyClientProps)
     setCurrentImageIndex(index);
   };
 
-  // Prepare images for modal
-  const modalImages = property?.listingImages || (property?.thumbnailUrl ? [
-    { id: 0, url: property.thumbnailUrl, caption: property.name }
-  ] : []);
+  // Prepare images for modal and carousel
+  const allImages = property?.listingImages && property.listingImages.length > 0
+    ? property.listingImages
+    : (property?.thumbnailUrl ? [
+        { id: 0, url: property.thumbnailUrl, caption: property.name, sortOrder: 1 }
+      ] : []);
+
+  const modalImages = allImages;
+
+  const handlePrevImage = () => {
+    setCarouselIndex((prev) => (prev === 0 ? allImages.length - 1 : prev - 1));
+  };
+
+  const handleNextImage = () => {
+    setCarouselIndex((prev) => (prev === allImages.length - 1 ? 0 : prev + 1));
+  };
 
   if (loading) {
     return (
@@ -121,52 +134,78 @@ export default function PropertyClient({ initialProperty }: PropertyClientProps)
 
       <div className="container mx-auto px-4 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left Column - Images */}
+          {/* Left Column - Image Carousel */}
           <div className="lg:col-span-2">
-            <div className="space-y-4">
-              {/* Main Image */}
-              {property.thumbnailUrl && (
+            {allImages.length > 0 && (
+              <div className="relative">
+                {/* Main Carousel Image */}
                 <div
                   className="aspect-[16/10] relative rounded-lg overflow-hidden cursor-pointer group"
-                  onClick={() => handleImageClick(0)}
+                  onClick={() => handleImageClick(carouselIndex)}
                 >
                   <Image
-                    src={property.thumbnailUrl}
-                    alt={property.name}
+                    src={allImages[carouselIndex].url}
+                    alt={allImages[carouselIndex].caption || `${property.name} - Image ${carouselIndex + 1}`}
                     fill
-                    className="object-cover group-hover:scale-105 transition-transform duration-300"
+                    className="object-cover"
                     sizes="(min-width: 1024px) 66vw, 100vw"
-                    quality={80}
-                    priority
+                    quality={85}
+                    priority={carouselIndex === 0}
                   />
-                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300" />
-                </div>
-              )}
 
-              {/* Additional Images Grid */}
-              {property.listingImages && property.listingImages.length > 0 && (
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  {property.listingImages.slice(0, 6).map((image, index) => (
-                    <div
-                      key={image.id}
-                      className="aspect-square relative rounded-lg overflow-hidden cursor-pointer group"
-                      onClick={() => handleImageClick(index + 1)}
-                    >
-                      <Image
-                        src={image.url}
-                        alt={image.caption || `${property.name} - Image ${index + 1}`}
-                        fill
-                        className="object-cover group-hover:scale-105 transition-transform duration-300"
-                        sizes="(min-width: 768px) 33vw, 50vw"
-                        quality={75}
-                        loading="lazy"
-                      />
-                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300" />
-                    </div>
-                  ))}
+                  {/* Image Counter */}
+                  <div className="absolute bottom-4 right-4 bg-black/70 text-white px-3 py-1 rounded-full text-sm">
+                    {carouselIndex + 1} / {allImages.length}
+                  </div>
                 </div>
-              )}
-            </div>
+
+                {/* Navigation Arrows */}
+                {allImages.length > 1 && (
+                  <>
+                    <button
+                      onClick={handlePrevImage}
+                      className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white text-black p-2 rounded-full shadow-lg transition-all"
+                      aria-label="Previous image"
+                    >
+                      <ChevronLeft className="w-6 h-6" />
+                    </button>
+                    <button
+                      onClick={handleNextImage}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white text-black p-2 rounded-full shadow-lg transition-all"
+                      aria-label="Next image"
+                    >
+                      <ChevronRight className="w-6 h-6" />
+                    </button>
+                  </>
+                )}
+
+                {/* Thumbnail Strip */}
+                {allImages.length > 1 && (
+                  <div className="flex gap-2 mt-4 overflow-x-auto pb-2">
+                    {allImages.map((image, index) => (
+                      <button
+                        key={image.id}
+                        onClick={() => setCarouselIndex(index)}
+                        className={`relative flex-shrink-0 w-20 h-20 rounded-md overflow-hidden border-2 transition-all ${
+                          index === carouselIndex
+                            ? 'border-black ring-2 ring-black'
+                            : 'border-gray-200 hover:border-gray-400'
+                        }`}
+                      >
+                        <Image
+                          src={image.url}
+                          alt={`Thumbnail ${index + 1}`}
+                          fill
+                          className="object-cover"
+                          sizes="80px"
+                          quality={60}
+                        />
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Right Column - Property Details */}

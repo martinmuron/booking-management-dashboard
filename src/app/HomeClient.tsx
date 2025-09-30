@@ -352,7 +352,21 @@ export default function HomeClient() {
               <h3 className="font-semibold text-black mb-4">Contact</h3>
               <div className="space-y-2 text-sm text-gray-600">
                 <p>Prague, Czech Republic</p>
-                <p>hello@nickandjenny.cz</p>
+                <p>
+                  <a href="mailto:nick@investmentsolutions.cz" className="hover:text-black">
+                    nick@investmentsolutions.cz
+                  </a>
+                </p>
+                <div className="space-y-1">
+                  <p>
+                    <a href="tel:+420736535556" className="hover:text-black font-medium">+420 736 535 556</a>
+                    <span className="block text-xs">Daily 06:00 – 22:00</span>
+                  </p>
+                  <p>
+                    <a href="tel:+420608706441" className="hover:text-black font-medium">+420 608 706 441</a>
+                    <span className="block text-xs">Night support 22:00 – 06:00</span>
+                  </p>
+                </div>
               </div>
             </div>
           </div>
