@@ -1122,9 +1122,8 @@ const applyServerValidationIssues = (issues?: ApiValidationIssue[]): ServerValid
         return {
           ...prev,
           guests: normalizedGuests.map((guest, index) => ({
-            id: prev.guests?.[index]?.id ?? guests[index]?.id ?? `guest-${index}`,
             ...guest,
-            dateOfBirth: guest.dateOfBirth,
+            id: prev.guests?.[index]?.id ?? guests[index]?.id ?? `guest-${index}`,
             phoneCountryCode: guest.phoneCountryCode || '+420'
           }))
         };
