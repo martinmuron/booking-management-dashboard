@@ -632,7 +632,7 @@ export default function AdminDashboard() {
                                 {booking.roomNumber && (
                                   <div className="flex items-center gap-1">
                                     <Home className="h-4 w-4 text-muted-foreground" />
-                                    <span>Room {booking.roomNumber}</span>
+                                    <span>{booking.roomNumber}</span>
                                   </div>
                                 )}
                               </div>
