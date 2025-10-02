@@ -82,8 +82,13 @@ type PendingExport = PrismaUbyPortExport & {
 class UbyPortService {
 
   private getApiUrl(): string {
-    // Primary UbyPort 2.0 endpoint path
-    return 'https://ubyport.policie.cz/ws_uby/ws_uby.svc';
+    const override = process.env.UBYPORT_API_URL?.trim();
+    if (override) {
+      return override;
+    }
+
+    // Default to production endpoint; tests can supply the _test URL via env
+    return 'https://ubyport.pcr.cz/ws_uby/ws_uby.svc';
   }
 
   private getAuthCode(): string {
@@ -105,10 +110,10 @@ class UbyPortService {
       throw new Error('UbyPort credentials not configured');
     }
 
-    const domain = process.env.UBYPORT_DOMAIN || 'EXRESORTMV';
+    const domain = process.env.UBYPORT_DOMAIN || '';
     const workstation = process.env.UBYPORT_WORKSTATION || '';
 
-    console.log(`🔐 Using credentials: ${credentials.username} with domain: ${domain}`);
+    console.log(`🔐 Using credentials: ${credentials.username}${domain ? ` with domain: ${domain}` : ''}`);
 
     // Try httpntlm first
     try {
@@ -149,7 +154,8 @@ class UbyPortService {
       console.log('🔄 NTLM failed, trying basic auth fallback:', ntlmError);
 
       // Fallback to basic authentication if NTLM fails
-      const basicAuth = Buffer.from(`${domain}\\${credentials.username}:${credentials.password}`).toString('base64');
+      const domainPrefix = domain ? `${domain}\\` : '';
+      const basicAuth = Buffer.from(`${domainPrefix}${credentials.username}:${credentials.password}`).toString('base64');
 
       const response = await fetch(this.getApiUrl(), {
         method: 'POST',
@@ -187,6 +193,33 @@ class UbyPortService {
       uPsc: process.env.UBYPORT_POSTAL_CODE || '', // Postal code (5 digits)
       Ubytovani: [] // Will be filled with guests
     };
+  }
+
+  private formatDateTime(dateInput: Date | string | null | undefined): string {
+    if (!dateInput) {
+      return '';
+    }
+
+    const date = new Date(dateInput);
+    if (Number.isNaN(date.getTime())) {
+      return '';
+    }
+
+    const formatter = new Intl.DateTimeFormat('sv-SE', {
+      timeZone: process.env.UBYPORT_TIME_ZONE || 'Europe/Prague',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    });
+
+    const parts = formatter.formatToParts(date);
+    const get = (type: Intl.DateTimeFormatPartTypes) => parts.find(part => part.type === type)?.value || '00';
+
+    return `${get('year')}-${get('month')}-${get('day')}T${get('hour')}:${get('minute')}:${get('second')}`;
   }
 
   /**
@@ -273,44 +306,65 @@ class UbyPortService {
       }
 
       // Create SOAP envelope for ZapisUbytovane method
+      const nil = '<d4p1:cPlac i:nil="true" />';
+      const guestEntries = accommodationData.Ubytovani.map(guest => {
+        const cPurp = guest.cPurp !== undefined && guest.cPurp !== null
+          ? `<d4p1:cPurp>${guest.cPurp}</d4p1:cPurp>`
+          : '<d4p1:cPurp i:nil="true" />';
+
+        const cVisN = guest.cVisN
+          ? `<d4p1:cVisN>${guest.cVisN}</d4p1:cVisN>`
+          : '<d4p1:cVisN i:nil="true" />';
+
+        const cResi = guest.cResi
+          ? `<d4p1:cResi>${guest.cResi}</d4p1:cResi>`
+          : '<d4p1:cResi i:nil="true" />';
+
+        const cNote = guest.cNote
+          ? `<d4p1:cNote>${guest.cNote}</d4p1:cNote>`
+          : '<d4p1:cNote i:nil="true" />';
+
+        return `
+          <d4p1:Ubytovany>
+            <d4p1:cDate>${guest.cDate}</d4p1:cDate>
+            <d4p1:cDocN>${guest.cDocN}</d4p1:cDocN>
+            <d4p1:cFirstN>${guest.cFirstN}</d4p1:cFirstN>
+            <d4p1:cFrom>${guest.cFrom}</d4p1:cFrom>
+            <d4p1:cNati>${guest.cNati}</d4p1:cNati>
+            ${cNote}
+            ${nil}
+            ${cPurp}
+            ${cResi}
+            <d4p1:cSpz i:nil="true" />
+            <d4p1:cSurN>${guest.cSurN}</d4p1:cSurN>
+            <d4p1:cUntil>${guest.cUntil}</d4p1:cUntil>
+            ${cVisN}
+          </d4p1:Ubytovany>
+        `;
+      }).join('');
+
       const soapEnvelope = `<?xml version="1.0" encoding="utf-8"?>
 <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:uby="http://UBY.pcr.cz/WS_UBY">
   <soap:Header />
   <soap:Body>
     <uby:ZapisUbytovane>
       <uby:AutentificationCode>${this.getAuthCode()}</uby:AutentificationCode>
-      <uby:Seznam>
-        <VracetPDF>${accommodationData.VracetPDF}</VracetPDF>
-        <uIdub>${accommodationData.uIdub}</uIdub>
-        <uMark>${accommodationData.uMark}</uMark>
-        <uName>${accommodationData.uName}</uName>
-        <uCont>${accommodationData.uCont}</uCont>
-        <uOkr>${accommodationData.uOkr}</uOkr>
-        <uOb>${accommodationData.uOb}</uOb>
-        ${accommodationData.uObCa ? `<uObCa>${accommodationData.uObCa}</uObCa>` : '<uObCa />'}
-        ${accommodationData.uStr ? `<uStr>${accommodationData.uStr}</uStr>` : '<uStr />'}
-        <uHomN>${accommodationData.uHomN}</uHomN>
-        ${accommodationData.uOriN ? `<uOriN>${accommodationData.uOriN}</uOriN>` : '<uOriN />'}
-        <uPsc>${accommodationData.uPsc}</uPsc>
-        <Ubytovani>
-          ${accommodationData.Ubytovani.map(guest => `
-            <Ubytovany>
-              <cFrom>${guest.cFrom}</cFrom>
-              <cUntil>${guest.cUntil}</cUntil>
-              <cSurN>${guest.cSurN}</cSurN>
-              <cFirstN>${guest.cFirstN}</cFirstN>
-              <cDate>${guest.cDate}</cDate>
-              <cPlac />
-              <cNati>${guest.cNati}</cNati>
-              <cDocN>${guest.cDocN}</cDocN>
-              ${guest.cVisN ? `<cVisN>${guest.cVisN}</cVisN>` : '<cVisN />'}
-              ${guest.cResi ? `<cResi>${guest.cResi}</cResi>` : '<cResi />'}
-              ${guest.cPurp ? `<cPurp>${guest.cPurp}</cPurp>` : '<cPurp />'}
-              <cSpz />
-              ${guest.cNote ? `<cNote>${guest.cNote}</cNote>` : '<cNote />'}
-            </Ubytovany>
-          `).join('')}
-        </Ubytovani>
+      <uby:Seznam xmlns:d4p1="http://schemas.datacontract.org/2004/07/WS_UBY" xmlns:i="http://www.w3.org/2001/XMLSchema-instance">
+        <d4p1:Ubytovani>
+          ${guestEntries}
+        </d4p1:Ubytovani>
+        <d4p1:VracetPDF>${accommodationData.VracetPDF}</d4p1:VracetPDF>
+        <d4p1:uCont>${accommodationData.uCont}</d4p1:uCont>
+        <d4p1:uHomN>${accommodationData.uHomN}</d4p1:uHomN>
+        <d4p1:uIdub>${accommodationData.uIdub}</d4p1:uIdub>
+        <d4p1:uMark>${accommodationData.uMark}</d4p1:uMark>
+        <d4p1:uName>${accommodationData.uName}</d4p1:uName>
+        <d4p1:uOb>${accommodationData.uOb}</d4p1:uOb>
+        ${accommodationData.uObCa ? `<d4p1:uObCa>${accommodationData.uObCa}</d4p1:uObCa>` : '<d4p1:uObCa i:nil="true" />'}
+        <d4p1:uOkr>${accommodationData.uOkr}</d4p1:uOkr>
+        ${accommodationData.uOriN ? `<d4p1:uOriN>${accommodationData.uOriN}</d4p1:uOriN>` : '<d4p1:uOriN i:nil="true" />'}
+        <d4p1:uPsc>${accommodationData.uPsc}</d4p1:uPsc>
+        ${accommodationData.uStr ? `<d4p1:uStr>${accommodationData.uStr}</d4p1:uStr>` : '<d4p1:uStr i:nil="true" />'}
       </uby:Seznam>
     </uby:ZapisUbytovane>
   </soap:Body>
@@ -426,8 +480,8 @@ class UbyPortService {
    */
   private formatGuestForUbyPortSoap(guest: PrismaGuest, booking: PrismaBooking): UbyPortSoapGuest {
     // Format check-in and check-out times (UbyPort expects DateTime format)
-    const checkInDateTime = new Date(booking.checkInDate).toISOString();
-    const checkOutDateTime = new Date(booking.checkOutDate).toISOString();
+    const checkInDateTime = this.formatDateTime(booking.checkInDate) || new Date(booking.checkInDate).toISOString().replace('Z', '');
+    const checkOutDateTime = this.formatDateTime(booking.checkOutDate) || new Date(booking.checkOutDate).toISOString().replace('Z', '');
 
     const residenceComponents = [guest.residenceAddress, guest.residenceCity, guest.residenceCountry]
       .map((value) => (typeof value === 'string' ? value.trim() : ''))
