@@ -65,6 +65,7 @@ model Payment {
   amount                Int
   currency              String    @default("CZK")
   status                String    @default("pending") @db.VarChar(50)
+  method                String?   @db.VarChar(50)
   paidAt                DateTime?
   createdAt             DateTime  @default(now())
   booking               Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)

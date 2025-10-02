@@ -116,6 +116,7 @@ async function handlePaymentIntentEvent(
       currency,
       status,
       paidAt,
+      method: 'Stripe',
     },
     create: {
       bookingId,
@@ -124,6 +125,7 @@ async function handlePaymentIntentEvent(
       status,
       stripePaymentIntentId: paymentIntent.id,
       paidAt,
+      method: 'Stripe',
     },
   });
 

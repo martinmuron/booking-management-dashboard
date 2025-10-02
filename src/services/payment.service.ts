@@ -13,6 +13,7 @@ export class PaymentService {
       data: {
         ...data,
         currency: data.currency || 'CZK',
+        method: 'Stripe',
       },
     });
   }
@@ -43,6 +44,7 @@ export class PaymentService {
       data: {
         status,
         paidAt: status === 'paid' ? paidAt || new Date() : null,
+        method: status === 'paid' ? 'Stripe' : undefined,
       },
     });
   }

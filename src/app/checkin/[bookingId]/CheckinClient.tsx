@@ -93,6 +93,8 @@ interface BookingData {
     amount?: number | null;
     stripePaymentIntentId?: string | null;
     currency?: string | null;
+    method?: string | null;
+    paidAt?: string | null;
   }>;
   guests?: ApiGuestPayload[];
 }
@@ -1322,6 +1324,7 @@ const applyServerValidationIssues = (issues?: ApiValidationIssue[]): ServerValid
       return `${paymentIntentAmount} ${currency}`;
     }
   }, [paymentIntentAmount, paymentCurrency]);
+  const paymentMethodLabel = existingPaidPayment?.method ?? (existingPaidPayment?.stripePaymentIntentId ? 'Stripe' : null);
   const checkInTaskCompleted = checkInCompleted;
 
   const tasks = [
@@ -2078,6 +2081,11 @@ const applyServerValidationIssues = (issues?: ApiValidationIssue[]): ServerValid
                         {formattedPaidAmount && (
                           <p className="text-xs text-muted-foreground">
                             Amount paid: {formattedPaidAmount}
+                          </p>
+                        )}
+                        {paymentMethodLabel && (
+                          <p className="text-xs text-muted-foreground">
+                            Payment method: {paymentMethodLabel}
                           </p>
                         )}
                         {cityTaxAmount > 0 && (

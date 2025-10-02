@@ -42,12 +42,18 @@ interface Guest {
   nationality: string;
 }
 
+type ManualPaymentMethod = 'Cash' | 'Stripe' | 'Channel';
+
+const MANUAL_METHOD_OPTIONS: ManualPaymentMethod[] = ['Cash', 'Stripe', 'Channel'];
+
 interface Payment {
   id: string;
   amount: number;
   currency: string;
   status: 'pending' | 'paid' | 'failed';
-  stripePaymentIntentId?: string;
+  stripePaymentIntentId?: string | null;
+  method?: string | null;
+  paidAt?: string | null;
   createdAt: string;
 }
 
@@ -326,6 +332,10 @@ export default function BookingAdminPage() {
     queuedKeyTypes: [],
   });
   const [exportingGuests, setExportingGuests] = useState(false);
+  const [manualPaymentAmount, setManualPaymentAmount] = useState('');
+  const [manualPaymentMethod, setManualPaymentMethod] = useState<ManualPaymentMethod>('Cash');
+  const [savingManualPayment, setSavingManualPayment] = useState(false);
+  const [manualPaymentError, setManualPaymentError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchBooking = async () => {
@@ -359,6 +369,31 @@ export default function BookingAdminPage() {
 
     fetchBooking();
   }, [bookingId]);
+
+  useEffect(() => {
+    if (!booking) {
+      setManualPaymentAmount('');
+      setManualPaymentMethod('Cash');
+      return;
+    }
+
+    const { total } = calculateTouristTax(booking);
+    const paidPayments = [...(booking.payments ?? [])]
+      .filter(payment => payment.status === 'paid')
+      .sort((a, b) => new Date(b.paidAt || b.createdAt).getTime() - new Date(a.paidAt || a.createdAt).getTime());
+
+    if (paidPayments.length > 0) {
+      const latest = paidPayments[0];
+      setManualPaymentAmount(latest.amount ? latest.amount.toString() : total > 0 ? total.toString() : '');
+
+      if (latest.method && MANUAL_METHOD_OPTIONS.includes(latest.method as ManualPaymentMethod)) {
+        setManualPaymentMethod(latest.method as ManualPaymentMethod);
+      }
+    } else {
+      setManualPaymentAmount(total > 0 ? total.toString() : '');
+      setManualPaymentMethod('Cash');
+    }
+  }, [booking]);
 
   const refreshExistingKeys = async (id: string) => {
     try {
@@ -410,6 +445,70 @@ export default function BookingAdminPage() {
       }
     } catch {
       setError('Network error: Unable to update status');
+    }
+  };
+
+  const updatePaymentsList = (payments: Payment[] = [], updated: Payment): Payment[] => {
+    const others = payments.filter((payment) => payment.id !== updated.id);
+    return [updated, ...others].sort(
+      (a, b) => new Date(b.paidAt || b.createdAt).getTime() - new Date(a.paidAt || a.createdAt).getTime()
+    );
+  };
+
+  const handleManualPaymentSave = async () => {
+    if (!booking) return;
+
+    const parsedAmount = Number(manualPaymentAmount);
+    if (Number.isNaN(parsedAmount) || parsedAmount <= 0) {
+      setManualPaymentError('Enter a valid amount in CZK');
+      return;
+    }
+
+    setSavingManualPayment(true);
+    setManualPaymentError(null);
+
+    try {
+      const response = await fetch(`/api/bookings/${booking.id}/manual-payment`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ amount: parsedAmount, method: manualPaymentMethod }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data?.error || 'Failed to save manual payment');
+      }
+
+      const updatedPayment: Payment = {
+        ...data.data.payment,
+        paidAt: data.data.payment.paidAt ?? null,
+        method: data.data.payment.method ?? null,
+        stripePaymentIntentId: data.data.payment.stripePaymentIntentId ?? null,
+      };
+
+      setBooking((prev) => {
+        if (!prev) return prev;
+
+        return {
+          ...prev,
+          status: data.data.status ?? prev.status,
+          payments: updatePaymentsList(prev.payments ?? [], updatedPayment),
+        };
+      });
+
+      setManualPaymentAmount(updatedPayment.amount.toString());
+      if (updatedPayment.method && MANUAL_METHOD_OPTIONS.includes(updatedPayment.method as ManualPaymentMethod)) {
+        setManualPaymentMethod(updatedPayment.method as ManualPaymentMethod);
+      }
+
+      setNotice('Tourist tax marked as paid manually.');
+    } catch (error) {
+      setManualPaymentError(error instanceof Error ? error.message : 'Failed to save manual payment');
+    } finally {
+      setSavingManualPayment(false);
     }
   };
 
@@ -546,6 +645,9 @@ export default function BookingAdminPage() {
   const fallbackGuestEmail = checkedInGuests.find((guest) => guest.email)?.email || null;
   const contactEmail = leadGuestEmail || fallbackGuestEmail;
   const propertyHasNuki = existingKeys.booking?.isAuthorized ?? bookingHasNukiAccess(booking);
+  const latestPaidPayment = [...(booking.payments ?? [])]
+    .filter(payment => payment.status === 'paid')
+    .sort((a, b) => new Date(b.paidAt || b.createdAt).getTime() - new Date(a.paidAt || a.createdAt).getTime())[0];
 
   return (
     <div className="min-h-screen bg-background">
@@ -851,6 +953,7 @@ export default function BookingAdminPage() {
                         <TableRow>
                           <TableHead>Amount</TableHead>
                           <TableHead>Status</TableHead>
+                          <TableHead>Method</TableHead>
                           <TableHead>Payment ID</TableHead>
                           <TableHead>Date</TableHead>
                         </TableRow>
@@ -872,11 +975,14 @@ export default function BookingAdminPage() {
                                 {payment.status}
                               </Badge>
                             </TableCell>
+                            <TableCell>
+                              {payment.method || (payment.stripePaymentIntentId ? 'Stripe' : '—')}
+                            </TableCell>
                             <TableCell className="font-mono text-sm">
                               {payment.stripePaymentIntentId || payment.id}
                             </TableCell>
                             <TableCell>
-                              {formatDate(payment.createdAt)}
+                              {formatDate(payment.paidAt || payment.createdAt)}
                             </TableCell>
                           </TableRow>
                         ))}
@@ -1128,6 +1234,18 @@ export default function BookingAdminPage() {
                       )}
                     </div>
                   </div>
+                  {latestPaidPayment && (
+                    <div>
+                      <Label className="text-sm text-muted-foreground">Last Payment</Label>
+                      <p className="font-medium">
+                        {latestPaidPayment.amount} CZK
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Method: {latestPaidPayment.method || (latestPaidPayment.stripePaymentIntentId ? 'Stripe' : '—')}
+                        {latestPaidPayment.paidAt && ` · ${new Date(latestPaidPayment.paidAt).toLocaleString()}`}
+                      </p>
+                    </div>
+                  )}
                   {!booking.payments?.some(p => p.status === 'paid') && (
                     <div className="pt-2">
                       <p className="text-xs text-muted-foreground">
@@ -1135,6 +1253,69 @@ export default function BookingAdminPage() {
                       </p>
                     </div>
                   )}
+                  <div className="pt-3 border-t">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-sm font-medium">Manual Payment Override</Label>
+                      {savingManualPayment && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Use when the guest pays outside our online checkout (cash, channel payout, etc.).
+                    </p>
+                    <div className="mt-3 grid gap-3 md:grid-cols-2">
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Amount (CZK)</Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          step="1"
+                          value={manualPaymentAmount}
+                          onChange={(event) => {
+                            setManualPaymentError(null);
+                            setManualPaymentAmount(event.target.value);
+                          }}
+                          inputMode="numeric"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Method</Label>
+                        <Select
+                          value={manualPaymentMethod}
+                          onValueChange={(value) => {
+                            setManualPaymentError(null);
+                            setManualPaymentMethod(value as ManualPaymentMethod);
+                          }}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select method" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {MANUAL_METHOD_OPTIONS.map((option) => (
+                              <SelectItem key={option} value={option}>
+                                {option}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    {manualPaymentError && (
+                      <p className="text-xs text-red-600 mt-2">{manualPaymentError}</p>
+                    )}
+                    <Button
+                      className="mt-3"
+                      onClick={handleManualPaymentSave}
+                      disabled={savingManualPayment || !manualPaymentAmount}
+                    >
+                      {savingManualPayment ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Saving...
+                        </>
+                      ) : (
+                        <>Save Manual Payment</>
+                      )}
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
 
