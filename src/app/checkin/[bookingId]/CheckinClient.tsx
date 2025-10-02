@@ -391,6 +391,7 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
   const initialCheckInCompleted = Boolean(initialBooking?.status === 'CHECKED_IN' || existingPaidPayment);
   const [paymentIntentId, setPaymentIntentId] = useState<string | null>(existingPaidPayment?.stripePaymentIntentId ?? null);
   const [paymentIntentAmount, setPaymentIntentAmount] = useState<number | null>(existingPaidPayment?.amount ?? null);
+  const [paymentCurrency, setPaymentCurrency] = useState<string | null>(existingPaidPayment?.currency ?? null);
   const [submitting, setSubmitting] = useState(false);
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
@@ -468,6 +469,11 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
     if (paidPayment) {
       setPaymentIntentId(paidPayment.stripePaymentIntentId ?? null);
       setPaymentIntentAmount(paidPayment.amount ?? null);
+      setPaymentCurrency(paidPayment.currency ?? null);
+    } else {
+      setPaymentIntentId(null);
+      setPaymentIntentAmount(null);
+      setPaymentCurrency(null);
     }
 
     setGuestSaveMessage(null);
@@ -881,6 +887,7 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
     if (cityTaxAmount === 0) {
       setPaymentIntentId(null);
       setPaymentIntentAmount(null);
+      setPaymentCurrency(null);
       setShowPaymentForm(false);
       return;
     }
@@ -892,6 +899,7 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
     if (paymentIntentAmount !== cityTaxAmount) {
       setPaymentIntentId(null);
       setPaymentIntentAmount(null);
+      setPaymentCurrency(null);
       setShowPaymentForm(false);
     }
   }, [checkInCompleted, cityTaxAmount, paymentIntentAmount]);
@@ -945,6 +953,7 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
   const handlePaymentSuccess = async (intentId: string, amountPaid: number) => {
     setPaymentIntentId(intentId);
     setPaymentIntentAmount(amountPaid);
+    setPaymentCurrency('CZK');
     setShowPaymentForm(false);
     setError(null);
 
@@ -957,6 +966,7 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
     setShowPaymentForm(true);
     setPaymentIntentId(null);
     setPaymentIntentAmount(null);
+    setPaymentCurrency(null);
     setCheckInCompleted(false);
   };
 
@@ -1294,6 +1304,24 @@ const applyServerValidationIssues = (issues?: ApiValidationIssue[]): ServerValid
   });
 
   const cityTaxCompleted = checkInCompleted || cityTaxAmount === 0 || Boolean(paymentIntentId);
+
+  const formattedPaidAmount = useMemo(() => {
+    if (paymentIntentAmount === null) {
+      return null;
+    }
+
+    const currency = paymentCurrency && /^[A-Z]{3}$/.test(paymentCurrency) ? paymentCurrency : 'CZK';
+
+    try {
+      return new Intl.NumberFormat('cs-CZ', {
+        style: 'currency',
+        currency,
+        maximumFractionDigits: 2
+      }).format(paymentIntentAmount);
+    } catch {
+      return `${paymentIntentAmount} ${currency}`;
+    }
+  }, [paymentIntentAmount, paymentCurrency]);
   const checkInTaskCompleted = checkInCompleted;
 
   const tasks = [
@@ -2047,6 +2075,11 @@ const applyServerValidationIssues = (issues?: ApiValidationIssue[]): ServerValid
                           <CheckCircle className="h-5 w-5 mr-2" />
                           Check-in completed. We look forward to welcoming you!
                         </span>
+                        {formattedPaidAmount && (
+                          <p className="text-xs text-muted-foreground">
+                            Amount paid: {formattedPaidAmount}
+                          </p>
+                        )}
                         {cityTaxAmount > 0 && (
                           <p className="text-xs text-muted-foreground">
                             Payment reference: {paymentIntentId || 'Available via Stripe receipt'}
