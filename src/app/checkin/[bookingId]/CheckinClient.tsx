@@ -1252,6 +1252,7 @@ const applyServerValidationIssues = (issues?: ApiValidationIssue[]): ServerValid
 
   const aroundAddress = booking?.propertyAddress || booking?.roomNumber || booking?.propertyName || 'Prague, Czechia';
   const propertyHasNuki = bookingHasNukiAccess(booking);
+  const isFourKeyLocation = isProkopovaBooking(booking);
   const canShowGuestKeys = Boolean(booking && propertyHasNuki && booking.status && ['CHECKED_IN', 'KEYS_DISTRIBUTED'].includes(booking.status));
   const showArrivalInstructions = shouldShowArrivalInstructions(booking);
   const showAppliancesInfo = shouldShowAppliancesInfo(booking);
@@ -2241,6 +2242,32 @@ const applyServerValidationIssues = (issues?: ApiValidationIssue[]): ServerValid
                               </>
                             );
                           })()}
+                        </div>
+                      )}
+
+                      {isFourKeyLocation && (
+                        <div className="mt-6 bg-slate-50 border border-slate-200 rounded-lg p-4">
+                          <h4 className="font-medium text-slate-900 mb-2 flex items-center">
+                            <Clock className="h-4 w-4 mr-2" />
+                            Key Validity & Timing
+                          </h4>
+                          <p className="text-xs text-slate-600 mb-3">
+                            All times shown in Prague local time.
+                          </p>
+                          <div className="space-y-2 text-sm text-slate-800">
+                            <div className="rounded-md border border-slate-200 bg-white px-3 py-2">
+                              <div className="font-medium">Main entrance, Laundry room & Luggage room</div>
+                              <div className="mt-1 text-slate-600">
+                                {checkInDateLabel} · 00:01 → {checkOutDateLabel} · 23:59
+                              </div>
+                            </div>
+                            <div className="rounded-md border border-slate-200 bg-white px-3 py-2">
+                              <div className="font-medium">Apartment door</div>
+                              <div className="mt-1 text-slate-600">
+                                {checkInDateLabel} · {checkInTimeLabel} → {checkOutDateLabel} · {checkOutTimeLabel}
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       )}
                     </CardContent>

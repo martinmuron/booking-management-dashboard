@@ -63,7 +63,12 @@ async function main() {
       continue;
     }
 
-    const { allowedFromISO, allowedUntilISO } = nukiApiService.getAuthorizationWindow(booking.checkInDate, booking.checkOutDate);
+    const { allowedFromISO, allowedUntilISO } = nukiApiService.getAuthorizationWindowForKey(
+      retry.keyType,
+      booking.checkInDate,
+      booking.checkOutDate,
+      { deviceId }
+    );
 
     let authorization = null;
     try {

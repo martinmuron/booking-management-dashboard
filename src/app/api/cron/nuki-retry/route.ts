@@ -136,7 +136,12 @@ async function handler() {
         const keypadCode = retry.keypadCode ?? booking?.universalKeypadCode ?? undefined;
 
         if (booking && keypadCode && Number.isFinite(deviceId)) {
-          const { allowedFromISO, allowedUntilISO } = nukiApiService.getAuthorizationWindow(booking.checkInDate, booking.checkOutDate);
+          const { allowedFromISO, allowedUntilISO } = nukiApiService.getAuthorizationWindowForKey(
+            retry.keyType,
+            booking.checkInDate,
+            booking.checkOutDate,
+            { deviceId }
+          );
 
           try {
             const reconciliation = await nukiApiService.findAuthorizationOnDevice({

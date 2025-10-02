@@ -200,6 +200,54 @@ export class NukiApiService {
     };
   }
 
+  getAuthorizationWindowForKey(
+    keyType: VirtualKeyType,
+    checkInDate: Date,
+    checkOutDate: Date,
+    options: { listingId?: string | number | null; deviceId?: string | number | null } = {}
+  ) {
+    const defaultWindow = this.getAuthorizationWindow(checkInDate, checkOutDate);
+
+    if (keyType === VirtualKeyType.ROOM) {
+      return defaultWindow;
+    }
+
+    const shouldUseExtendedWindow = (() => {
+      if (options.listingId !== undefined && options.listingId !== null) {
+        const mapping = getNukiPropertyMapping(options.listingId);
+        if (mapping?.propertyType === 'prokopova') {
+          return true;
+        }
+      }
+
+      if (options.deviceId !== undefined && options.deviceId !== null) {
+        const normalizedDeviceId = String(options.deviceId);
+        const prokopovaDeviceIds = [
+          this.deviceIds[VirtualKeyType.MAIN_ENTRANCE],
+          this.deviceIds[VirtualKeyType.LUGGAGE_ROOM],
+          this.deviceIds[VirtualKeyType.LAUNDRY_ROOM],
+        ]
+          .filter((value): value is string => Boolean(value))
+          .map(String);
+
+        if (prokopovaDeviceIds.includes(normalizedDeviceId)) {
+          return true;
+        }
+      }
+
+      return false;
+    })();
+
+    if (!shouldUseExtendedWindow) {
+      return defaultWindow;
+    }
+
+    return {
+      allowedFromISO: toPragueDateTime(checkInDate, 0, 1),
+      allowedUntilISO: toPragueDateTime(checkOutDate, 23, 59),
+    };
+  }
+
   private async makeRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
     const response = await fetch(url, {
@@ -726,6 +774,18 @@ export class NukiApiService {
     const failures: CreateKeyFailure[] = [];
     const results: CreateKeyResult[] = [];
     const deviceAuthCounts = new Map<number, number>();
+    const propertyMapping = listingId ? getNukiPropertyMapping(listingId) : null;
+    const windowCache = new Map<VirtualKeyType, { allowedFromISO: string; allowedUntilISO: string }>();
+
+    const getWindowForKeyType = (keyType: VirtualKeyType) => {
+      if (!windowCache.has(keyType)) {
+        windowCache.set(
+          keyType,
+          this.getAuthorizationWindowForKey(keyType, checkInDate, checkOutDate, { listingId })
+        );
+      }
+      return windowCache.get(keyType)!;
+    };
 
     const getAuthorizationCount = async (deviceId: number): Promise<number> => {
       if (!deviceAuthCounts.has(deviceId)) {
@@ -740,21 +800,17 @@ export class NukiApiService {
       return deviceAuthCounts.get(deviceId) ?? 0;
     };
 
-    const { allowedFromISO, allowedUntilISO } = this.getAuthorizationWindow(checkInDate, checkOutDate);
-
     const resolveDevice = (keyType: VirtualKeyType): { deviceId: number; deviceName?: string } => {
-      const mapping = listingId ? getNukiPropertyMapping(listingId) : null;
-
       if (keyType === VirtualKeyType.ROOM) {
         // Only Prokopova properties have room keys
-        if (mapping?.propertyType === 'prokopova' && mapping.roomCode) {
-          const roomDeviceId = this.roomDeviceIds[mapping.roomCode];
+        if (propertyMapping?.propertyType === 'prokopova' && propertyMapping.roomCode) {
+          const roomDeviceId = this.roomDeviceIds[propertyMapping.roomCode];
           if (!roomDeviceId) {
-            throw new Error(`No Nuki device configured for room ${mapping.roomCode}`);
+            throw new Error(`No Nuki device configured for room ${propertyMapping.roomCode}`);
           }
           return {
             deviceId: Number.parseInt(roomDeviceId, 10),
-            deviceName: `Room ${mapping.roomCode}`
+            deviceName: `Room ${propertyMapping.roomCode}`
           };
         } else {
           // Fallback: try to extract room number from roomNumber parameter
@@ -775,8 +831,8 @@ export class NukiApiService {
       }
 
       // Handle property-specific devices for MAIN_ENTRANCE keys
-      if (keyType === VirtualKeyType.MAIN_ENTRANCE && mapping) {
-        switch (mapping.propertyType) {
+      if (keyType === VirtualKeyType.MAIN_ENTRANCE && propertyMapping) {
+        switch (propertyMapping.propertyType) {
           case 'borivojova':
             const borivojovaId = this.specialDeviceIds.BORIVOJOVA_ENTRY;
             if (!borivojovaId) {
@@ -866,6 +922,7 @@ export class NukiApiService {
     for (const keyType of attemptedKeyTypes) {
       let deviceContext: { deviceId: number; deviceName?: string } | null = null;
       const authorizationName = `${guestName} – ${keyType}${roomNumber ? ` ${roomNumber}` : ''}`;
+      const { allowedFromISO, allowedUntilISO } = getWindowForKeyType(keyType);
 
       try {
         deviceContext = resolveDevice(keyType);
