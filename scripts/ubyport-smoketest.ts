@@ -21,7 +21,7 @@ type AccommodationPayload = {
 };
 
 async function main() {
-  const service = ubyPortService as AnyService;
+  const service = ubyPortService as unknown as AnyService;
   const getAccommodationInfo = service.getAccommodationInfo as (() => AccommodationPayload) | undefined;
   const submitToUbyPortApi = service.submitToUbyPortApi as ((payload: AccommodationPayload) => Promise<unknown>) | undefined;
 

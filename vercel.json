@@ -1,10 +1,6 @@
 {
   "crons": [
     {
-      "path": "/api/cron/ubyport-exports",
-      "schedule": "0 22 * * *"
-    },
-    {
       "path": "/api/cron/checkout-completion",
       "schedule": "0 5 * * *"
     },
