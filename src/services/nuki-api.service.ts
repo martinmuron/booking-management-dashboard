@@ -621,8 +621,35 @@ export class NukiApiService {
     throw new Error(`nuki_authorization_not_found: ${errorDetails}`);
   }
 
+  private async resolveDeviceIdForAuthorization(authId: string): Promise<number | null> {
+    try {
+      const allAuths = await this.getAllAuthorizations();
+      const match = allAuths.find(auth => String(auth.id) === String(authId));
+      return match?.deviceId ?? null;
+    } catch (error) {
+      console.warn('[NUKI] Failed to resolve device for authorization', { authId, error });
+      return null;
+    }
+  }
+
   // Delete/revoke authorization
-  async revokeVirtualKey(authId: string): Promise<void> {
+  async revokeVirtualKey(authId: string, options: { deviceId?: number | string } = {}): Promise<void> {
+    let deviceId = options.deviceId !== undefined && options.deviceId !== null
+      ? Number(options.deviceId)
+      : undefined;
+
+    if (!deviceId || Number.isNaN(deviceId)) {
+      deviceId = await this.resolveDeviceIdForAuthorization(authId) ?? undefined;
+    }
+
+    if (deviceId && !Number.isNaN(deviceId)) {
+      await this.makeRequest(`/smartlock/${deviceId}/auth/${authId}`, {
+        method: 'DELETE',
+      });
+      return;
+    }
+
+    // Fallback to legacy endpoint (may return 404 on modern API, but preserves compatibility)
     await this.makeRequest(`/smartlock/auth/${authId}`, {
       method: 'DELETE',
     });
@@ -683,7 +710,7 @@ export class NukiApiService {
       const expiry = auth.allowedUntilDate ? new Date(auth.allowedUntilDate).getTime() : null;
       if (expiry !== null && expiry < nowMs) {
         try {
-          await this.revokeVirtualKey(String(auth.id));
+          await this.revokeVirtualKey(String(auth.id), { deviceId: auth.deviceId });
           deleted += 1;
           details.push({
             id: String(auth.id),
@@ -1099,8 +1126,22 @@ export class NukiApiService {
 
   // Batch revoke all keys for a booking
   async revokeAllKeysForBooking(nukiAuthIds: string[]): Promise<void> {
-    const revokePromises = nukiAuthIds.map(authId => 
-      this.revokeVirtualKey(authId).catch(error => 
+    if (nukiAuthIds.length === 0) {
+      return;
+    }
+
+    const authMap = new Map<string, number | null>();
+    try {
+      const allAuths = await this.getAllAuthorizations();
+      for (const auth of allAuths) {
+        authMap.set(String(auth.id), auth.deviceId);
+      }
+    } catch (error) {
+      console.warn('[NUKI] Failed to prefetch authorizations for bulk revoke', error);
+    }
+
+    const revokePromises = nukiAuthIds.map(authId =>
+      this.revokeVirtualKey(authId, { deviceId: authMap.get(String(authId)) ?? undefined }).catch(error =>
         console.error(`Failed to revoke key ${authId}:`, error)
       )
     );

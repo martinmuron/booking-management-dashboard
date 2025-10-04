@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import type { VirtualKeyType } from '@prisma/client';
 
 import { prisma } from '@/lib/database';
+import { addWebhookLog } from '@/lib/webhook-logs';
 import { ensureNukiKeysForBooking } from '@/services/auto-key.service';
 import { nukiApiService } from '@/services/nuki-api.service';
 
@@ -92,6 +93,13 @@ async function handler() {
               attemptCount,
               lastError: 'Maximum retry attempts reached',
             }
+          });
+          await addWebhookLog({
+            eventType: 'nuki.retry',
+            status: 'error',
+            reservationId: retry.bookingId,
+            message: `Nuki key retry exceeded max attempts (${retry.keyType})`,
+            error: 'Maximum retry attempts reached'
           });
           failed += 1;
         } else {
@@ -266,6 +274,13 @@ async function handler() {
       });
 
       if (reachedLimit) {
+        await addWebhookLog({
+          eventType: 'nuki.retry',
+          status: 'error',
+          reservationId: retry.bookingId,
+          message: `Nuki key retry cancelled after ${attemptCount} attempts (${retry.keyType})`,
+          error: errorMessage || 'Unknown error'
+        });
         failed += 1;
       } else {
         rescheduled += 1;

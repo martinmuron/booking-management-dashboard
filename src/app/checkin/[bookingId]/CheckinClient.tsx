@@ -1265,10 +1265,19 @@ const applyServerValidationIssues = (issues?: ApiValidationIssue[]): ServerValid
   const aroundAddress = booking?.propertyAddress || booking?.roomNumber || booking?.propertyName || 'Prague, Czechia';
   const propertyHasNuki = bookingHasNukiAccess(booking);
   const isFourKeyLocation = isProkopovaBooking(booking);
-  const canShowGuestKeys = Boolean(booking && propertyHasNuki && booking.status && ['CHECKED_IN', 'KEYS_DISTRIBUTED'].includes(booking.status));
   const showArrivalInstructions = shouldShowArrivalInstructions(booking);
   const showAppliancesInfo = shouldShowAppliancesInfo(booking);
   const activeVirtualKeys = (booking?.virtualKeys ?? []).filter(key => key.isActive !== false);
+  const hasAccessArtifacts = Boolean(activeVirtualKeys.length > 0 || booking?.universalKeypadCode);
+  const keyWindowOpen = Boolean(
+    !keyGenerationInfo?.isTooEarly || checkInCompleted
+  );
+  const canShowGuestKeys = Boolean(
+    booking &&
+    propertyHasNuki &&
+    hasAccessArtifacts &&
+    keyWindowOpen
+  );
   const keyTypeLabels: Record<string, string> = {
     MAIN_ENTRANCE: 'Main Entrance',
     ROOM: booking?.propertyName ? `Your apartment (${booking.propertyName})` : 'Your apartment',
@@ -2267,6 +2276,19 @@ const applyServerValidationIssues = (issues?: ApiValidationIssue[]): ServerValid
                                   <Badge className="bg-amber-100 text-amber-800 border-amber-300">
                                     <Clock className="h-3 w-3 mr-1" />
                                     Available in {keyInfo.daysUntil} {keyInfo.daysUntil === 1 ? 'day' : 'days'}
+                                  </Badge>
+                                </>
+                              );
+                            }
+                            if (checkInCompleted) {
+                              return (
+                                <>
+                                  <p className="text-sm text-muted-foreground mb-4">
+                                    Your stay is confirmed. We are still syncing your digital keys—please refresh this page in a moment or contact us if the code hasn&apos;t appeared within 10 minutes.
+                                  </p>
+                                  <Badge className="bg-blue-100 text-blue-800">
+                                    <Clock className="h-3 w-3 mr-1" />
+                                    Finalizing Keys
                                   </Badge>
                                 </>
                               );
