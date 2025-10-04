@@ -1284,6 +1284,8 @@ const applyServerValidationIssues = (issues?: ApiValidationIssue[]): ServerValid
     LUGGAGE_ROOM: 'Luggage Room',
     LAUNDRY_ROOM: 'Laundry Room',
   };
+  const prokopovaRoomStartDisplay = '12:00 PM';
+  const prokopovaRoomEndDisplay = '1:00 PM';
   const accessAreas = activeVirtualKeys.length > 0
     ? Array.from(new Set(activeVirtualKeys.map(key => keyTypeLabels[key.keyType as keyof typeof keyTypeLabels] ?? key.keyType)))
     : propertyHasNuki
@@ -2327,7 +2329,7 @@ const applyServerValidationIssues = (issues?: ApiValidationIssue[]): ServerValid
                             <div className="rounded-md border border-slate-200 bg-white px-3 py-2">
                               <div className="font-medium">Apartment door</div>
                               <div className="mt-1 text-slate-600">
-                                {checkInDateLabel} · {checkInTimeLabel} → {checkOutDateLabel} · {checkOutTimeLabel}
+                                {checkInDateLabel} · {isFourKeyLocation ? prokopovaRoomStartDisplay : checkInTimeLabel} → {checkOutDateLabel} · {isFourKeyLocation ? prokopovaRoomEndDisplay : checkOutTimeLabel}
                               </div>
                             </div>
                           </div>

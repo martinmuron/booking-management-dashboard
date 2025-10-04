@@ -208,38 +208,38 @@ export class NukiApiService {
   ) {
     const defaultWindow = this.getAuthorizationWindow(checkInDate, checkOutDate);
 
-    if (keyType === VirtualKeyType.ROOM) {
-      return defaultWindow;
-    }
+    const normalizedDeviceId = options.deviceId !== undefined && options.deviceId !== null
+      ? String(options.deviceId)
+      : undefined;
 
-    const shouldUseExtendedWindow = (() => {
-      if (options.listingId !== undefined && options.listingId !== null) {
-        const mapping = getNukiPropertyMapping(options.listingId);
-        if (mapping?.propertyType === 'prokopova') {
-          return true;
-        }
-      }
+    const mapping = options.listingId !== undefined && options.listingId !== null
+      ? getNukiPropertyMapping(options.listingId)
+      : null;
 
-      if (options.deviceId !== undefined && options.deviceId !== null) {
-        const normalizedDeviceId = String(options.deviceId);
-        const prokopovaDeviceIds = [
-          this.deviceIds[VirtualKeyType.MAIN_ENTRANCE],
-          this.deviceIds[VirtualKeyType.LUGGAGE_ROOM],
-          this.deviceIds[VirtualKeyType.LAUNDRY_ROOM],
-        ]
-          .filter((value): value is string => Boolean(value))
-          .map(String);
+    const isProkopovaListing = mapping?.propertyType === 'prokopova';
+    const prokopovaDeviceIds = new Set(
+      [
+        this.deviceIds[VirtualKeyType.MAIN_ENTRANCE],
+        this.deviceIds[VirtualKeyType.LUGGAGE_ROOM],
+        this.deviceIds[VirtualKeyType.LAUNDRY_ROOM],
+        ...Object.values(this.roomDeviceIds)
+      ]
+        .filter((value): value is string => Boolean(value))
+        .map(String)
+    );
+    const isProkopovaDevice = normalizedDeviceId ? prokopovaDeviceIds.has(normalizedDeviceId) : false;
 
-        if (prokopovaDeviceIds.includes(normalizedDeviceId)) {
-          return true;
-        }
-      }
-
-      return false;
-    })();
+    const shouldUseExtendedWindow = isProkopovaListing || isProkopovaDevice;
 
     if (!shouldUseExtendedWindow) {
       return defaultWindow;
+    }
+
+    if (keyType === VirtualKeyType.ROOM) {
+      return {
+        allowedFromISO: toPragueDateTime(checkInDate, 12, 0),
+        allowedUntilISO: toPragueDateTime(checkOutDate, 13, 0),
+      };
     }
 
     return {
