@@ -126,6 +126,7 @@ type ApiGuestPayload = {
 const NAME_CHAR_REGEX = /^[A-Za-zÀ-ÖØ-öø-ÿ'\-\s]+$/u;
 const ISO_ALPHA3_REGEX = /^[A-Z]{3}$/;
 const DOCUMENT_NUMBER_REGEX = /^[A-Z0-9]{4,30}$/;
+const CHECKIN_COMPLETE_STATUSES = new Set(['CHECKED_IN', 'KEYS_DISTRIBUTED', 'COMPLETED']);
 
 const countrySuggestions = [
   { code: 'CZE', name: 'Czech Republic' },
@@ -390,7 +391,10 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
   const [guests, setGuests] = useState<Guest[]>([]);
   const [guestErrors, setGuestErrors] = useState<Record<string, GuestErrors>>({});
   const existingPaidPayment = initialBooking?.payments?.find((payment) => payment.status?.toLowerCase() === 'paid');
-  const initialCheckInCompleted = Boolean(initialBooking?.status === 'CHECKED_IN' || existingPaidPayment);
+  const normalizedInitialStatus = initialBooking?.status?.toUpperCase?.() ?? null;
+  const initialCheckInCompleted = Boolean(
+    normalizedInitialStatus && CHECKIN_COMPLETE_STATUSES.has(normalizedInitialStatus)
+  );
   const [paymentIntentId, setPaymentIntentId] = useState<string | null>(existingPaidPayment?.stripePaymentIntentId ?? null);
   const [paymentIntentAmount, setPaymentIntentAmount] = useState<number | null>(existingPaidPayment?.amount ?? null);
   const [paymentCurrency, setPaymentCurrency] = useState<string | null>(existingPaidPayment?.currency ?? null);
@@ -460,10 +464,8 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
 
     const paidPayment = snapshot.payments?.find(payment => payment.status?.toLowerCase() === 'paid');
     const normalizedStatus = snapshot.status?.toUpperCase?.();
-    const completedByStatus = normalizedStatus
-      ? ['PAYMENT_COMPLETED', 'CHECKED_IN', 'KEYS_DISTRIBUTED'].includes(normalizedStatus)
-      : false;
-    const completed = completedByStatus || Boolean(paidPayment);
+    const completedByStatus = normalizedStatus ? CHECKIN_COMPLETE_STATUSES.has(normalizedStatus) : false;
+    const completed = completedByStatus;
 
     setCheckInCompleted(completed);
     setSuccessMessage(completed ? 'Check-in already completed.' : null);
@@ -1269,6 +1271,8 @@ const applyServerValidationIssues = (issues?: ApiValidationIssue[]): ServerValid
   const showAppliancesInfo = shouldShowAppliancesInfo(booking);
   const activeVirtualKeys = (booking?.virtualKeys ?? []).filter(key => key.isActive !== false);
   const hasAccessArtifacts = Boolean(activeVirtualKeys.length > 0 || booking?.universalKeypadCode);
+  const hasPaidPayment = Boolean(booking?.payments?.some(payment => payment.status?.toLowerCase() === 'paid'));
+  const hasSettledCityTax = cityTaxAmount === 0 || Boolean(paymentIntentId) || hasPaidPayment;
   const keyWindowOpen = Boolean(
     !keyGenerationInfo?.isTooEarly || checkInCompleted
   );
@@ -1276,7 +1280,9 @@ const applyServerValidationIssues = (issues?: ApiValidationIssue[]): ServerValid
     booking &&
     propertyHasNuki &&
     hasAccessArtifacts &&
-    keyWindowOpen
+    keyWindowOpen &&
+    checkInCompleted &&
+    hasSettledCityTax
   );
   const keyTypeLabels: Record<string, string> = {
     MAIN_ENTRANCE: 'Main Entrance',
@@ -1316,7 +1322,7 @@ const applyServerValidationIssues = (issues?: ApiValidationIssue[]): ServerValid
     );
   });
 
-  const cityTaxCompleted = checkInCompleted || cityTaxAmount === 0 || Boolean(paymentIntentId);
+  const cityTaxCompleted = checkInCompleted || hasSettledCityTax;
 
   const formattedPaidAmount = useMemo(() => {
     if (paymentIntentAmount === null) {
@@ -2201,9 +2207,9 @@ const applyServerValidationIssues = (issues?: ApiValidationIssue[]): ServerValid
                         Your Access Code
                       </CardTitle>
                       <CardDescription>
-                        {booking?.universalKeypadCode
+                        {canShowGuestKeys && booking?.universalKeypadCode
                           ? 'Use this universal keypad code to access the property.'
-                          : 'Digital keys appear here once check-in is complete.'}
+                          : 'Digital keys unlock after check-in is finished and the city tax is settled.'}
                       </CardDescription>
                     </CardHeader>
                     <CardContent>

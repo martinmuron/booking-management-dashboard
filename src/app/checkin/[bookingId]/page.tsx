@@ -60,6 +60,8 @@ interface BookingData {
   virtualKeys?: VirtualKey[];
 }
 
+const CHECKIN_COMPLETE_STATUSES = new Set(['CHECKED_IN', 'KEYS_DISTRIBUTED', 'COMPLETED']);
+
 async function getBookingByToken(token: string): Promise<BookingData | null> {
   try {
     // Use database directly instead of calling API to avoid issues during SSR
@@ -178,6 +180,13 @@ async function getBookingByToken(token: string): Promise<BookingData | null> {
       }
     }
 
+    const normalizedStatus = booking.status?.toUpperCase?.();
+    const paidPayments = booking.payments.filter(payment => payment.status?.toLowerCase() === 'paid');
+    const hasSettledCityTax = cityTaxAmount === 0 || paidPayments.length > 0;
+    const canRevealAccess = Boolean(
+      normalizedStatus && CHECKIN_COMPLETE_STATUSES.has(normalizedStatus) && hasSettledCityTax
+    );
+
     return {
       id: booking.id,
       propertyName: booking.propertyName,
@@ -190,7 +199,7 @@ async function getBookingByToken(token: string): Promise<BookingData | null> {
       guestLeaderName: booking.guestLeaderName,
       cityTaxAmount,
       cityTaxPerPerson: cityTaxPolicy.taxPerPersonPerNight,
-      universalKeypadCode: booking.universalKeypadCode || undefined,
+      universalKeypadCode: canRevealAccess ? (booking.universalKeypadCode || undefined) : undefined,
       checkInDateLabel,
       checkOutDateLabel,
       checkInTimeLabel,
@@ -203,14 +212,16 @@ async function getBookingByToken(token: string): Promise<BookingData | null> {
         stripePaymentIntentId: payment.stripePaymentIntentId,
         currency: payment.currency
       })),
-      virtualKeys: booking.virtualKeys.map(key => ({
-        id: key.id,
-        keyType: key.keyType,
-        nukiKeyId: key.nukiKeyId,
-        isActive: key.isActive,
-        createdAt: key.createdAt.toISOString(),
-        deactivatedAt: key.deactivatedAt ? key.deactivatedAt.toISOString() : undefined,
-      })),
+      virtualKeys: canRevealAccess
+        ? booking.virtualKeys.map(key => ({
+            id: key.id,
+            keyType: key.keyType,
+            nukiKeyId: key.nukiKeyId,
+            isActive: key.isActive,
+            createdAt: key.createdAt.toISOString(),
+            deactivatedAt: key.deactivatedAt ? key.deactivatedAt.toISOString() : undefined,
+          }))
+        : [],
       guests: guestPayloads,
     };
   } catch (error) {

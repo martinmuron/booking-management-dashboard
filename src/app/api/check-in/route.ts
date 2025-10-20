@@ -7,6 +7,7 @@ import type { CityTaxGuestInput } from '@/lib/city-tax';
 import { z } from 'zod';
 import { ensureNukiKeysForBooking, EnsureNukiKeysResult } from '@/services/auto-key.service';
 import { guestSchema, type GuestSubmission } from '@/lib/guest-validation';
+import type { Guest as PrismaGuest, Payment as PrismaPayment, VirtualKey as PrismaVirtualKey } from '@prisma/client';
 
 const NUKI_LEAD_TIME_MS = 3 * 24 * 60 * 60 * 1000;
 
@@ -43,6 +44,16 @@ const requestSchema = z.object({
   guests: z.array(guestSchema).min(1, 'At least one guest is required'),
   paymentIntentId: paymentIntentSchema,
 });
+
+const CHECKIN_COMPLETE_STATUSES = new Set(['CHECKED_IN', 'KEYS_DISTRIBUTED', 'COMPLETED']);
+
+const extractRelationArray = <T>(record: unknown, key: string): T[] => {
+  if (!record || typeof record !== 'object') {
+    return [];
+  }
+  const value = (record as Record<string, unknown>)[key];
+  return Array.isArray(value) ? (value as T[]) : [];
+};
 
 // GET /api/check-in - Get booking details for check-in
 export async function GET(request: NextRequest) {
@@ -146,12 +157,44 @@ export async function GET(request: NextRequest) {
       timeZone: 'Europe/Prague'
     });
 
+    const bookingGuests = extractRelationArray<PrismaGuest>(booking, 'guests');
+    const bookingPayments = extractRelationArray<PrismaPayment>(booking, 'payments');
+    const bookingVirtualKeys = extractRelationArray<PrismaVirtualKey>(booking, 'virtualKeys');
+
+    const cityTaxGuests = bookingGuests.map((guest) => ({
+      dateOfBirth: guest.dateOfBirth,
+      residenceCity: guest.residenceCity,
+    }));
+
+    const cityTaxAmount = calculateCityTaxForStay(
+      cityTaxGuests,
+      booking.checkInDate,
+      booking.checkOutDate,
+      { propertyName: booking.propertyName, propertyAddress: booking.roomNumber ?? undefined }
+    );
+
+    const normalizedStatus = booking.status?.toUpperCase?.();
+    const hasPaidTax = bookingPayments.some(payment => payment.status?.toLowerCase() === 'paid');
+    const hasSettledCityTax = cityTaxAmount === 0 || hasPaidTax;
+    const canRevealAccess = Boolean(
+      normalizedStatus && CHECKIN_COMPLETE_STATUSES.has(normalizedStatus) && hasSettledCityTax
+    );
+
     const responseBooking = Object.assign({}, enrichedBooking, {
       checkInDateLabel: dateFormatter.format(new Date(booking.checkInDate)),
       checkOutDateLabel: dateFormatter.format(new Date(booking.checkOutDate)),
       checkInTimeLabel: timeFormatter.format(new Date(booking.checkInDate)),
       checkOutTimeLabel: timeFormatter.format(new Date(booking.checkOutDate))
     });
+
+    Object.assign(responseBooking, {
+      guests: bookingGuests,
+      payments: bookingPayments,
+      virtualKeys: canRevealAccess ? bookingVirtualKeys : [],
+    });
+    if (!canRevealAccess) {
+      responseBooking.universalKeypadCode = null;
+    }
 
     return NextResponse.json({
       success: true,
