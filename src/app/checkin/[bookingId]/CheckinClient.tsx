@@ -837,17 +837,21 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
     [booking?.propertyName, booking?.propertyAddress]
   );
 
-  const cityTaxAmount = useMemo(
-    () =>
-      calculateCityTaxForGuests(guests, nights, {
-        propertyName: booking?.propertyName,
-        propertyAddress: booking?.propertyAddress
-      }),
-    [guests, nights, booking?.propertyName, booking?.propertyAddress]
-  );
+  const cityTaxAmount = useMemo(() => {
+    if (checkInCompleted) {
+      return booking?.cityTaxAmount ?? 0;
+    }
+
+    return calculateCityTaxForGuests(guests, nights, {
+      propertyName: booking?.propertyName,
+      propertyAddress: booking?.propertyAddress
+    });
+  }, [checkInCompleted, booking?.cityTaxAmount, guests, nights, booking?.propertyName, booking?.propertyAddress]);
 
   const requiredGuestCount = booking?.numberOfGuests ?? guests.length;
-  const missingGuestCount = Math.max(requiredGuestCount - guests.length, 0);
+  const missingGuestCount = checkInCompleted
+    ? 0
+    : Math.max(requiredGuestCount - guests.length, 0);
   const allGuestFormsPresent = checkInCompleted || missingGuestCount === 0;
 
   const cityTaxTitle = cityTaxPolicy.cityName
@@ -859,6 +863,10 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
     : `Required municipal tax (${cityTaxPolicy.taxPerPersonPerNight} CZK per person per night, 18+ only)`;
 
   const isGuestTaxInfoComplete = useMemo(() => {
+    if (checkInCompleted) {
+      return true;
+    }
+
     return guests.every(guest => {
       return (
         sanitizeString(guest.dateOfBirth) &&
@@ -866,17 +874,22 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
         sanitizeString(guest.residenceCountry)
       );
     });
-  }, [guests]);
+  }, [checkInCompleted, guests]);
 
   const allGuestFormsValid = useMemo(() => {
+    if (checkInCompleted) {
+      return true;
+    }
+
     if (!allGuestFormsPresent) {
       return false;
     }
 
     return guests.every(guest => Object.keys(validateGuest(guest)).length === 0);
-  }, [guests, allGuestFormsPresent]);
+  }, [checkInCompleted, guests, allGuestFormsPresent]);
 
-  const canInitiatePayment = cityTaxAmount > 0
+  const canInitiatePayment = !checkInCompleted
+    && cityTaxAmount > 0
     && isGuestTaxInfoComplete
     && allGuestFormsValid
     && missingGuestCount === 0
@@ -1272,7 +1285,10 @@ const applyServerValidationIssues = (issues?: ApiValidationIssue[]): ServerValid
   const activeVirtualKeys = (booking?.virtualKeys ?? []).filter(key => key.isActive !== false);
   const hasAccessArtifacts = Boolean(activeVirtualKeys.length > 0 || booking?.universalKeypadCode);
   const hasPaidPayment = Boolean(booking?.payments?.some(payment => payment.status?.toLowerCase() === 'paid'));
-  const hasSettledCityTax = cityTaxAmount === 0 || Boolean(paymentIntentId) || hasPaidPayment;
+  const hasSettledCityTax = checkInCompleted
+    || cityTaxAmount === 0
+    || Boolean(paymentIntentId)
+    || hasPaidPayment;
   const keyWindowOpen = Boolean(
     !keyGenerationInfo?.isTooEarly || checkInCompleted
   );
