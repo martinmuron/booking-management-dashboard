@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { DEFAULT_PHONE_CODE } from '@/data/phone-codes';
 
 export const NAME_CHAR_REGEX = /^[A-Za-zÀ-ÖØ-öø-ÿ'\-\s]+$/u;
 export const ISO_ALPHA3_REGEX = /^[A-Z]{3}$/;
@@ -32,9 +33,9 @@ export const guestSchema = z.object({
   phone: z.string().trim().refine((value) => value === '' || PHONE_REGEX.test(value), {
     message: 'Invalid phone number'
   }).optional().or(z.literal('')).transform((value) => (value ? value : undefined)),
-  phoneCountryCode: z.string().trim().regex(/^\+[0-9]{1,6}$/, {
-    message: 'Country code must start with + followed by up to 6 digits'
-  }).optional().default('+420'),
+  phoneCountryCode: z.string().trim().regex(/^\+[0-9]{1,7}$/, {
+    message: 'Country code must start with + followed by up to 7 digits'
+  }).optional().default(DEFAULT_PHONE_CODE),
   dateOfBirth: z.string().trim().min(1, 'Date of birth is required').transform((value, ctx) => {
     const parsed = new Date(value);
     if (Number.isNaN(parsed.getTime())) {
@@ -77,7 +78,7 @@ export const guestSchema = z.object({
 }).transform((guest) => ({
   ...guest,
   citizenship: guest.citizenship ?? guest.nationality,
-  phoneCountryCode: guest.phoneCountryCode && guest.phoneCountryCode !== '' ? guest.phoneCountryCode : '+420'
+  phoneCountryCode: guest.phoneCountryCode && guest.phoneCountryCode !== '' ? guest.phoneCountryCode : DEFAULT_PHONE_CODE
 })).refine((guest) => {
   if (guest.documentNumber === 'INPASS' && !guest.notes) {
     return false;

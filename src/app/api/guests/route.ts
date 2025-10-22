@@ -3,6 +3,7 @@ import { z } from 'zod';
 
 import { prisma } from '@/lib/database';
 import { guestSchema, type GuestSubmission } from '@/lib/guest-validation';
+import { DEFAULT_PHONE_CODE } from '@/data/phone-codes';
 
 const saveGuestsSchema = z.object({
   token: z.string().trim().min(1, 'Check-in token is required'),
@@ -68,7 +69,7 @@ export async function POST(request: NextRequest) {
           lastName: guest.lastName,
           email: guest.email ?? null,
           phone: guest.phone ?? null,
-          phoneCountryCode: guest.phoneCountryCode ?? '+420',
+          phoneCountryCode: guest.phoneCountryCode ?? DEFAULT_PHONE_CODE,
           dateOfBirth: guest.dateOfBirth,
           nationality: guest.nationality,
           citizenship: guest.citizenship ?? guest.nationality,

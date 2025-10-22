@@ -38,6 +38,7 @@ import {
   getCityTaxPolicy,
   isPragueCityTaxExempt
 } from "@/lib/city-tax";
+import { DEFAULT_PHONE_CODE, PHONE_CODES } from "@/data/phone-codes";
 
 interface Guest {
   id: string;
@@ -153,26 +154,18 @@ const documentTypes = [
   { code: 'OTHER', name: 'Other Official Document' }
 ];
 
-// Country codes for phone numbers
-const phoneCodes = [
-  { code: '+420', country: 'CZ', name: 'Czech Republic' },
-  { code: '+1', country: 'US', name: 'United States' },
-  { code: '+44', country: 'UK', name: 'United Kingdom' },
-  { code: '+49', country: 'DE', name: 'Germany' },
-  { code: '+33', country: 'FR', name: 'France' },
-  { code: '+39', country: 'IT', name: 'Italy' },
-  { code: '+34', country: 'ES', name: 'Spain' },
-  { code: '+31', country: 'NL', name: 'Netherlands' },
-  { code: '+43', country: 'AT', name: 'Austria' },
-  { code: '+32', country: 'BE', name: 'Belgium' },
-  { code: '+41', country: 'CH', name: 'Switzerland' },
-  { code: '+48', country: 'PL', name: 'Poland' },
-  { code: '+36', country: 'HU', name: 'Hungary' },
-  { code: '+421', country: 'SK', name: 'Slovakia' },
-  { code: '+86', country: 'CN', name: 'China' },
-  { code: '+91', country: 'IN', name: 'India' },
-  { code: '+7', country: 'RU', name: 'Russia' },
-];
+const formatPhoneCodeLabel = (names: string[]) => {
+  if (names.length === 0) {
+    return 'Unknown region';
+  }
+  if (names.length === 1) {
+    return names[0];
+  }
+  if (names.length === 2) {
+    return `${names[0]} / ${names[1]}`;
+  }
+  return `${names[0]} / ${names[1]} + ${names.length - 2} more`;
+};
 
 // Purpose of stay options (Czech Police official codes)
 const purposeOfStayOptions = [
@@ -305,7 +298,7 @@ const mapGuestsFromPayload = (apiGuests: ApiGuestPayload[]): Guest[] =>
     lastName: sanitizeString(guest.lastName) || '',
     email: sanitizeString(guest.email ?? ''),
     phone: sanitizeString(guest.phone ?? ''),
-    phoneCountryCode: sanitizeString(guest.phoneCountryCode ?? '+420') || '+420',
+    phoneCountryCode: sanitizeString(guest.phoneCountryCode ?? DEFAULT_PHONE_CODE) || DEFAULT_PHONE_CODE,
     dateOfBirth: guest.dateOfBirth ? new Date(guest.dateOfBirth).toISOString().split('T')[0] : '',
     nationality: sanitizeIsoAlpha3(guest.nationality ?? ''),
     citizenship: sanitizeIsoAlpha3(guest.citizenship ?? ''),
@@ -324,7 +317,7 @@ const normalizeGuestsForSignature = (guestList: Guest[]) =>
     const sanitizedNationality = sanitizeIsoAlpha3(guest.nationality);
     const sanitizedCitizenship = guest.citizenship ? sanitizeIsoAlpha3(guest.citizenship) : sanitizedNationality;
     const sanitizedResidenceCountry = sanitizeIsoAlpha3(guest.residenceCountry);
-    const sanitizedPhoneCode = sanitizeString(guest.phoneCountryCode) || '+420';
+    const sanitizedPhoneCode = sanitizeString(guest.phoneCountryCode) || DEFAULT_PHONE_CODE;
     const normalizedPhoneCode = sanitizedPhoneCode.startsWith('+') ? sanitizedPhoneCode : `+${sanitizedPhoneCode}`;
 
     return {
@@ -359,7 +352,7 @@ const createPlaceholderGuest = (guestName: string): Guest => {
     lastName,
     email: '',
     phone: '',
-    phoneCountryCode: '+420',
+    phoneCountryCode: DEFAULT_PHONE_CODE,
     dateOfBirth: '',
     nationality: '',
     citizenship: '',
@@ -589,7 +582,7 @@ export default function CheckinClient({ initialBooking }: CheckinClientProps) {
       lastName: '',
       email: '',
       phone: '',
-      phoneCountryCode: '+420',
+      phoneCountryCode: DEFAULT_PHONE_CODE,
       dateOfBirth: '',
       nationality: '',
       citizenship: '',
@@ -1103,7 +1096,7 @@ const applyServerValidationIssues = (issues?: ApiValidationIssue[]): ServerValid
           guests: normalizedGuests.map((guest, index) => ({
             ...guest,
             id: prev.guests?.[index]?.id ?? guests[index]?.id ?? `guest-${index}`,
-            phoneCountryCode: guest.phoneCountryCode || '+420'
+            phoneCountryCode: guest.phoneCountryCode || DEFAULT_PHONE_CODE
           }))
         };
       });
@@ -1751,11 +1744,16 @@ const applyServerValidationIssues = (issues?: ApiValidationIssue[]): ServerValid
                                         <SelectValue />
                                       </SelectTrigger>
                                       <SelectContent>
-                                        {phoneCodes.map(code => (
-                                          <SelectItem key={code.code} value={code.code}>
-                                            {code.code}
+                                        {PHONE_CODES.map((option) => (
+                                          <SelectItem key={option.code} value={option.code}>
+                                            {option.code} ({formatPhoneCodeLabel(option.names)})
                                           </SelectItem>
                                         ))}
+                                        {!PHONE_CODES.some((option) => option.code === guest.phoneCountryCode) && guest.phoneCountryCode && (
+                                          <SelectItem key={`custom-${guest.phoneCountryCode}`} value={guest.phoneCountryCode}>
+                                            {guest.phoneCountryCode} (Custom)
+                                          </SelectItem>
+                                        )}
                                       </SelectContent>
                                     </Select>
                                     <Input

@@ -7,6 +7,7 @@ import type { CityTaxGuestInput } from '@/lib/city-tax';
 import { z } from 'zod';
 import { ensureNukiKeysForBooking, EnsureNukiKeysResult } from '@/services/auto-key.service';
 import { guestSchema, type GuestSubmission } from '@/lib/guest-validation';
+import { DEFAULT_PHONE_CODE } from '@/data/phone-codes';
 import type { Guest as PrismaGuest, Payment as PrismaPayment, VirtualKey as PrismaVirtualKey } from '@prisma/client';
 
 const NUKI_LEAD_TIME_MS = 3 * 24 * 60 * 60 * 1000;
@@ -265,7 +266,7 @@ export async function POST(request: NextRequest) {
       lastName: guest.lastName,
       email: guest.email ?? null,
       phone: guest.phone ?? null,
-      phoneCountryCode: guest.phoneCountryCode ?? '+420',
+      phoneCountryCode: guest.phoneCountryCode ?? DEFAULT_PHONE_CODE,
       dateOfBirth: guest.dateOfBirth,
       nationality: guest.nationality,
       citizenship: guest.citizenship ?? guest.nationality,
