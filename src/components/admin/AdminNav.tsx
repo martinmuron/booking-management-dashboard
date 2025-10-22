@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 const navItems = [
   { href: "/admin", label: "Home" },
   { href: "/admin/manual-sync", label: "Manual Sync" },
+  { href: "/admin/reports", label: "Reports" },
   { href: "/admin/nuki", label: "Nuki" },
   { href: "/admin/settings", label: "Settings" },
 ];
