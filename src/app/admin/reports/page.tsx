@@ -295,17 +295,17 @@ export default function CityTaxReportsPage() {
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
-                <Table>
+                <Table className="table-fixed">
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Apartment</TableHead>
-                      <TableHead>Lead guest</TableHead>
-                      <TableHead className="hidden md:table-cell">HostAway ID</TableHead>
-                      <TableHead>Check-in</TableHead>
-                      <TableHead className="hidden sm:table-cell">Check-out</TableHead>
-                      <TableHead className="hidden md:table-cell text-center">Guests</TableHead>
-                      <TableHead className="text-right">Total paid</TableHead>
-                      <TableHead className="text-center">Status</TableHead>
+                      <TableHead className="w-[24%]">Apartment</TableHead>
+                      <TableHead className="w-[20%]">Lead guest</TableHead>
+                      <TableHead className="hidden md:table-cell w-[14%]">HostAway ID</TableHead>
+                      <TableHead className="w-[12%]">Check-in</TableHead>
+                      <TableHead className="hidden sm:table-cell w-[12%]">Check-out</TableHead>
+                      <TableHead className="hidden md:table-cell text-center w-[8%]">Guests</TableHead>
+                      <TableHead className="text-right w-[12%]">Total paid</TableHead>
+                      <TableHead className="text-center w-[12%]">Status</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -326,25 +326,25 @@ export default function CityTaxReportsPage() {
                     {!loading &&
                       reportData.map((booking) => (
                         <TableRow key={booking.bookingId}>
-                          <TableCell className="max-w-[220px] truncate" title={booking.apartment}>
+                          <TableCell className="max-w-[260px] truncate w-[24%]" title={booking.apartment}>
                             {booking.apartment}
                           </TableCell>
-                          <TableCell>{booking.leadGuest || "—"}</TableCell>
-                          <TableCell className="hidden md:table-cell">{booking.hostAwayId}</TableCell>
-                          <TableCell>{formatDisplayDate(booking.checkInDate)}</TableCell>
-                          <TableCell className="hidden sm:table-cell">{formatDisplayDate(booking.checkOutDate)}</TableCell>
-                          <TableCell className="hidden md:table-cell text-center">{booking.numberOfGuests}</TableCell>
-                          <TableCell className="text-right">
+                          <TableCell className="w-[20%]">{booking.leadGuest || "—"}</TableCell>
+                          <TableCell className="hidden md:table-cell w-[14%]">{booking.hostAwayId}</TableCell>
+                          <TableCell className="w-[12%]">{formatDisplayDate(booking.checkInDate)}</TableCell>
+                          <TableCell className="hidden sm:table-cell w-[12%]">{formatDisplayDate(booking.checkOutDate)}</TableCell>
+                          <TableCell className="hidden md:table-cell text-center w-[8%]">{booking.numberOfGuests}</TableCell>
+                          <TableCell className="text-right w-[12%]">
                             {formatCurrency(booking.totalPaid, booking.currency)}
                           </TableCell>
-                          <TableCell className="text-center">
+                          <TableCell className="text-center w-[12%]">
                             {booking.cityTaxPaid ? (
-                              <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
+                              <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 px-3 py-1">
                                 <CheckCircle2 className="h-3 w-3 mr-1" />
                                 Paid
                               </Badge>
                             ) : (
-                              <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
+                              <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 px-3 py-1">
                                 <AlertCircle className="h-3 w-3 mr-1" />
                                 Pending
                               </Badge>
