@@ -1042,10 +1042,8 @@ const applyServerValidationIssues = (issues?: ApiValidationIssue[]): ServerValid
     setGuestSaveMessage(null);
     setGuestSaveError(null);
 
-    if (missingGuestCount > 0) {
-      setGuestSaveError(`Add ${missingGuestCount} more guest${missingGuestCount === 1 ? '' : 's'} before saving.`);
-      return;
-    }
+    // Allow saving partial guest list - users can add remaining guests later
+    // Check-in completion will still require all guests
 
     const guestsValid = validateAllGuests(guests);
     if (!guestsValid) {
@@ -1083,7 +1081,14 @@ const applyServerValidationIssues = (issues?: ApiValidationIssue[]): ServerValid
       const signature = JSON.stringify(normalizedGuests);
       setSavedGuestSignature(signature);
       setGuestDataDirty(false);
-      setGuestSaveMessage('Guest details saved successfully.');
+
+      // Show appropriate message based on whether all guests are registered
+      const stillMissing = Math.max(requiredGuestCount - guests.length, 0);
+      if (stillMissing > 0) {
+        setGuestSaveMessage(`Guest details saved successfully. You'll need to add ${stillMissing} more guest${stillMissing === 1 ? '' : 's'} to complete check-in.`);
+      } else {
+        setGuestSaveMessage('Guest details saved successfully.');
+      }
       setGuestSaveError(null);
 
       setBooking((prev) => {

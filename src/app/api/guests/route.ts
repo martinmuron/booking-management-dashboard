@@ -47,15 +47,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (guests.length !== booking.numberOfGuests) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: `Please register exactly ${booking.numberOfGuests} guest${booking.numberOfGuests === 1 ? '' : 's'} before continuing.`
-        },
-        { status: 400 }
-      );
-    }
+    // Allow partial guest saves - users can save 1+ guests and add more later
+    // Check-in completion will still require all guests to be registered
 
     await prisma.$transaction(async (tx) => {
       await tx.guest.deleteMany({
