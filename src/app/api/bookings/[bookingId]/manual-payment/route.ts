@@ -89,37 +89,39 @@ export async function POST(
           },
         });
 
-    let keyResult: Awaited<ReturnType<typeof ensureNukiKeysForBooking>> | null = null;
-    try {
-      keyResult = await ensureNukiKeysForBooking(bookingId, { force: true });
-    } catch (keyError) {
-      console.error('Failed to ensure NUKI keys after manual payment:', keyError);
-    }
-
-    const proposedStatus: BookingStatus = keyResult && (keyResult.status === 'created' || keyResult.status === 'already')
-      ? 'KEYS_DISTRIBUTED'
-      : 'PAYMENT_COMPLETED';
-
-    const updateData: Prisma.BookingUpdateInput = {};
-    const finalStatus = pickHigherStatus(booking.status, proposedStatus);
+    // Update booking status to PAYMENT_COMPLETED immediately
+    const finalStatus = pickHigherStatus(booking.status, 'PAYMENT_COMPLETED');
 
     if (finalStatus !== booking.status) {
-      updateData.status = finalStatus;
-    }
-
-    if (keyResult && 'universalKeypadCode' in keyResult) {
-      const code = keyResult.universalKeypadCode;
-      if (code && code !== booking.universalKeypadCode) {
-        updateData.universalKeypadCode = code;
-      }
-    }
-
-    if (Object.keys(updateData).length > 0) {
       await prisma.booking.update({
         where: { id: bookingId },
-        data: updateData,
+        data: { status: finalStatus },
       });
     }
+
+    // Trigger Nuki key generation asynchronously (non-blocking)
+    // This will attempt to generate keys in the background without blocking the response
+    ensureNukiKeysForBooking(bookingId, { force: true })
+      .then((keyResult) => {
+        if (keyResult && (keyResult.status === 'created' || keyResult.status === 'already')) {
+          // Update status to KEYS_DISTRIBUTED if keys were successfully generated
+          const updatedStatus = pickHigherStatus(finalStatus, 'KEYS_DISTRIBUTED');
+          const updateData: Prisma.BookingUpdateInput = { status: updatedStatus };
+
+          // Update universal keypad code if available
+          if ('universalKeypadCode' in keyResult && keyResult.universalKeypadCode) {
+            updateData.universalKeypadCode = keyResult.universalKeypadCode;
+          }
+
+          return prisma.booking.update({
+            where: { id: bookingId },
+            data: updateData,
+          });
+        }
+      })
+      .catch((keyError) => {
+        console.error('Failed to ensure NUKI keys after manual payment:', keyError);
+      });
 
     return NextResponse.json({
       success: true,
